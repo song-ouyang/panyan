@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.env
+.env.production
+backups/
+.DS_Store
+coverage/
+uploads/
+miniprogram/private.config.json
+project.private.config.json
+output/
+tmp/

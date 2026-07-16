@@ -1,0 +1,29 @@
+name: wanpan-diary
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: wanpan
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+  api:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    env_file: ./server/.env
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/wanpan
+    depends_on:
+      - postgres
+    ports:
+      - "3000:3000"
+    volumes:
+      - uploads:/app/uploads
+volumes:
+  postgres-data:
+  uploads:

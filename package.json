@@ -1,0 +1,13 @@
+{
+  "name": "wanpan-diary",
+  "private": true,
+  "workspaces": ["server"],
+  "scripts": {
+    "dev:server": "npm --workspace server run dev",
+    "build": "npm --workspace server run build",
+    "check": "npm --workspace server run check",
+    "test": "npm --workspace server run test"
+  },
+  "engines": { "node": ">=20" }
+}
+

@@ -1,0 +1,46 @@
+{
+  "pages": [
+    "pages/splash/index",
+    "pages/gyms/index",
+    "pages/brand/index",
+    "pages/gym/index",
+    "pages/route/index",
+    "pages/route-submit/index",
+    "pages/submissions/index",
+    "pages/admin/index",
+    "pages/notifications/index",
+    "pages/my-posts/index",
+    "pages/checkin/index",
+    "pages/feed/index",
+    "pages/post/index",
+    "pages/ranking/index",
+    "pages/meetups/index",
+    "pages/friends/index",
+    "pages/profile-edit/index",
+    "pages/settings/index",
+    "pages/legal/privacy",
+    "pages/legal/terms",
+    "pages/profile/index",
+    "pages/public-profile/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "完攀日记",
+    "navigationBarBackgroundColor": "#FFFCF8",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#F7F3EE"
+  },
+  "tabBar": {
+    "color": "#7C868D",
+    "selectedColor": "#F56B52",
+    "backgroundColor": "#FFFCF8",
+    "borderStyle": "white",
+    "list": [
+      { "pagePath": "pages/gyms/index", "text": "岩馆", "iconPath": "assets/icons/gym.png", "selectedIconPath": "assets/icons/gym-active.png" },
+      { "pagePath": "pages/feed/index", "text": "广场", "iconPath": "assets/icons/feed.png", "selectedIconPath": "assets/icons/feed-active.png" },
+      { "pagePath": "pages/ranking/index", "text": "排行", "iconPath": "assets/icons/ranking.png", "selectedIconPath": "assets/icons/ranking-active.png" },
+      { "pagePath": "pages/profile/index", "text": "我的", "iconPath": "assets/icons/profile.png", "selectedIconPath": "assets/icons/profile-active.png" }
+    ]
+  },
+  "networkTimeout": { "request": 15000, "uploadFile": 120000 },
+  "sitemapLocation": "sitemap.json"
+}

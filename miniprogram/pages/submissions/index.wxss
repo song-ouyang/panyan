@@ -1,0 +1,1 @@
+.item{display:flex}.item image{width:150rpx;height:150rpx;border-radius:20rpx}.body{flex:1;margin-left:20rpx}.name{font-size:32rpx;font-weight:750}.status{font-size:23rpx}.approved{color:#26a269}.rejected{color:#d33}.pending{color:#e08b19}.note{margin-top:14rpx;background:#fff1ed;padding:12rpx;border-radius:12rpx}

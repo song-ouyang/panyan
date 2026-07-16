@@ -1,0 +1,7 @@
+<view class="page" wx:if="{{user}}">
+  <view class="profile-card card"><image src="{{user.avatar_url || '/assets/logo.png'}}"/><view class="profile-copy"><view class="title small">{{user.nickname}}</view><view class="muted">{{user.bio || '保持上墙，持续成长'}}</view></view><button wx:if="{{user.friendship==='none'}}" size="mini" class="primary add" bindtap="addFriend">加岩友</button><view wx:elif="{{user.friendship==='sent'}}" class="friend-state">已申请</view><view wx:elif="{{user.friendship==='accepted'}}" class="friend-state">已是岩友</view></view>
+  <view class="stats card"><view><text>{{user.stats.total_sends}}</text><label>总完攀</label></view><view><text>V{{user.stats.max_grade}}</text><label>最高难度</label></view><view><text>{{user.stats.gym_count}}</text><label>岩馆足迹</label></view></view>
+  <view class="section-title">攀爬履历</view>
+  <view class="month card" wx:for="{{months}}" wx:key="month"><view class="month-title">{{item.month}}</view><view class="gym-block" wx:for="{{item.gyms}}" wx:for-item="gym" wx:key="name"><view class="gym-name"><image src="/assets/icons/gym-active.png"/>{{gym.name}}</view><view class="grade-list"><view class="grade-chip" wx:for="{{gym.grades}}" wx:for-item="grade" wx:key="grade">{{grade.grade}}<text>{{grade.sends}} 条</text></view></view></view></view>
+  <view class="empty" wx:if="{{!loading && !months.length}}">这位岩友还没有公开的完攀记录</view>
+</view>

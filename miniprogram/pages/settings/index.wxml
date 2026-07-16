@@ -1,0 +1,1 @@
+<view class="page"><view class="card menu" bindtap="privacy">隐私保护指引 <text>›</text></view><view class="card menu" bindtap="terms">用户服务协议 <text>›</text></view><view class="card menu" bindtap="clearCache">退出本地登录 <text>›</text></view><view class="card menu danger" bindtap="deleteAccount">注销并删除账号数据 <text>›</text></view><view class="tip">正式发布前，隐私指引需与微信公众平台填写的隐私保护内容保持一致。</view></view>

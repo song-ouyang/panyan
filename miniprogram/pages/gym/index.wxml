@@ -1,0 +1,8 @@
+<view class="page" wx:if="{{gym}}">
+  <view class="title">{{gym.name}}</view><view class="subtitle">{{gym.address}}</view>
+  <scroll-view scroll-x class="sets"><view class="set-pill {{setId===item.id?'active-set':''}}" wx:for="{{gym.routeSets}}" wx:key="id" data-id="{{item.id}}" bindtap="chooseSet">{{item.name}}{{item.active?' · 当前':''}}</view></scroll-view>
+  <scroll-view scroll-x class="grades"><view class="grade-pill {{grade===item?'active':''}}" wx:for="{{grades}}" wx:key="*this" data-grade="{{item}}" bindtap="chooseGrade">{{item}}</view></scroll-view>
+  <button class="submit-route" bindtap="submitRoute">＋ 标记并投稿新线路</button>
+  <view class="route card" wx:for="{{routes}}" wx:key="id" data-id="{{item.id}}" bindtap="open"><view class="grade">{{item.grade}}</view><view class="route-body"><view class="name">{{item.name}}</view><view class="muted">{{item.wall_zone}} · {{item.color}}</view></view><view class="muted">{{item.send_count}}人完攀 ›</view></view>
+  <view class="empty" wx:if="{{!routes.length}}">这个难度还没有线路</view>
+</view>

@@ -1,0 +1,50 @@
+import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
+import { z } from 'zod';
+import { query } from '../db.js';
+import { idParams } from '../schemas.js';
+
+const gym = z.object({ name: z.string().min(2).max(80), city: z.string().min(2).max(40), district: z.string().max(40).optional(), brandId: z.string().uuid().optional(), address: z.string().min(2).max(160), latitude: z.number().optional(), longitude: z.number().optional(), coverUrl: z.string().url().optional(), description: z.string().optional() });
+const brand = z.object({ name: z.string().min(2).max(80), logoUrl: z.string().url().optional(), description: z.string().optional() });
+const routeSet = z.object({ gymId: z.string().uuid(), name: z.string().min(2).max(80), startsOn: z.string().date(), endsOn: z.string().date().nullable().optional() });
+const route = z.object({ gymId: z.string().uuid(), routeSetId: z.string().uuid().nullable().optional(), name: z.string().min(1).max(80), grade: z.string().regex(/^V([0-9]|1[0-7])$/), color: z.string().min(1).max(24), wallZone: z.string().max(40).optional(), coverUrl: z.string().url().optional(), setterName: z.string().max(40).optional(), points: z.array(z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1), type: z.enum(['start', 'hold', 'finish']) })).default([]) });
+
+export const adminRoutes: FastifyPluginAsync = async (app) => {
+  const admin = async (request: FastifyRequest) => {
+    await app.authenticate(request);
+    if (!['gym_admin', 'admin'].includes(request.user.role)) throw app.httpErrors.forbidden('需要岩馆管理员权限');
+  };
+  app.post('/gyms', { preHandler: admin }, async (request) => {
+    const b = gym.parse(request.body);
+    const result = await query(`INSERT INTO gyms(name,city,district,brand_id,address,latitude,longitude,cover_url,description) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`, [b.name,b.city,b.district??null,b.brandId??null,b.address,b.latitude??null,b.longitude??null,b.coverUrl??null,b.description??null]);
+    return result.rows[0];
+  });
+  app.post('/brands', { preHandler: admin }, async (request) => {
+    const b = brand.parse(request.body);
+    const result = await query(`INSERT INTO gym_brands(name,logo_url,description) VALUES($1,$2,$3) ON CONFLICT(name) DO UPDATE SET logo_url=EXCLUDED.logo_url,description=EXCLUDED.description RETURNING *`, [b.name,b.logoUrl??null,b.description??null]);
+    return result.rows[0];
+  });
+  app.post('/route-sets', { preHandler: admin }, async (request) => {
+    const b = routeSet.parse(request.body);
+    const result = await query(`INSERT INTO route_sets(gym_id,name,starts_on,ends_on) VALUES($1,$2,$3,$4) RETURNING *`, [b.gymId,b.name,b.startsOn,b.endsOn??null]);
+    return result.rows[0];
+  });
+  app.post('/routes', { preHandler: admin }, async (request) => {
+    const b = route.parse(request.body);
+    const result = await query(`INSERT INTO routes(gym_id,route_set_id,name,grade,color,wall_zone,cover_url,setter_name,points) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`, [b.gymId,b.routeSetId??null,b.name,b.grade,b.color,b.wallZone??null,b.coverUrl??null,b.setterName??null,JSON.stringify(b.points)]);
+    return result.rows[0];
+  });
+  app.get('/moderation', { preHandler: admin }, async () => {
+    const sends = await query(`SELECT s.id,s.caption,s.video_url,s.created_at,u.nickname FROM sends s JOIN users u ON u.id=s.user_id WHERE s.moderation_status='pending' ORDER BY s.created_at`);
+    const comments = await query(`SELECT c.id,c.content,c.created_at,u.nickname FROM comments c JOIN users u ON u.id=c.user_id WHERE c.moderation_status='pending' ORDER BY c.created_at`);
+    const reports = await query(`SELECT * FROM reports WHERE status='pending' ORDER BY created_at`);
+    return { sends: sends.rows, comments: comments.rows, reports: reports.rows };
+  });
+  app.post('/moderation/:id', { preHandler: admin }, async (request) => {
+    const { id } = idParams.parse(request.params);
+    const b = z.object({ targetType: z.enum(['send','comment','report']), action: z.enum(['approve','reject']) }).parse(request.body);
+    if (b.targetType === 'send') await query(`UPDATE sends SET moderation_status=$2 WHERE id=$1`, [id,b.action==='approve'?'approved':'rejected']);
+    if (b.targetType === 'comment') await query(`UPDATE comments SET moderation_status=$2 WHERE id=$1`, [id,b.action==='approve'?'approved':'rejected']);
+    if (b.targetType === 'report') await query(`UPDATE reports SET status=$2 WHERE id=$1`, [id,b.action==='approve'?'approved':'rejected']);
+    return { status: b.action==='approve'?'approved':'rejected' };
+  });
+};

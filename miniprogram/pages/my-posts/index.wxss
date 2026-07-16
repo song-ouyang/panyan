@@ -1,0 +1,1 @@
+.name{font-size:31rpx;font-weight:750}.status{font-size:23rpx}.approved{color:#26a269}.pending{color:#e08b19}.rejected{color:#c33}.caption{margin-top:20rpx}.foot{margin-top:20rpx}.delete{color:#c33}

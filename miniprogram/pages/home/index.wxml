@@ -1,0 +1,8 @@
+<view class="page">
+  <view class="between section"><view class="section-heading"><view class="icon-badge"><image class="ui-icon" src="/assets/icons/gym-active.png"/></view><text class="section-title">附近岩馆</text></view><text class="section-link" bindtap="goGyms">查看全部 ›</text></view>
+  <view class="card gym" wx:for="{{gyms}}" wx:key="id" data-id="{{item.id}}" bindtap="openGym">
+    <view><view class="gym-name">{{item.name}}</view><view class="muted">{{item.city}} · {{item.route_count}} 条线路</view></view><view class="round-arrow"></view>
+  </view>
+  <view class="between section"><view class="section-heading"><view class="icon-badge"><image class="ui-icon" src="/assets/icons/friends.png"/></view><text class="section-title">最近约爬</text></view><text class="section-link" bindtap="goMeetups">一起去 ›</text></view>
+  <view class="card" wx:for="{{meetups}}" wx:key="id"><view class="gym-name">{{item.title}}</view><view class="muted">{{item.gym_name}} · {{item.member_count}}/{{item.max_people}}人</view></view>
+</view>

@@ -1,0 +1,1 @@
+App({ globalData: { user: null } });

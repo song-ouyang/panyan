@@ -1,0 +1,18 @@
+<view class="moments-page">
+  <view class="moment" wx:for="{{items}}" wx:key="id">
+    <image class="moment-avatar" src="{{item.avatar_url || '/assets/logo.png'}}" data-id="{{item.user_id}}"/>
+    <view class="moment-body">
+      <view class="moment-name">{{item.nickname}}</view>
+      <view class="moment-caption" wx:if="{{item.caption}}">{{item.caption}}</view>
+      <view class="image-grid images-{{item.image_urls.length}}" wx:if="{{item.image_urls && item.image_urls.length}}"><image wx:for="{{item.image_urls}}" wx:for-item="imageUrl" wx:key="*this" src="{{imageUrl}}" mode="aspectFill" data-current="{{imageUrl}}" data-urls="{{item.image_urls}}" bindtap="previewImage"/></view>
+      <video wx:if="{{item.video_url}}" src="{{item.video_url}}" controls object-fit="cover"/>
+      <view class="route-card" wx:if="{{item.route_id}}" data-id="{{item.route_id}}" bindtap="preview"><view class="route-grade">{{item.grade}}</view><view><view class="route-name">{{item.route_name}}</view><view class="route-place">{{item.gym_name}} · 尝试 {{item.attempts}} 次</view></view></view>
+      <view class="moment-meta"><text>{{item.sent_at_text || ''}}</text><text class="location">{{item.gym_name}}</text></view>
+      <view class="moment-actions"><view class="action-btn {{item.liked?'liked':''}}" data-id="{{item.id}}" data-liked="{{item.liked}}" bindtap="like">{{item.liked?'♥':'♡'}} {{item.like_count}}</view><view class="action-btn" data-id="{{item.id}}" bindtap="openPost">评论 {{item.comment_count}}</view><button open-type="share">分享</button></view>
+    </view>
+  </view>
+  <view class="empty" wx:if="{{!loading && !items.length}}">广场还很安静，完成一条线路后分享第一条记录吧</view>
+  <view class="camera-fab" bindtap="openComposer">▣<text>发照片</text></view>
+</view>
+<view class="composer-mask" wx:if="{{showComposer}}" bindtap="closeComposer"></view>
+<view class="composer-sheet" wx:if="{{showComposer}}"><view class="composer-head"><text bindtap="closeComposer">取消</text><view>发表动态</view><button loading="{{publishing}}" disabled="{{publishing}}" bindtap="publish">发表</button></view><textarea maxlength="300" placeholder="这一刻的想法…" value="{{draft}}" bindinput="draftInput"/><view class="draft-grid"><view class="draft-image" wx:for="{{draftImages}}" wx:key="tempFilePath"><image src="{{item.tempFilePath}}" mode="aspectFill"/><view data-index="{{index}}" bindtap="removeImage">×</view></view><view class="add-image" wx:if="{{draftImages.length<9}}" bindtap="chooseImages"><text>＋</text><label>照片</label></view></view><view class="composer-tip">最多选择 9 张图片</view></view>

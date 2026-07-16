@@ -1,0 +1,55 @@
+import Fastify from 'fastify';
+import cors from '@fastify/cors';
+import sensible from '@fastify/sensible';
+import multipart from '@fastify/multipart';
+import rateLimit from '@fastify/rate-limit';
+import staticPlugin from '@fastify/static';
+import { resolve } from 'node:path';
+import { mkdir } from 'node:fs/promises';
+import { ZodError } from 'zod';
+import { config } from './config.js';
+import { authPlugin } from './auth.js';
+import { authRoutes } from './routes/auth.js';
+import { gymRoutes } from './routes/gyms.js';
+import { sendRoutes } from './routes/sends.js';
+import { userRoutes } from './routes/users.js';
+import { rankingRoutes } from './routes/rankings.js';
+import { meetupRoutes } from './routes/meetups.js';
+import { uploadRoutes } from './routes/uploads.js';
+import { routeRoutes } from './routes/routes.js';
+import { adminRoutes } from './routes/admin.js';
+import { submissionRoutes } from './routes/submissions.js';
+import { reportRoutes } from './routes/reports.js';
+import { notificationRoutes } from './routes/notifications.js';
+
+export async function buildApp() {
+  const app = Fastify({ logger: true, bodyLimit: 2 * 1024 * 1024 });
+  await mkdir(resolve(config.UPLOAD_DIR), { recursive: true });
+  await app.register(cors, { origin: config.NODE_ENV === 'production' ? false : true });
+  await app.register(sensible);
+  await app.register(multipart);
+  await app.register(rateLimit, { max: 120, timeWindow: '1 minute' });
+  await app.register(staticPlugin, { root: resolve(config.UPLOAD_DIR), prefix: '/uploads/' });
+  await app.register(authPlugin);
+  await app.register(authRoutes, { prefix: '/api/auth' });
+  await app.register(gymRoutes, { prefix: '/api/gyms' });
+  await app.register(routeRoutes, { prefix: '/api/routes' });
+  await app.register(sendRoutes, { prefix: '/api/sends' });
+  await app.register(userRoutes, { prefix: '/api/users' });
+  await app.register(rankingRoutes, { prefix: '/api/rankings' });
+  await app.register(meetupRoutes, { prefix: '/api/meetups' });
+  await app.register(uploadRoutes, { prefix: '/api/uploads' });
+  await app.register(adminRoutes, { prefix: '/api/admin' });
+  await app.register(submissionRoutes, { prefix: '/api/submissions' });
+  await app.register(reportRoutes, { prefix: '/api/reports' });
+  await app.register(notificationRoutes, { prefix: '/api/notifications' });
+  app.get('/health', async () => ({ ok: true, timestamp: new Date().toISOString() }));
+  app.setErrorHandler((error: unknown, _request, reply) => {
+    if (error instanceof ZodError) return reply.status(400).send({ code: 'VALIDATION_ERROR', message: error.issues[0]?.message, issues: error.issues });
+    const known = error instanceof Error ? error as Error & { statusCode?: number; code?: string } : null;
+    const status = known?.statusCode ?? 500;
+    if (status >= 500) app.log.error(error);
+    return reply.status(status).send({ code: known?.code ?? 'INTERNAL_ERROR', message: status >= 500 ? '服务暂时不可用' : known?.message ?? '请求失败' });
+  });
+  return app;
+}
