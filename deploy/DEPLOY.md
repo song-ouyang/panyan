@@ -135,6 +135,17 @@ module.exports = {
 bash deploy/deploy-from-mac.sh root@服务器公网IP /opt/wanpan-diary
 ```
 
+## 与 Crush直聘共用服务器
+
+如果服务器上的 Nginx/宝塔和 `api.gblh.cloud` 已由 Crush直聘使用，不要启动本项目的 Caddy。使用独立域名 `panyan-api.gblh.cloud`，并让 API 只监听本机 `3100` 端口：
+
+```bash
+docker compose --env-file .env.production -f docker-compose.server.yml up -d --build
+curl http://127.0.0.1:3100/health
+```
+
+将 `deploy/nginx-panyan.conf.example` 加入现有 Nginx 配置并为 `panyan-api.gblh.cloud` 申请 HTTPS 证书。阿里云 OSS 可沿用 Crush直聘的 `crush-oss` Bucket 和 `cn-chengdu` 地域，但建议使用只允许 `videos/*` 前缀的独立 RAM 密钥。
+
 ## 查看日志和回滚前备份
 
 ```bash

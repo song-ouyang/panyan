@@ -1,0 +1,62 @@
+name: wanpan-diary
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-wanpan}
+      POSTGRES_USER: ${POSTGRES_USER:-wanpan}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?请在 .env.production 中设置 POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-wanpan} -d ${POSTGRES_DB:-wanpan}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [internal]
+
+  api:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-wanpan}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-wanpan}
+      PUBLIC_BASE_URL: https://${DOMAIN}
+      UPLOAD_DIR: /app/uploads
+      JWT_SECRET: ${JWT_SECRET:?请设置 JWT_SECRET}
+      WECHAT_APP_ID: ${WECHAT_APP_ID:?请设置 WECHAT_APP_ID}
+      WECHAT_APP_SECRET: ${WECHAT_APP_SECRET:?请设置 WECHAT_APP_SECRET}
+      MODERATION_MODE: ${MODERATION_MODE:-manual}
+      UPLOAD_MODE: ${UPLOAD_MODE:-local}
+      OSS_REGION: ${OSS_REGION:-oss-cn-chengdu}
+      OSS_BUCKET: ${OSS_BUCKET:-}
+      OSS_ACCESS_KEY_ID: ${OSS_ACCESS_KEY_ID:-}
+      OSS_ACCESS_KEY_SECRET: ${OSS_ACCESS_KEY_SECRET:-}
+      OSS_PUBLIC_BASE_URL: ${OSS_PUBLIC_BASE_URL:-}
+    command: ["sh", "-c", "node server/dist/db/migrate.js && node server/dist/index.js"]
+    ports:
+      - "127.0.0.1:${API_HOST_PORT:-3100}:3000"
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    networks: [internal]
+
+networks:
+  internal:
+
+volumes:
+  postgres-data:
+  uploads:
