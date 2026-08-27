@@ -1,2 +1,84 @@
-<view class="page" wx:if="{{!success}}"><view class="title">记录这次完攀</view><view class="subtitle">让这次上墙，成为看得见的成长。</view><view class="video card" bindtap="chooseVideo"><video wx:if="{{videoPath}}" src="{{videoPath}}" controls></video><view wx:else><view class="plus">＋</view><view class="video-title">选择 MP4 完攀视频</view><view class="muted">建议 60 秒以内</view></view></view><view wx:if="{{submitting && videoPath}}" class="upload-box card"><image class="loading-cat" src="/assets/mascot-loading.jpg" mode="aspectFit"/><view class="between"><text class="upload-title">小猫正在搬运视频</text><text class="percent">{{uploadProgress}}%</text></view><view class="progress"><view class="progress-fill" style="width:{{uploadProgress}}%"></view></view><view class="loading-dots"><text></text><text></text><text></text></view><view class="muted progress-tip">分片失败会自动重试，请不要退出</view></view><view class="card field"><text>尝试次数</text><input type="number" value="{{attempts}}" bindinput="attempts"/></view><view class="card"><textarea placeholder="写下这条线的感受或 Beta…" maxlength="300" bindinput="caption"/></view><button class="primary" loading="{{submitting}}" bindtap="submit">{{submitting?'正在上传 '+uploadProgress+'%':'完成打卡'}}</button></view>
-<view class="success-page" wx:else><view class="success-title">{{milestone?'新突破！':'完攀！'}}</view><image class="success-cat" src="/assets/mascot-celebrate.jpg" mode="aspectFit"/><view class="milestone" wx:if="{{milestone}}">首次完攀 {{milestone.grade}}</view><view class="success-copy">{{milestone?'恭喜解锁新的最高难度':'太棒了，这次进步已经记下来了'}}</view><view class="points-earned">本次获得 +{{pointsEarned}} 分</view><view class="success-sub">继续积累，你会看到自己越爬越高。</view><button class="primary success-button" bindtap="finish">继续探索线路</button></view>
+<view class="checkin-shell">
+  <view class="journey" aria-label="打卡进度，共三步">
+    <view class="journey-item {{journeyStep == 1 ? 'is-current' : 'is-complete'}}">
+      <view class="journey-node"><text>{{journeyStep > 1 ? '✓' : '1'}}</text></view>
+      <view class="journey-label">选视频</view>
+    </view>
+    <view class="journey-line {{journeyStep > 1 ? 'is-complete' : ''}}"></view>
+    <view class="journey-item {{journeyStep == 2 ? 'is-current' : (journeyStep > 2 ? 'is-complete' : '')}}">
+      <view class="journey-node"><text>{{journeyStep > 2 ? '✓' : '2'}}</text></view>
+      <view class="journey-label">上传保存</view>
+    </view>
+    <view class="journey-line {{journeyStep > 2 ? 'is-complete' : ''}}"></view>
+    <view class="journey-item {{journeyComplete ? 'is-complete' : (journeyStep == 3 ? 'is-current' : '')}}">
+      <view class="journey-node"><text>{{journeyComplete ? '✓' : '3'}}</text></view>
+      <view class="journey-label">完成</view>
+    </view>
+  </view>
+
+  <view class="stage-copy {{stageTextVisible ? 'is-visible' : ''}}" role="status" aria-label="{{stageTitle}}，{{stageDescription}}">
+    <view class="stage-title">{{stageTitle}}</view>
+    <view class="stage-description">{{stageDescription}}</view>
+  </view>
+
+  <view class="page form-page" wx:if="{{phase != 'pendingReview' && phase != 'approvedSuccess'}}">
+    <view
+      class="video card pressable {{submitting ? 'is-disabled' : ''}}"
+      bindtap="chooseVideo"
+      role="button"
+      aria-disabled="{{submitting}}"
+      aria-label="{{videoPath ? '更换完攀视频' : '选择 MP4 完攀视频'}}"
+    >
+      <video wx:if="{{videoPath}}" src="{{videoPath}}" controls catchtap="noop"></video>
+      <view wx:if="{{videoPath}}" class="replace-video pressable" catchtap="chooseVideo" role="button" aria-label="更换完攀视频">更换视频</view>
+      <view wx:else class="video-empty">
+        <view class="video-icon">▶</view>
+        <view class="video-title">选择 MP4 完攀视频</view>
+        <view class="muted">建议 60 秒以内</view>
+      </view>
+    </view>
+
+    <view wx:if="{{phase == 'uploading' || (phase == 'saving' && submitting)}}" class="upload-box card" aria-label="{{phase == 'uploading' ? '视频上传进度 '+uploadProgress+'%' : '正在保存打卡'}}">
+      <image class="loading-cat" src="/assets/mascot-loading.jpg" mode="aspectFit"/>
+      <view class="between">
+        <text class="upload-title">{{phase == 'uploading' ? '小猫正在搬运视频' : '视频已到达，正在保存'}}</text>
+        <text class="percent">{{phase == 'uploading' ? uploadProgress+'%' : '已上传'}}</text>
+      </view>
+      <view class="progress"><view class="progress-fill" style="transform:scaleX({{uploadProgress / 100}})"></view></view>
+      <view class="loading-dots" aria-hidden="true"><text></text><text></text><text></text></view>
+      <view class="muted progress-tip">{{phase == 'uploading' ? '分片失败会自动重试，请不要退出' : '正在记录完攀成绩'}}</view>
+    </view>
+
+    <view wx:if="{{submitError}}" class="inline-error" role="alert">
+      <text>{{saveFailed ? '视频已安全上传，只需重试保存。' : '提交未完成，可直接重试。'}}</text>
+    </view>
+
+    <view class="card field"><text>尝试次数</text><input type="number" value="{{attempts}}" bindinput="attempts" aria-label="尝试次数"/></view>
+    <view class="card"><textarea placeholder="写下这条线的感受或 Beta…" maxlength="300" bindinput="caption" aria-label="完攀感受或 Beta"/></view>
+    <button
+      class="primary pressable primary-action submit-button"
+      disabled="{{submitting}}"
+      aria-label="{{!videoPath ? '选择 MP4 视频' : (submitting ? stageTitle : (saveFailed ? '重试保存' : '上传并提交'))}}"
+      bindtap="primaryAction"
+    >{{!videoPath ? '选择 MP4 视频' : (submitting ? (phase == 'uploading' ? '正在上传 '+uploadProgress+'%' : '正在保存') : (saveFailed ? '重试保存' : '上传并提交'))}}</button>
+  </view>
+
+  <view
+    class="result-page {{resultVisible ? 'is-visible' : ''}} {{phase == 'pendingReview' ? 'is-pending' : 'is-approved'}}"
+    wx:else
+    role="status"
+    aria-label="{{stageTitle}}，{{stageDescription}}"
+  >
+    <view class="milestone-particles" wx:if="{{phase == 'approvedSuccess' && milestone}}" aria-hidden="true">
+      <text class="particle p1">★</text><text class="particle p2">◆</text><text class="particle p3">●</text><text class="particle p4">★</text>
+      <text class="particle p5">◆</text><text class="particle p6">●</text><text class="particle p7">★</text><text class="particle p8">◆</text>
+    </view>
+    <view class="result-kicker result-item">{{phase == 'pendingReview' ? '已安全提交' : (milestone ? '新突破！' : '完攀！')}}</view>
+    <image class="result-cat" src="{{phase == 'pendingReview' ? '/assets/mascot-loading.jpg' : '/assets/mascot-celebrate.jpg'}}" mode="aspectFit"/>
+    <view class="milestone result-item milestone-pop" wx:if="{{phase == 'approvedSuccess' && milestone}}">首次完攀 {{milestone.grade}}</view>
+    <view class="points-earned result-item" wx:if="{{phase == 'approvedSuccess'}}">本次获得 +{{pointsEarned}} 分</view>
+    <view class="points-pending result-item" wx:else>审核通过后 +{{pendingPoints}} 分</view>
+    <button class="primary pressable primary-action result-button result-item" aria-label="查看这条线路" bindtap="viewRoute">查看这条线路</button>
+    <button class="gym-link pressable result-item" aria-label="回到岩馆" bindtap="backToGym">回到岩馆</button>
+  </view>
+</view>

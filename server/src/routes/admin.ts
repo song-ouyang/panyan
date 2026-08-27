@@ -42,9 +42,46 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
   app.post('/moderation/:id', { preHandler: admin }, async (request) => {
     const { id } = idParams.parse(request.params);
     const b = z.object({ targetType: z.enum(['send','comment','report']), action: z.enum(['approve','reject']) }).parse(request.body);
-    if (b.targetType === 'send') await query(`UPDATE sends SET moderation_status=$2 WHERE id=$1`, [id,b.action==='approve'?'approved':'rejected']);
-    if (b.targetType === 'comment') await query(`UPDATE comments SET moderation_status=$2 WHERE id=$1`, [id,b.action==='approve'?'approved':'rejected']);
+    const status = b.action === 'approve' ? 'approved' : 'rejected';
+    if (b.targetType === 'send') {
+      const reviewed = await query<{ user_id: string; route_id: string | null }>(
+        `UPDATE sends SET moderation_status=$2 WHERE id=$1 AND moderation_status='pending' RETURNING user_id,route_id`,
+        [id,status]
+      );
+      const item = reviewed.rows[0];
+      if (item) {
+        const isCheckin = Boolean(item.route_id);
+        const title = b.action === 'approve'
+          ? (isCheckin ? '完攀审核已通过' : '动态审核已通过')
+          : (isCheckin ? '完攀审核未通过' : '动态审核未通过');
+        const content = b.action === 'approve'
+          ? (isCheckin ? '本次完攀已进入线路榜和月度排名' : '你的动态已经发布到广场')
+          : '你可以前往“我的动态”查看本次审核结果';
+        await query(
+          `INSERT INTO notifications(user_id,type,title,content,target_path) VALUES($1,'content_review',$2,$3,'/pages/my-posts/index')`,
+          [item.user_id,title,content]
+        );
+      }
+    }
+    if (b.targetType === 'comment') {
+      const reviewed = await query<{ user_id: string; send_id: string }>(
+        `UPDATE comments SET moderation_status=$2 WHERE id=$1 AND moderation_status='pending' RETURNING user_id,send_id`,
+        [id,status]
+      );
+      const item = reviewed.rows[0];
+      if (item) {
+        await query(
+          `INSERT INTO notifications(user_id,type,title,content,target_path) VALUES($1,'comment_review',$2,$3,$4)`,
+          [
+            item.user_id,
+            b.action === 'approve' ? '评论审核已通过' : '评论审核未通过',
+            b.action === 'approve' ? '你的评论已经公开展示' : '请调整评论内容后重新发送',
+            `/pages/post/index?id=${item.send_id}`
+          ]
+        );
+      }
+    }
     if (b.targetType === 'report') await query(`UPDATE reports SET status=$2 WHERE id=$1`, [id,b.action==='approve'?'approved':'rejected']);
-    return { status: b.action==='approve'?'approved':'rejected' };
+    return { status };
   });
 };

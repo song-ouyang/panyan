@@ -1,6 +1,8 @@
 {
   "navigationBarTitleText": "岩馆",
-  "navigationBarBackgroundColor": "#FFFCF8",
+  "navigationBarBackgroundColor": "#FFFFFF",
   "navigationBarTextStyle": "black",
-  "backgroundColor": "#F7F3EE"
+  "backgroundColor": "#FFFFFF",
+  "enablePullDownRefresh": true,
+  "backgroundTextStyle": "dark"
 }

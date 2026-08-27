@@ -107,9 +107,9 @@ export const userRoutes: FastifyPluginAsync = async (app) => {
   });
   app.get('/me/sends', { preHandler: app.authenticate }, async (request) => {
     const result = await query(
-      `SELECT s.id,s.attempts,s.video_url,s.caption,s.visibility,s.moderation_status,s.sent_at,
+      `SELECT s.id,s.attempts,s.video_url,s.image_urls,s.caption,s.visibility,s.moderation_status,s.sent_at,
        r.id route_id,r.name route_name,r.grade,g.name gym_name
-       FROM sends s JOIN routes r ON r.id=s.route_id JOIN gyms g ON g.id=r.gym_id
+       FROM sends s LEFT JOIN routes r ON r.id=s.route_id LEFT JOIN gyms g ON g.id=r.gym_id
        WHERE s.user_id=$1 ORDER BY s.sent_at DESC`, [request.user.sub]
     );
     return { items: result.rows };

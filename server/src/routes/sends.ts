@@ -13,29 +13,41 @@ export const sendRoutes: FastifyPluginAsync = async (app) => {
        VALUES($1,NULL,1,$2,$3,$4,$5) RETURNING *`,
       [request.user.sub, body.caption || null, body.imageUrls, body.visibility, initialModerationStatus()]
     );
-    return result.rows[0];
+    const row = result.rows[0]!;
+    return { ...row, moderationStatus: row.moderation_status };
   });
 
   app.post('/', { preHandler: app.authenticate }, async (request) => {
     const body = sendBody.parse(request.body);
-    const previous = await query(
-      `SELECT coalesce(max(substring(r.grade from 2)::int),-1)::int max_grade
-       FROM sends s JOIN routes r ON r.id=s.route_id WHERE s.user_id=$1`, [request.user.sub]
-    );
     const route = await query(`SELECT grade,substring(grade from 2)::int grade_number FROM routes WHERE id=$1`, [body.routeId]);
     if (!route.rowCount) throw app.httpErrors.notFound('线路不存在');
+    const moderationStatus = initialModerationStatus();
+    const previous = await query(
+      `SELECT coalesce(max(substring(r.grade from 2)::int),-1)::int max_grade
+       FROM sends s JOIN routes r ON r.id=s.route_id
+       WHERE s.user_id=$1 AND s.moderation_status='approved'`, [request.user.sub]
+    );
     const result = await query(
       `INSERT INTO sends(user_id,route_id,attempts,video_url,caption,visibility,moderation_status)
        VALUES($1,$2,$3,$4,$5,$6,$7)
        ON CONFLICT(user_id,route_id) DO UPDATE SET attempts=EXCLUDED.attempts,video_url=EXCLUDED.video_url,
        caption=EXCLUDED.caption,visibility=EXCLUDED.visibility,moderation_status=EXCLUDED.moderation_status,sent_at=now()
-       RETURNING *`, [request.user.sub, body.routeId, body.attempts, body.videoUrl ?? null, body.caption ?? null, body.visibility, initialModerationStatus()]
+       RETURNING *`, [request.user.sub, body.routeId, body.attempts, body.videoUrl ?? null, body.caption ?? null, body.visibility, moderationStatus]
     );
     const routeInfo = route.rows[0]!;
     const previousMax = previous.rows[0]?.max_grade ?? -1;
     const gradeNumber = routeInfo.grade_number as number;
     const milestone = gradeNumber > previousMax ? { type: 'first_grade', grade: routeInfo.grade } : null;
-    return { send: result.rows[0], milestone, pointsEarned: 10 + gradeNumber * 5 + (body.attempts === 1 ? 5 : 0) };
+    const points = 10 + gradeNumber * 5 + (body.attempts === 1 ? 5 : 0);
+    const send = result.rows[0]!;
+    return {
+      send,
+      sendId: send.id,
+      moderationStatus,
+      milestone,
+      pointsEarned: moderationStatus === 'approved' ? points : 0,
+      pendingPoints: moderationStatus === 'pending' ? points : 0
+    };
   });
 
   app.get('/feed', { preHandler: app.authenticate }, async (request) => {

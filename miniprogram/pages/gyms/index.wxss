@@ -1,1 +1,110 @@
-page{background:#f7faf5}.gym-page{min-height:100vh}.black-head{min-height:286rpx;background:linear-gradient(145deg,#dfffd0,#f4ffe9);display:flex;align-items:center;justify-content:space-between;padding:34rpx 40rpx 40rpx;box-sizing:border-box;border-radius:0 0 48rpx 48rpx;border-bottom:4rpx solid #bceca0;box-shadow:0 9rpx 0 #b4dc9c;overflow:hidden}.head-copy{position:relative;z-index:2}.head-kicker{color:#46a302;font-weight:900;font-size:24rpx}.head-title{font-size:48rpx;line-height:1.2;font-weight:900;margin:8rpx 0 24rpx;color:#27313a}.head-cat{width:190rpx;height:190rpx;border-radius:50%;border:8rpx solid #fff;background:#fff;box-shadow:0 8rpx 0 #a9d88d;animation:mascotFloat 3s ease-in-out infinite}.city{display:inline-flex;align-items:center;font-size:27rpx;font-weight:900;background:#fff;color:#46a302;padding:12rpx 20rpx;border:3rpx solid #bceca0;border-radius:999rpx;box-shadow:0 5rpx 0 #bceca0}.city image{width:30rpx;height:30rpx;margin-right:10rpx}.chevron{width:13rpx;height:13rpx;border-right:4rpx solid #58cc02;border-bottom:4rpx solid #58cc02;transform:rotate(45deg);margin:-6rpx 0 0 14rpx}.content{padding:34rpx 24rpx 60rpx}.search{height:100rpx;background:#fff;border:4rpx solid #e5e9e2;border-radius:24rpx;padding:0 26rpx;box-shadow:0 7rpx 0 #d7ddd3;box-sizing:border-box}.search input{flex:1;font-size:30rpx;font-weight:650}.search-icon{width:42rpx;height:42rpx;margin-right:18rpx}.clear{color:#9ca4a8;font-size:38rpx}.gym-row{min-height:128rpx;background:#fff;border:4rpx solid #e5e9e2;border-radius:26rpx;margin-top:22rpx;padding:0 28rpx;display:flex;align-items:center;justify-content:space-between;box-shadow:0 7rpx 0 #d7ddd3}.gym-row:active{transform:translateY(5rpx);box-shadow:0 2rpx 0 #d7ddd3}.brand-main{display:flex;align-items:center}.brand-main>image{width:70rpx;height:70rpx;border-radius:22rpx;margin-right:20rpx}.brand-fallback{width:70rpx;height:70rpx;border-radius:22rpx;background:#e9fbdc;margin-right:20rpx;display:flex;align-items:center;justify-content:center}.brand-fallback image{width:44rpx;height:44rpx}.name{font-size:33rpx;font-weight:900}.row-meta{display:flex;align-items:center;gap:12rpx}.verified,.multi{background:#58cc02;color:#fff;padding:7rpx 13rpx;border-radius:999rpx;font-size:20rpx;font-weight:900}.multi{background:#1cb0f6}.count{color:#869097;font-size:22rpx;margin-top:5rpx}.round-arrow{color:#58cc02;margin:0 8rpx}.empty image{display:block;width:260rpx;height:220rpx;border-radius:36rpx;margin:0 auto 12rpx}.meetup-head{margin-top:52rpx}.meetup-title{font-size:32rpx;font-weight:900}.meetup-link{color:#1cb0f6;font-weight:900}.meetup-card{min-height:108rpx;background:#fff;border:4rpx solid #e5e9e2;border-radius:26rpx;margin-top:18rpx;padding:20rpx 26rpx;display:flex;align-items:center;justify-content:space-between;box-shadow:0 7rpx 0 #d7ddd3;box-sizing:border-box}.meetup-name{font-size:29rpx;font-weight:900}.meetup-empty{text-align:center;color:#1cb0f6;font-weight:900;padding:36rpx 20rpx}
+page {
+  --gym-bg: #ffffff;
+  --gym-surface: #ffffff;
+  --gym-surface-soft: #f2f3f5;
+  --gym-ink: #202327;
+  --gym-muted: #72777f;
+  --gym-line: #e4e7eb;
+  --gym-coral: #ee6a57;
+  --gym-coral-deep: #c94e3e;
+  --gym-coral-soft: #fff0ec;
+  background: var(--gym-bg);
+  color: var(--gym-ink);
+}
+.gym-page { min-height: 100vh; }
+.content { padding: 24rpx 24rpx 64rpx; }
+
+.filter-row {
+  min-height: 88rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.city-pill {
+  min-height: 88rpx;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 22rpx;
+  color: var(--gym-ink);
+  font-weight: 900;
+  background: var(--gym-surface);
+  border: 2rpx solid var(--gym-line);
+  border-radius: 22rpx;
+}
+
+.city-pill image { width: 32rpx; height: 32rpx; margin-right: 10rpx; }
+.city-chevron { margin: -5rpx 0 0 10rpx; color: var(--gym-coral); }
+.result-count { color: var(--gym-muted); font-size: 24rpx; font-weight: 700; }
+
+.search {
+  height: 96rpx;
+  box-sizing: border-box;
+  margin-top: 14rpx;
+  padding: 0 22rpx;
+  background: var(--gym-surface);
+  border: 2rpx solid var(--gym-line);
+  border-radius: 22rpx;
+  transition: border-color 160ms ease, box-shadow 180ms var(--ease-out);
+}
+
+.search.has-value { border-color: rgba(238, 106, 87, .44); box-shadow: 0 0 0 5rpx rgba(238, 106, 87, .07); }
+.search input { flex: 1; height: 100%; color: var(--gym-ink); font-size: 29rpx; font-weight: 650; }
+.search-icon { width: 38rpx; height: 38rpx; margin-right: 16rpx; opacity: .72; }
+.clear { width: 88rpx; height: 88rpx; margin-right: -14rpx; display: flex; align-items: center; justify-content: center; color: var(--gym-muted); font-size: 40rpx; }
+
+.gym-row {
+  min-height: 124rpx;
+  box-sizing: border-box;
+  margin-top: 18rpx;
+  padding: 18rpx 22rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--gym-surface);
+  border: 2rpx solid var(--gym-line);
+  border-radius: 22rpx;
+}
+
+.brand-main { min-width: 0; display: flex; align-items: center; }
+.brand-main > image,
+.brand-fallback {
+  width: 72rpx;
+  height: 72rpx;
+  flex: none;
+  margin-right: 18rpx;
+  border-radius: 20rpx;
+  background: var(--gym-surface-soft);
+}
+.brand-fallback { display: flex; align-items: center; justify-content: center; }
+.brand-fallback image { width: 40rpx; height: 40rpx; }
+.name { max-width: 330rpx; overflow: hidden; color: var(--gym-ink); font-size: 31rpx; font-weight: 900; text-overflow: ellipsis; white-space: nowrap; }
+.count { margin-top: 5rpx; color: var(--gym-muted); font-size: 22rpx; }
+.row-meta { display: flex; align-items: center; }
+.verified,
+.multi { padding: 7rpx 13rpx; color: var(--gym-coral-deep); font-size: 20rpx; font-weight: 900; background: var(--gym-coral-soft); border-radius: 999rpx; }
+.multi { color: #5f6670; background: var(--gym-surface-soft); }
+.round-arrow { margin: 0 10rpx 0 18rpx; color: #9aa0a8; }
+
+.skeleton-list { padding-top: 1rpx; }
+.skeleton-row { justify-content: flex-start; box-shadow: none; }
+.skeleton-logo { width: 72rpx; height: 72rpx; flex: none; }
+.skeleton-copy { flex: 1; margin-left: 18rpx; }
+.skeleton-name { width: 42%; }
+.skeleton-meta { width: 25%; height: 18rpx; margin-top: 14rpx; }
+.state-detail { margin-top: 8rpx; font-size: 23rpx; }
+
+.empty image { display: block; width: 220rpx; height: 190rpx; margin: 0 auto 12rpx; border-radius: 30rpx; }
+.empty-sub { margin-top: 8rpx; font-size: 23rpx; font-weight: 500; }
+
+.meetup-head { min-height: 88rpx; margin-top: 34rpx; }
+.meetup-title { color: var(--gym-ink); font-size: 31rpx; font-weight: 900; }
+.meetup-link { min-width: 144rpx; min-height: 88rpx; display: flex; align-items: center; justify-content: flex-end; color: var(--gym-coral-deep); font-size: 24rpx; font-weight: 900; }
+.meetup-card { min-height: 104rpx; box-sizing: border-box; margin-top: 14rpx; padding: 18rpx 22rpx; display: flex; align-items: center; justify-content: space-between; background: var(--gym-surface); border: 2rpx solid var(--gym-line); border-radius: 22rpx; }
+.meetup-name { color: var(--gym-ink); font-size: 28rpx; font-weight: 900; }
+.meetup-empty { min-height: 88rpx; display: flex; align-items: center; justify-content: center; color: var(--gym-coral-deep); font-weight: 900; }
+
+.gym-page .icon-badge { background: var(--gym-surface-soft); }
+.gym-page .inline-state { background: var(--gym-surface); border-color: var(--gym-line); color: var(--gym-muted); }
+.gym-page .inline-state button { min-height: 88rpx; color: var(--gym-coral-deep); background: var(--gym-coral-soft); }

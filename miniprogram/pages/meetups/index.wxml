@@ -1,16 +1,21 @@
 <view class="page meetup-page">
-  <view class="compact-head"><view><view class="title">约爬</view><view class="subtitle">找岩友，一起上墙</view></view><button class="create-button" bindtap="toggle">{{showCreate?'收起':'＋ 发起'}}</button></view>
-  <view class="tabs"><view class="{{tab==='all'?'active':''}}" data-tab="all" bindtap="changeTab">全部约爬</view><view class="{{tab==='mine'?'active':''}}" data-tab="mine" bindtap="changeTab">我的约爬</view></view>
-
-  <view class="create-sheet" wx:if="{{showCreate}}">
-    <view class="sheet-title">发起新的约爬</view>
-    <view class="field-label">约爬主题</view><input maxlength="80" placeholder="例如：周末一起刷 V3" value="{{title}}" data-key="title" bindinput="bind"/>
-    <view class="field-label">选择岩馆</view><picker range="{{gyms}}" range-key="name" value="{{gymIndex}}" bindchange="gym"><view class="picker {{gymIndex<0?'placeholder':''}}">{{gymIndex>=0?gyms[gymIndex].name:'请选择岩馆'}}<text>›</text></view></picker>
-    <view class="picker-row"><view><view class="field-label">日期</view><picker mode="date" start="{{minDate}}" value="{{date}}" bindchange="date"><view class="picker {{!date?'placeholder':''}}">{{date || '选择日期'}}</view></picker></view><view><view class="field-label">时间</view><picker mode="time" value="{{time}}" bindchange="time"><view class="picker">{{time}}</view></picker></view></view>
-    <view class="field-label">人数（含自己）</view><view class="people-stepper"><view data-step="-1" bindtap="changePeople">−</view><text>{{maxPeople}} 人</text><view data-step="1" bindtap="changePeople">＋</view></view>
-    <view class="field-label">补充说明（选填）</view><textarea maxlength="300" placeholder="可以写适合难度、集合位置或其他提醒" value="{{note}}" data-key="note" bindinput="bind"/>
-    <button class="primary publish" loading="{{submitting}}" disabled="{{submitting}}" bindtap="create">{{submitting?'发布中':'确认发布'}}</button>
+  <view class="compact-head">
+    <view><view class="title">约爬</view><view class="subtitle">找岩友，一起上墙</view></view>
+    <button class="create-button pressable primary-action" aria-label="发起约爬" bindtap="openCreate">＋ 发起</button>
   </view>
+
+  <view class="tabs">
+    <view class="tab-option pressable {{tab==='all'?'active':''}}" data-tab="all" role="button" aria-label="查看全部约爬" bindtap="changeTab">全部约爬</view>
+    <view class="tab-option pressable {{tab==='mine'?'active':''}}" data-tab="mine" role="button" aria-label="查看我的约爬" bindtap="changeTab">我的约爬</view>
+  </view>
+
+  <view class="meetup-state loading-state" wx:if="{{loading && !items.length}}">
+    <view class="state-spinner"></view><text>正在寻找附近约爬</text>
+  </view>
+  <view class="meetup-state error-state" wx:if="{{!loading && error && !items.length}}">
+    <view class="state-title">暂时没能加载约爬</view><view class="state-copy">{{error}}</view><button class="retry-button pressable" bindtap="retry">重新加载</button>
+  </view>
+  <view class="inline-error" wx:if="{{error && items.length}}"><text>{{error}}</text><view class="pressable" role="button" bindtap="retry">重试</view></view>
 
   <view class="meetup-card" wx:for="{{items}}" wx:key="id">
     <view class="meetup-top"><view class="date-badge"><text>{{item.starts_at_text}}</text></view><view class="member-pill">{{item.member_count}}/{{item.max_people}}人</view></view>
@@ -19,11 +24,32 @@
     <view class="note" wx:if="{{item.note}}">{{item.note}}</view>
     <view class="creator">由 {{item.creator_name}} 发起</view>
     <view class="meetup-action">
-      <button wx:if="{{item.status==='open' && !item.expired && !item.joined && !item.full}}" class="secondary" data-id="{{item.id}}" bindtap="join">加入约爬</button>
-      <view wx:elif="{{item.creator_id===me.id && item.status==='open' && !item.expired}}" class="text-action danger" data-id="{{item.id}}" bindtap="cancel">取消约爬</view>
-      <view wx:elif="{{item.joined && item.creator_id!==me.id && item.status==='open' && !item.expired}}" class="text-action joined" data-id="{{item.id}}" bindtap="leave">✓ 已加入 · 点击退出</view>
+      <button wx:if="{{item.status==='open' && !item.expired && !item.joined && !item.full}}" class="secondary pressable primary-action" data-id="{{item.id}}" loading="{{joiningIds[item.id]}}" disabled="{{joiningIds[item.id]}}" bindtap="join">{{joiningIds[item.id]?'正在加入':'加入约爬'}}</button>
+      <view wx:elif="{{me && item.creator_id===me.id && item.status==='open' && !item.expired}}" class="text-action danger pressable" data-id="{{item.id}}" role="button" bindtap="cancel">取消约爬</view>
+      <view wx:elif="{{item.joined && me && item.creator_id!==me.id && item.status==='open' && !item.expired}}" class="text-action joined pressable {{joiningIds[item.id]?'is-joining':''}} {{joiningSuccessIds[item.id]?'join-confirmed':''}}" data-id="{{item.id}}" role="button" aria-disabled="{{joiningIds[item.id]}}" bindtap="leave"><text class="join-check">{{joiningIds[item.id]?'…':'✓'}}</text> {{joiningIds[item.id]?'正在加入':'已加入 · 点击退出'}}</view>
       <view wx:else class="status-text">{{item.status==='cancelled'?'已取消':(item.expired?'已结束':(item.full?'人数已满':'已加入'))}}</view>
     </view>
   </view>
-  <view class="empty" wx:if="{{!loading && !items.length}}">{{tab==='mine'?'还没有参加约爬，去“全部约爬”看看吧':'暂时没有约爬，发起第一个约爬吧'}}</view>
+  <view class="empty" wx:if="{{!loading && !error && !items.length}}">{{tab==='mine'?'还没有参加约爬，去“全部约爬”看看吧':'暂时没有约爬，发起第一个约爬吧'}}</view>
 </view>
+
+<block wx:if="{{createMounted}}">
+  <view class="create-mask {{createVisible?'is-visible':''}}" aria-hidden="true" catchtap="dismissCreate" catchtouchmove="blockBackgroundScroll"></view>
+  <view class="create-sheet {{createVisible?'is-visible':''}}" role="dialog" aria-modal="true" aria-label="发起新的约爬">
+    <view class="sheet-handle"></view>
+    <view class="sheet-head"><view class="sheet-title">发起新的约爬</view><view class="sheet-close pressable" role="button" aria-label="关闭发起约爬" catchtap="dismissCreate">×</view></view>
+    <view class="field-label">约爬主题</view>
+    <input maxlength="80" placeholder="例如：周末一起刷 V3" value="{{title}}" data-key="title" bindinput="bind"/>
+    <view class="field-label">选择岩馆</view>
+    <picker range="{{gyms}}" range-key="name" value="{{gymIndex}}" bindchange="gym"><view class="picker pressable {{gymIndex<0?'placeholder':''}}">{{gymIndex>=0?gyms[gymIndex].name:'请选择岩馆'}}<text>›</text></view></picker>
+    <view class="picker-row">
+      <view><view class="field-label">日期</view><picker mode="date" start="{{minDate}}" value="{{date}}" bindchange="date"><view class="picker pressable {{!date?'placeholder':''}}">{{date || '选择日期'}}</view></picker></view>
+      <view><view class="field-label">时间</view><picker mode="time" value="{{time}}" bindchange="time"><view class="picker pressable">{{time}}</view></picker></view>
+    </view>
+    <view class="field-label">人数（含自己）</view>
+    <view class="people-stepper"><view class="pressable" data-step="-1" role="button" aria-label="减少人数" bindtap="changePeople">−</view><text>{{maxPeople}} 人</text><view class="pressable" data-step="1" role="button" aria-label="增加人数" bindtap="changePeople">＋</view></view>
+    <view class="field-label">补充说明（选填）</view>
+    <textarea maxlength="300" placeholder="可以写适合难度、集合位置或其他提醒" value="{{note}}" data-key="note" bindinput="bind"/>
+    <button class="primary publish pressable primary-action {{createComplete?'is-complete':''}}" loading="{{submitting}}" disabled="{{submitting || createComplete}}" bindtap="create">{{createComplete?'✓ 已发起':(submitting?'发布中':'确认发布')}}</button>
+  </view>
+</block>

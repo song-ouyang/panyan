@@ -1,1 +1,57 @@
-<view class="page" wx:if="{{brand}}"><view class="brand-head"><image src="{{brand.logo_url || '/assets/logo.png'}}"/><view><view class="title">{{brand.name}}</view><view class="subtitle">选择门店后查看本轮线路</view></view></view><view class="section-title">全部门店 · {{stores.length}}</view><view class="store card" wx:for="{{stores}}" wx:key="id" data-id="{{item.id}}" bindtap="open"><view><view class="store-name">{{item.name}}</view><view class="muted">{{item.district}} · {{item.address}}</view><view class="stats">{{item.route_count}}条线路</view></view><text class="arrow">›</text></view></view>
+<view class="page brand-page">
+  <view wx:if="{{initialLoading && !brand}}" class="brand-skeleton" aria-label="正在加载门店">
+    <view class="brand-head">
+      <view class="skeleton-circle skeleton-brand-logo"></view>
+      <view class="skeleton-head-copy">
+        <view class="skeleton-line skeleton-title"></view>
+        <view class="skeleton-line skeleton-subtitle"></view>
+      </view>
+    </view>
+    <view class="skeleton-line skeleton-section"></view>
+    <view class="store card skeleton-store" wx:for="{{skeletons}}" wx:key="*this">
+      <view class="skeleton-store-copy">
+        <view class="skeleton-line skeleton-store-name"></view>
+        <view class="skeleton-line skeleton-store-meta"></view>
+      </view>
+    </view>
+  </view>
+
+  <view class="inline-state" wx:if="{{error && !brand}}">
+    <view class="state-title">暂时没能加载门店</view>
+    <view class="state-detail">{{error}}</view>
+    <button class="pressable" bindtap="retry">重新加载</button>
+  </view>
+
+  <view wx:if="{{brand}}" class="brand-content {{refreshing ? 'is-refreshing' : ''}}">
+    <view class="refresh-status" wx:if="{{refreshing}}" aria-label="正在更新门店">正在更新</view>
+    <view class="inline-error" wx:if="{{error}}">
+      <text>{{error}}</text>
+      <view class="pressable" role="button" bindtap="retry">重试</view>
+    </view>
+    <view class="brand-head">
+      <image src="{{brand.logo_url || '/assets/logo.png'}}" mode="aspectFill" fade-in="{{false}}" />
+      <view>
+        <view class="title">{{brand.name}}</view>
+        <view class="subtitle">选择门店后查看本轮线路</view>
+      </view>
+    </view>
+    <view class="section-title">全部门店 · {{stores.length}}</view>
+    <view
+      class="store card pressable"
+      wx:for="{{stores}}"
+      wx:key="id"
+      data-id="{{item.id}}"
+      bindtap="open"
+      role="button"
+      aria-label="查看{{item.name}}"
+    >
+      <view>
+        <view class="store-name">{{item.name}}</view>
+        <view class="muted">{{item.district}} · {{item.address}}</view>
+        <view class="stats">{{item.route_count}}条线路</view>
+      </view>
+      <text class="arrow">›</text>
+    </view>
+    <view class="empty" wx:if="{{!stores.length}}">这个品牌暂时还没有可查看的门店</view>
+  </view>
+</view>

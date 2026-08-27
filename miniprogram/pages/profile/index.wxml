@@ -1,20 +1,132 @@
-<view class="page"><block wx:if="{{me}}"><view class="row profile" bindtap="edit"><image class="avatar big" src="{{me.avatar_url || '/assets/logo.png'}}"/><view class="profile-text"><view class="title small">{{me.nickname}}</view><view class="muted">{{me.bio || '保持上墙，持续成长'}}</view></view><text class="muted">编辑 ›</text></view>
-<view class="growth-hero card"><view class="growth-cat"><image src="/assets/mascot-welcome.jpg" mode="aspectFit"/></view><view class="between"><view class="growth-title">本月攀爬进度</view><view class="growth-streak"><image src="/assets/icons/fire.png"/>{{me.stats.monthly_sends}} 次</view></view><view class="growth-stats"><view><text>{{me.stats.monthly_sends}}</text><label>完攀</label></view><view><text>V{{me.stats.monthly_max_grade}}</text><label>最高</label></view><view><text>{{dashboard.summary.gyms}}</text><label>岩馆</label></view></view></view>
-<view class="stats card"><view><text>{{me.stats.total_sends}}</text><label>总完攀</label></view><view><text>V{{me.stats.max_grade}}</text><label>最高难度</label></view><view><text>{{me.stats.gym_count}}</text><label>去过岩馆</label></view></view>
-<view class="section-title">攀岩日历</view>
-<view class="calendar-card card">
-  <view class="calendar-head"><view class="month-arrow" bindtap="previousMonth">‹</view><view class="month-title">{{monthLabel}}</view><view class="month-arrow" bindtap="nextMonth">›</view></view>
-  <view class="week-row"><text>日</text><text>一</text><text>二</text><text>三</text><text>四</text><text>五</text><text>六</text></view>
-  <view class="calendar-grid"><view wx:for="{{calendar}}" wx:key="index" class="calendar-day {{item.muted?'muted-day':''}} {{item.active?'active-day':''}}" data-item="{{item}}" bindtap="selectDay"><text>{{item.number}}</text><label wx:if="{{item.active}}">{{item.sends}}</label></view></view>
+<view class="page profile-page">
+  <block wx:if="{{me}}">
+    <view class="profile pressable" bindtap="edit" role="button" aria-label="编辑个人资料">
+      <image class="avatar big" src="{{me.avatar_url || '/assets/logo.png'}}" mode="aspectFill" lazy-load fade-in="{{false}}"/>
+      <view class="profile-text">
+        <view class="profile-name">{{me.nickname}}</view>
+        <view class="profile-bio">{{me.bio || '保持上墙，持续成长'}}</view>
+      </view>
+      <text class="profile-edit">编辑 ›</text>
+    </view>
+
+    <view class="growth-hero">
+      <view class="growth-cat"><image src="/assets/mascot-welcome.jpg" mode="aspectFit"/></view>
+      <view class="growth-head">
+        <view>
+          <view class="growth-title">本月攀爬进度</view>
+        </view>
+        <view class="growth-streak"><image src="/assets/icons/fire.png"/>{{me.stats.monthly_sends}} 次</view>
+      </view>
+      <view class="growth-stats">
+        <view><text>{{me.stats.monthly_sends}}</text><label>完攀</label></view>
+        <view><text>V{{me.stats.monthly_max_grade}}</text><label>最高</label></view>
+        <view><text>{{dashboard ? dashboard.summary.gyms : 0}}</text><label>岩馆</label></view>
+      </view>
+    </view>
+
+    <view class="section-title-row">
+      <view class="section-title">攀岩日历</view>
+      <view class="section-hint">点击有记录的日期查看详情</view>
+    </view>
+
+    <view class="dashboard-error" wx:if="{{dashboardError}}">
+      <view>
+        <view class="error-title">本月记录暂时没加载出来</view>
+        <view class="error-message">{{dashboardError}}</view>
+      </view>
+      <button class="text-button pressable" bindtap="retryDashboard">重试</button>
+    </view>
+
+    <view class="dashboard-panel {{monthChanging ? 'is-changing' : ''}}">
+      <view class="calendar-card card" wx:if="{{dashboard}}">
+        <view class="calendar-head">
+          <view class="month-arrow pressable" bindtap="previousMonth" role="button" aria-label="上个月">‹</view>
+          <view class="month-title">{{monthLabel}}</view>
+          <view class="month-arrow pressable" bindtap="nextMonth" role="button" aria-label="下个月">›</view>
+        </view>
+        <view class="week-row"><text>日</text><text>一</text><text>二</text><text>三</text><text>四</text><text>五</text><text>六</text></view>
+        <view class="calendar-grid">
+          <view wx:for="{{calendar}}" wx:key="key" class="calendar-day {{item.muted ? 'muted-day' : ''}} {{item.active ? 'active-day pressable' : ''}}" data-item="{{item}}" bindtap="selectDay" role="{{item.active && !item.muted ? 'button' : ''}}" aria-label="{{item.active ? item.date + '，' + item.sends + '条记录，点击查看' : item.number + '日，无记录'}}">
+            <text>{{item.number}}</text>
+            <label wx:if="{{item.active}}">{{item.sends}}</label>
+          </view>
+        </view>
+      </view>
+
+      <view class="dashboard-skeleton card" wx:if="{{dashboardLoading && !dashboard}}">
+        <view class="skeleton skeleton-title"></view>
+        <view class="skeleton-week"><text wx:for="{{[1,2,3,4,5,6,7]}}" wx:key="*this" class="skeleton"></text></view>
+        <view class="skeleton-days"><text wx:for="{{[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28]}}" wx:key="*this" class="skeleton"></text></view>
+      </view>
+
+      <view class="day-detail card {{dayDetailVisible ? 'is-visible' : ''}}" wx:if="{{dayDetailMounted}}">
+        <view class="between"><view class="day-title">{{selectedDay.date}} 攀爬记录</view><view class="day-total">{{selectedDay.sends}} 条</view></view>
+        <view class="day-row" wx:for="{{selectedDay.details}}" wx:key="key"><text>{{item.gym_name}}</text><view class="tag">{{item.grade}} · {{item.sends}}条</view></view>
+      </view>
+
+      <block wx:if="{{dashboard}}">
+        <view class="section-title">本月难度分布</view>
+        <view class="chart card progress-chart {{progressReveal ? 'is-revealed' : ''}}">
+          <view class="bar-row" wx:for="{{dashboard.byGrade}}" wx:key="grade">
+            <text class="grade">{{item.grade}}</text>
+            <view class="track"><view class="bar" style="--bar-scale:{{item.percentage / 100}}"></view></view>
+            <text class="bar-value">{{item.sends}}条</text>
+          </view>
+          <view class="empty-state" wx:if="{{!dashboard.byGrade.length}}">
+            <view class="empty-dot"></view>
+            <view class="empty-title">本月还没有完攀记录</view>
+            <view class="empty-copy">完成一条线路后，这里会自动生成难度分布</view>
+          </view>
+        </view>
+      </block>
+    </view>
+
+    <view class="more-toggle pressable" bindtap="toggleMore" role="button" aria-label="{{showMore ? '收起更多成长记录' : '展开更多成长记录'}}">
+      <view>
+        <view class="more-title">更多成长记录</view>
+        <view class="more-copy">累计分布、岩馆足迹与换线成绩</view>
+      </view>
+      <text class="more-arrow {{showMore ? 'is-open' : ''}}">⌄</text>
+    </view>
+
+    <view class="more-content {{moreVisible ? 'is-open' : ''}}" wx:if="{{moreMounted}}">
+      <view class="section-title">累计难度分布</view>
+      <view class="chart card">
+        <view class="bar-row" wx:for="{{byGrade}}" wx:key="grade"><text class="grade">{{item.grade}}</text><view class="track"><view class="bar gold" style="transform:scaleX({{item.sends / max}})"></view></view><text class="bar-value">{{item.sends}}条</text></view>
+        <view class="empty-state compact" wx:if="{{!byGrade.length}}"><view class="empty-title">还没有累计完攀数据</view><view class="empty-copy">第一次打卡后会生成成长图</view></view>
+      </view>
+
+      <view class="section-title">岩馆足迹</view>
+      <view class="gym-stat card" wx:for="{{byGym}}" wx:key="gym_id"><view><view class="gym-name">{{item.gym_name}}</view><view class="subtle">最高 V{{item.max_grade}}</view></view><text>{{item.sends}} 条</text></view>
+      <view class="empty-state card" wx:if="{{!byGym.length}}"><view class="empty-title">还没有岩馆足迹</view><view class="empty-copy">去岩馆完攀后会自动点亮</view></view>
+
+      <view class="section-title">本轮换线成绩</view>
+      <view class="cycle card" wx:for="{{cycles}}" wx:key="id"><view class="gym-name">{{item.gymName}}</view><view class="subtle">{{item.setName}}</view><view class="grade-tags"><view class="tag" wx:for="{{item.grades}}" wx:for-item="gradeItem" wx:key="grade">{{gradeItem.grade}} · {{gradeItem.sends}}条</view></view></view>
+      <view class="empty-state card" wx:if="{{!cycles.length}}"><view class="empty-title">本轮还没有完攀记录</view><view class="empty-copy">换线周期内的成绩会汇总在这里</view></view>
+    </view>
+
+    <view class="menu-group">
+      <view class="menu pressable" bindtap="notifications"><text>消息通知 <label wx:if="{{unread}}" class="badge">{{unread}}</label></text><text>›</text></view>
+      <view class="menu pressable" bindtap="posts"><text>我的打卡动态</text><text>›</text></view>
+      <view class="menu pressable" bindtap="meetups"><text>我的约爬</text><text>›</text></view>
+      <view class="menu pressable" bindtap="friends"><text>我的岩友</text><text>›</text></view>
+      <view class="menu pressable" bindtap="submissions"><text>我的线路投稿</text><text>›</text></view>
+      <view wx:if="{{me.role === 'admin' || me.role === 'gym_admin'}}" class="menu pressable admin" bindtap="admin"><text>审核管理中心</text><text>›</text></view>
+      <view class="menu pressable" bindtap="settings"><text>设置与隐私</text><text>›</text></view>
+    </view>
+  </block>
+
+  <view class="profile-skeleton" wx:if="{{!me && loading}}">
+    <view class="identity-skeleton"><view class="skeleton skeleton-avatar"></view><view class="skeleton-lines"><view class="skeleton skeleton-line wide"></view><view class="skeleton skeleton-line"></view></view></view>
+    <view class="skeleton skeleton-hero"></view>
+    <view class="skeleton skeleton-section"></view>
+    <view class="skeleton skeleton-calendar"></view>
+  </view>
+
+  <view class="profile-state" wx:if="{{!me && !loading}}">
+    <view class="state-mark">!</view>
+    <view class="state-title">暂时没能加载成长记录</view>
+    <view class="state-copy">{{error || '网络恢复后，点击下面按钮重新加载'}}</view>
+    <button class="retry pressable" bindtap="retry">重新加载</button>
+  </view>
 </view>
-<view class="day-detail card" wx:if="{{selectedDay}}"><view class="between"><view class="day-title">{{selectedDay.date}} 攀爬记录</view><view class="day-total">{{selectedDay.sends}} 条</view></view><view class="day-row" wx:for="{{selectedDay.details}}" wx:key="index"><text>{{item.gym_name}}</text><view class="tag">{{item.grade}} · {{item.sends}}条</view></view></view>
-<view class="month-summary card" wx:if="{{dashboard}}"><view><text>{{dashboard.summary.climbing_days}}</text><label>攀爬天数</label></view><view><text>V{{dashboard.summary.max_grade}}</text><label>最高完攀</label></view><view><text>{{dashboard.summary.sends}}</text><label>线路数量</label></view></view>
-<view class="achievement-row" wx:if="{{dashboard}}"><view class="achievement flash"><view class="achievement-label">Flash 卡</view><view class="achievement-value">一次完成 <text>{{dashboard.summary.flashes}}</text> 条</view></view><view class="achievement video"><view class="achievement-label">记录卡</view><view class="achievement-value">上传了 <text>{{dashboard.summary.videos}}</text> 段视频</view></view></view>
-<view class="section-title">本月岩馆</view><view class="gym-stat card" wx:for="{{dashboard.byGym}}" wx:key="gym_id"><view class="gym-name">{{item.gym_name}}</view><text>{{item.sends}} 条</text></view><view class="empty small-empty" wx:if="{{dashboard && !dashboard.byGym.length}}">这个月还没有去岩馆</view>
-<view class="section-title">本月难度分布</view><view class="chart card"><view class="bar-row" wx:for="{{dashboard.byGrade}}" wx:key="grade"><text>{{item.grade}}</text><view class="track"><view class="bar" style="width:{{item.sends/dashboard.summary.sends*100}}%"></view></view><text>{{item.sends}}条</text></view><view class="empty small-empty" wx:if="{{dashboard && !dashboard.byGrade.length}}">完成线路后会在这里生成月度分布</view></view>
-<view class="section-title">V级完攀分布</view><view class="chart card"><view class="bar-row" wx:for="{{byGrade}}" wx:key="grade"><text>{{item.grade}}</text><view class="track"><view class="bar" style="width:{{item.sends/max*100}}%"></view></view><text>{{item.sends}}条</text></view><view class="empty small-empty" wx:if="{{!byGrade.length}}">完成线路后会在这里生成成长图</view></view>
-<view class="section-title">岩馆足迹</view><view class="gym-stat card" wx:for="{{byGym}}" wx:key="gym_id"><view><view class="gym-name">{{item.gym_name}}</view><view class="muted">最高 V{{item.max_grade}}</view></view><text>{{item.sends}} 条</text></view>
-<view class="section-title">本轮换线成绩</view><view class="cycle card" wx:for="{{cycles}}" wx:key="id"><view class="between"><view><view class="gym-name">{{item.gymName}}</view><view class="muted">{{item.setName}}</view></view></view><view class="grade-tags"><view class="tag" wx:for="{{item.grades}}" wx:for-item="gradeItem" wx:key="grade">{{gradeItem.grade}} · {{gradeItem.sends}}条</view></view></view><view class="empty" wx:if="{{!cycles.length}}">当前换线周期还没有完攀记录</view>
-<view class="menu card" bindtap="notifications"><text>消息通知 <label wx:if="{{unread}}" class="badge">{{unread}}</label></text><text>›</text></view><view class="menu card" bindtap="posts">我的打卡动态 <text>›</text></view><view class="menu card" bindtap="meetups">我的约爬 <text>›</text></view><view class="menu card" bindtap="friends">我的岩友 <text>›</text></view><view class="menu card" bindtap="submissions">我的线路投稿 <text>›</text></view><view wx:if="{{me.role==='admin' || me.role==='gym_admin'}}" class="menu card admin" bindtap="admin">审核管理中心 <text>›</text></view><view class="menu card" bindtap="settings">设置与隐私 <text>›</text></view></block>
-<view class="profile-state" wx:if="{{!me && loading}}"><image src="/assets/mascot-loading.jpg" mode="aspectFit"/><view class="state-title">正在整理你的攀爬记录</view><view class="loading-dots"><text></text><text></text><text></text></view></view>
-<view class="profile-state" wx:if="{{!me && !loading}}"><image src="/assets/mascot-welcome.jpg" mode="aspectFit"/><view class="state-title">暂时没能加载成长记录</view><view class="muted">{{error || '点击下面按钮重新加载'}}</view><button class="primary retry" bindtap="retry">重新加载</button></view></view>

@@ -1,8 +1,83 @@
-<view class="page" wx:if="{{gym}}">
-  <view class="title">{{gym.name}}</view><view class="subtitle">{{gym.address}}</view>
-  <scroll-view scroll-x class="sets"><view class="set-pill {{setId===item.id?'active-set':''}}" wx:for="{{gym.routeSets}}" wx:key="id" data-id="{{item.id}}" bindtap="chooseSet">{{item.name}}{{item.active?' · 当前':''}}</view></scroll-view>
-  <scroll-view scroll-x class="grades"><view class="grade-pill {{grade===item?'active':''}}" wx:for="{{grades}}" wx:key="*this" data-grade="{{item}}" bindtap="chooseGrade">{{item}}</view></scroll-view>
-  <button class="submit-route" bindtap="submitRoute">＋ 标记并投稿新线路</button>
-  <view class="route card" wx:for="{{routes}}" wx:key="id" data-id="{{item.id}}" bindtap="open"><view class="grade">{{item.grade}}</view><view class="route-body"><view class="name">{{item.name}}</view><view class="muted">{{item.wall_zone}} · {{item.color}}</view></view><view class="muted">{{item.send_count}}人完攀 ›</view></view>
-  <view class="empty" wx:if="{{!routes.length}}">这个难度还没有线路</view>
+<view class="page gym-detail-page">
+  <view wx:if="{{initialLoading && !gym}}" class="gym-skeleton" aria-label="正在加载岩馆">
+    <view class="skeleton-line skeleton-title"></view>
+    <view class="skeleton-line skeleton-subtitle"></view>
+    <view class="skeleton-pills">
+      <view class="skeleton-block skeleton-pill"></view>
+      <view class="skeleton-block skeleton-pill short"></view>
+    </view>
+    <view class="skeleton-block skeleton-submit"></view>
+    <view class="route card skeleton-route" wx:for="{{skeletons}}" wx:key="*this">
+      <view class="skeleton-block skeleton-grade"></view>
+      <view class="route-body">
+        <view class="skeleton-line skeleton-route-name"></view>
+        <view class="skeleton-line skeleton-route-meta"></view>
+      </view>
+    </view>
+  </view>
+
+  <view class="inline-state" wx:if="{{error && !gym}}">
+    <view class="state-title">暂时没能加载岩馆</view>
+    <view class="state-detail">{{error}}</view>
+    <button class="pressable" bindtap="retry">重新加载</button>
+  </view>
+
+  <view wx:if="{{gym}}" class="gym-content {{refreshing ? 'is-refreshing' : ''}}">
+    <view class="refresh-status" wx:if="{{refreshing}}" aria-label="正在更新岩馆">正在更新</view>
+    <view class="inline-error" wx:if="{{error}}">
+      <text>{{error}}</text>
+      <view class="pressable" role="button" bindtap="retry">重试</view>
+    </view>
+
+    <view class="title">{{gym.name}}</view>
+    <view class="subtitle">{{gym.address}}</view>
+    <scroll-view scroll-x class="sets" enhanced show-scrollbar="{{false}}">
+      <view
+        class="set-pill pressable {{setId===item.id?'active-set':''}}"
+        wx:for="{{gym.routeSets}}"
+        wx:key="id"
+        data-id="{{item.id}}"
+        bindtap="chooseSet"
+        role="button"
+        aria-label="切换到{{item.name}}"
+      >{{item.name}}{{item.active?' · 当前':''}}</view>
+    </scroll-view>
+    <scroll-view scroll-x class="grades" enhanced show-scrollbar="{{false}}">
+      <view
+        class="grade-pill pressable {{grade===item?'active':''}}"
+        wx:for="{{grades}}"
+        wx:key="*this"
+        data-grade="{{item}}"
+        bindtap="chooseGrade"
+        role="button"
+        aria-label="筛选{{item}}难度"
+      >{{item}}</view>
+    </scroll-view>
+    <button class="submit-route pressable" bindtap="submitRoute">＋ 标记并投稿新线路</button>
+
+    <view class="routes-region {{routesRefreshing ? 'is-refreshing' : ''}}">
+      <view class="routes-refresh" wx:if="{{routesRefreshing}}">正在更新线路</view>
+      <view class="inline-error" wx:if="{{routesError}}">
+        <text>{{routesError}}</text>
+        <view class="pressable" role="button" bindtap="retryRoutes">重试</view>
+      </view>
+      <view
+        class="route card pressable"
+        wx:for="{{routes}}"
+        wx:key="id"
+        data-id="{{item.id}}"
+        bindtap="open"
+        role="button"
+        aria-label="查看线路{{item.name}}"
+      >
+        <view class="grade">{{item.grade}}</view>
+        <view class="route-body">
+          <view class="name">{{item.name}}</view>
+          <view class="muted">{{item.wall_zone}} · {{item.color}}</view>
+        </view>
+        <view class="muted">{{item.send_count}}人完攀 ›</view>
+      </view>
+      <view class="empty" wx:if="{{!routesRefreshing && !routesError && !routes.length}}">这个难度还没有线路</view>
+    </view>
+  </view>
 </view>

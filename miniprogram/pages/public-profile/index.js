@@ -1,4 +1,5 @@
 const { request } = require('../../utils/api');
+const { haptic } = require('../../utils/motion');
 Page({
   data: { user: null, months: [], loading: true },
   onLoad({ id }) { this.userId = id; this.load(); },
@@ -14,5 +15,5 @@ Page({
     this.setData({ user, months, loading: false });
     wx.setNavigationBarTitle({ title: user.nickname });
   },
-  async addFriend() { await request(`/users/${this.userId}/friend-request`, { method: 'POST' }); this.setData({ 'user.friendship': 'sent' }); wx.showToast({ title: '申请已发送' }); }
+  async addFriend() { await request(`/users/${this.userId}/friend-request`, { method: 'POST' }); this.setData({ 'user.friendship': 'sent' }, () => { haptic('success'); wx.showToast({ title: '申请已发送' }); }); }
 });

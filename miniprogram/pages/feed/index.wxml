@@ -1,18 +1,116 @@
 <view class="moments-page">
-  <view class="moment" wx:for="{{items}}" wx:key="id">
-    <image class="moment-avatar" src="{{item.avatar_url || '/assets/logo.png'}}" data-id="{{item.user_id}}"/>
-    <view class="moment-body">
-      <view class="moment-name">{{item.nickname}}</view>
-      <view class="moment-caption" wx:if="{{item.caption}}">{{item.caption}}</view>
-      <view class="image-grid images-{{item.image_urls.length}}" wx:if="{{item.image_urls && item.image_urls.length}}"><image wx:for="{{item.image_urls}}" wx:for-item="imageUrl" wx:key="*this" src="{{imageUrl}}" mode="aspectFill" data-current="{{imageUrl}}" data-urls="{{item.image_urls}}" bindtap="previewImage"/></view>
-      <video wx:if="{{item.video_url}}" src="{{item.video_url}}" controls object-fit="cover"/>
-      <view class="route-card" wx:if="{{item.route_id}}" data-id="{{item.route_id}}" bindtap="preview"><view class="route-grade">{{item.grade}}</view><view><view class="route-name">{{item.route_name}}</view><view class="route-place">{{item.gym_name}} · 尝试 {{item.attempts}} 次</view></view></view>
-      <view class="moment-meta"><text>{{item.sent_at_text || ''}}</text><text class="location">{{item.gym_name}}</text></view>
-      <view class="moment-actions"><view class="action-btn {{item.liked?'liked':''}}" data-id="{{item.id}}" data-liked="{{item.liked}}" bindtap="like">{{item.liked?'♥':'♡'}} {{item.like_count}}</view><view class="action-btn" data-id="{{item.id}}" bindtap="openPost">评论 {{item.comment_count}}</view><button open-type="share">分享</button></view>
+  <view class="refresh-indicator" wx:if="{{refreshing}}"><view></view><text>正在更新</text></view>
+
+  <view class="feed-skeleton" wx:if="{{loading && !items.length}}" aria-label="正在加载广场动态">
+    <view class="skeleton-row" wx:for="{{skeletonRows}}" wx:key="*this">
+      <view class="skeleton-avatar skeleton-shimmer"></view>
+      <view class="skeleton-body">
+        <view class="skeleton-name skeleton-shimmer"></view>
+        <view class="skeleton-line skeleton-shimmer"></view>
+        <view class="skeleton-line short skeleton-shimmer"></view>
+        <view class="skeleton-image skeleton-shimmer"></view>
+      </view>
     </view>
   </view>
-  <view class="empty" wx:if="{{!loading && !items.length}}">广场还很安静，完成一条线路后分享第一条记录吧</view>
-  <view class="camera-fab" bindtap="openComposer">▣<text>发照片</text></view>
+
+  <view class="feed-state error-state" wx:if="{{!loading && error && !items.length}}">
+    <view class="state-mark">!</view>
+    <view class="state-title">暂时没能打开广场</view>
+    <view class="state-copy">{{error}}</view>
+    <view class="state-action pressable" role="button" aria-label="重新加载广场" bindtap="retry">重新加载</view>
+  </view>
+
+  <view class="inline-error" wx:if="{{error && items.length}}">
+    <text>{{error}}</text>
+    <view class="pressable" role="button" bindtap="retry">重试</view>
+  </view>
+
+  <view class="moment {{enteringItemId===item.id?'moment-entering':''}}" wx:for="{{items}}" wx:key="id">
+      <image
+        class="moment-avatar pressable"
+        src="{{item.avatar_url || '/assets/logo.png'}}"
+        mode="aspectFill"
+        lazy-load
+        fade-in="{{false}}"
+      data-id="{{item.user_id}}"
+      role="button"
+      aria-label="查看{{item.nickname}}的主页"
+      bindtap="openUser"
+    />
+    <view class="moment-body">
+      <view
+        class="moment-name pressable"
+        data-id="{{item.user_id}}"
+        role="button"
+        aria-label="查看{{item.nickname}}的主页"
+        bindtap="openUser"
+      >{{item.nickname}}</view>
+      <view class="moment-caption" wx:if="{{item.caption}}">{{item.caption}}</view>
+      <view class="image-grid images-{{item.image_urls.length}}" wx:if="{{item.image_urls && item.image_urls.length}}">
+        <image
+          class="pressable"
+          wx:for="{{item.image_urls}}"
+          wx:for-item="imageUrl"
+          wx:key="*this"
+          src="{{imageUrl}}"
+          mode="aspectFill"
+          lazy-load
+          fade-in="{{false}}"
+          data-current="{{imageUrl}}"
+          data-urls="{{item.image_urls}}"
+          aria-label="预览动态图片"
+          bindtap="previewImage"
+        />
+      </view>
+      <video wx:if="{{item.video_url}}" src="{{item.video_url}}" controls object-fit="cover" autoplay="{{false}}" muted="{{false}}"/>
+      <view class="route-card pressable" wx:if="{{item.route_id}}" data-id="{{item.route_id}}" role="button" aria-label="查看线路{{item.route_name}}" bindtap="preview">
+        <view class="route-grade">{{item.grade}}</view>
+        <view><view class="route-name">{{item.route_name}}</view><view class="route-place">{{item.gym_name}} · 尝试 {{item.attempts}} 次</view></view>
+      </view>
+      <view class="moment-meta"><text>{{item.sent_at_text || ''}}</text><text class="location" wx:if="{{item.gym_name}}">{{item.gym_name}}</text></view>
+      <view class="moment-actions">
+        <view class="action-btn like-button pressable {{item.liked?'liked':''}} {{likePulseId===item.id?'confirmed':''}}" data-id="{{item.id}}" role="button" aria-label="{{item.liked?'取消点赞':'点赞'}}" bindtap="like">
+          <text class="heart">{{item.liked?'♥':'♡'}}</text><text>{{item.like_count}}</text>
+        </view>
+        <view class="action-btn pressable" data-id="{{item.id}}" role="button" aria-label="查看评论" bindtap="openPost"><text class="comment-icon">○</text><text>{{item.comment_count}}</text></view>
+        <button class="share-button pressable" open-type="share" aria-label="分享动态">分享</button>
+      </view>
+    </view>
+  </view>
+
+  <view class="feed-state empty-state" wx:if="{{!loading && !error && !items.length}}">
+    <image src="/assets/mascot-welcome.jpg" mode="aspectFit"/>
+    <view class="state-title">这里还很安静</view>
+    <view class="state-copy">分享第一张攀岩照片，认识附近的岩友</view>
+    <view class="state-action pressable primary-action" role="button" bindtap="openComposer">发布第一条动态</view>
+  </view>
+
+  <view class="camera-fab pressable primary-action" wx:if="{{!loading}}" role="button" aria-label="发布照片动态" bindtap="openComposer"><text class="camera-icon">＋</text><text>发布</text></view>
 </view>
-<view class="composer-mask" wx:if="{{showComposer}}" bindtap="closeComposer"></view>
-<view class="composer-sheet" wx:if="{{showComposer}}"><view class="composer-head"><text bindtap="closeComposer">取消</text><view>发表动态</view><button loading="{{publishing}}" disabled="{{publishing}}" bindtap="publish">发表</button></view><textarea maxlength="300" placeholder="这一刻的想法…" value="{{draft}}" bindinput="draftInput"/><view class="draft-grid"><view class="draft-image" wx:for="{{draftImages}}" wx:key="tempFilePath"><image src="{{item.tempFilePath}}" mode="aspectFill"/><view data-index="{{index}}" bindtap="removeImage">×</view></view><view class="add-image" wx:if="{{draftImages.length<9}}" bindtap="chooseImages"><text>＋</text><label>照片</label></view></view><view class="composer-tip">最多选择 9 张图片</view></view>
+
+<block wx:if="{{composerMounted}}">
+  <view class="composer-mask {{composerVisible?'visible':''}}" aria-hidden="true" catchtap="closeComposer" catchtouchmove="blockBackgroundScroll"></view>
+  <view class="composer-sheet {{composerVisible?'visible':''}}" role="dialog" aria-modal="true" aria-label="发表动态">
+    <view class="composer-handle"></view>
+    <view class="composer-head">
+      <view class="composer-cancel pressable {{publishing || publishComplete?'is-disabled':''}}" role="button" aria-disabled="{{publishing || publishComplete}}" bindtap="closeComposer">取消</view>
+      <view>发表动态</view>
+      <button class="composer-submit pressable primary-action {{publishComplete?'is-complete':''}} {{publishResult==='pending'?'is-pending':''}}" loading="{{publishing}}" disabled="{{publishing || publishComplete}}" bindtap="publish">{{publishComplete?(publishResult==='pending'?'✓ 已提交审核':'✓ 已发表'):(publishing?'处理中':'发表')}}</button>
+    </view>
+    <textarea maxlength="300" focus="{{composerFocused}}" disabled="{{publishing || publishComplete}}" placeholder="分享这次攀爬…" value="{{draft}}" bindinput="draftInput"/>
+    <view class="draft-grid">
+      <view class="draft-image" wx:for="{{draftImages}}" wx:key="tempFilePath">
+        <image src="{{item.tempFilePath}}" mode="aspectFill"/>
+        <view class="remove-image pressable {{publishing || publishComplete?'is-disabled':''}}" data-index="{{index}}" role="button" aria-disabled="{{publishing || publishComplete}}" aria-label="移除照片" bindtap="removeImage"><text class="remove-glyph">×</text></view>
+      </view>
+      <view class="add-image pressable" wx:if="{{draftImages.length<9 && !publishing && !publishComplete}}" role="button" aria-label="添加照片" bindtap="chooseImages"><text>＋</text><label>照片</label></view>
+    </view>
+    <view class="publish-progress" wx:if="{{publishing}}">
+      <view class="progress-copy"><text>{{publishStage}}</text><text wx:if="{{draftImages.length}}">{{uploadProgress}}%</text></view>
+      <view class="progress-track" wx:if="{{draftImages.length}}"><view style="transform:scaleX({{uploadProgress / 100}})"></view></view>
+    </view>
+    <view class="publish-review-note {{publishResult==='pending'?'visible':''}}" wx:if="{{publishResult==='pending'}}">审核进度可在“我的动态”中查看</view>
+    <view class="publish-error" wx:if="{{publishError}}">{{publishError}}</view>
+    <view class="composer-tip" wx:if="{{!publishing && !publishComplete}}">最多选择 9 张图片</view>
+  </view>
+</block>

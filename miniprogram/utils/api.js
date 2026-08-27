@@ -1,5 +1,7 @@
 const { API_BASE_URL, DEV_LOGIN, UPLOAD_MODE } = require('./config');
 
+let loginPromise = null;
+
 function rawRequest(path, options = {}) {
   const token = wx.getStorageSync('token');
   return new Promise((resolve, reject) => {
@@ -18,12 +20,26 @@ function rawRequest(path, options = {}) {
 }
 
 async function request(path, options = {}, retried = false) {
-  if (!wx.getStorageSync('token') && path !== '/auth/wechat') await login();
+  if (!wx.getStorageSync('token') && path !== '/auth/wechat') await loginOnce();
   try { return await rawRequest(path, options); }
   catch (error) {
-    if (error.statusCode === 401 && !retried && path !== '/auth/wechat') { wx.removeStorageSync('token'); await login(); return request(path, options, true); }
+    if (error.statusCode === 401 && !retried && path !== '/auth/wechat') {
+      wx.removeStorageSync('token');
+      await loginOnce();
+      return request(path, options, true);
+    }
     throw error;
   }
+}
+
+function loginOnce() {
+  if (!loginPromise) {
+    loginPromise = login().then(
+      (value) => { loginPromise = null; return value; },
+      (error) => { loginPromise = null; throw error; },
+    );
+  }
+  return loginPromise;
 }
 
 async function login() {

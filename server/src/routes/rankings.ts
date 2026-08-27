@@ -55,7 +55,29 @@ export const rankingRoutes: FastifyPluginAsync = async (app) => {
        GROUP BY u.id ORDER BY points DESC,total_likes DESC,send_count DESC,last_send DESC LIMIT 100`, [gymId ?? null, setId ?? null, scope, province ?? null, city ?? null]
     );
     const items = result.rows.map((row, index) => ({ rank: index + 1, ...row }));
-    return { items, myRank: items.find(item => item.user_id === request.user.sub) ?? null,
+    const myRankResult = await query<{ user_id: string; nickname: string; avatar_url: string | null; send_count: number; total_likes: number; points: number; max_grade: number; last_send: string; rank: number }>(
+      `WITH send_scores AS (
+         SELECT s.id,s.user_id,s.route_id,s.sent_at,substring(r.grade from 2)::int grade_number,
+         (10 + substring(r.grade from 2)::int * 5 + CASE WHEN s.attempts=1 THEN 5 ELSE 0 END)::int completion_points,
+         count(l.user_id)::int likes
+         FROM sends s JOIN routes r ON r.id=s.route_id JOIN gyms g ON g.id=r.gym_id
+         LEFT JOIN post_likes l ON l.send_id=s.id
+         WHERE ($1::uuid IS NULL OR r.gym_id=$1) AND ($2::uuid IS NULL OR r.route_set_id=$2)
+           AND s.sent_at>=date_trunc('month',now()) AND s.moderation_status='approved'
+           AND ($3='national' OR ($3='province' AND g.province=$4) OR ($3='city' AND g.province=$4 AND g.city=$5))
+         GROUP BY s.id,r.id
+       ), totals AS (
+         SELECT u.id user_id,u.nickname,u.avatar_url,count(DISTINCT ss.route_id)::int send_count,
+         sum(ss.likes)::int total_likes,(sum(ss.completion_points)+sum(ss.likes)*2)::int points,
+         max(ss.grade_number)::int max_grade,max(ss.sent_at) last_send
+         FROM send_scores ss JOIN users u ON u.id=ss.user_id GROUP BY u.id
+       ), ranked AS (
+         SELECT totals.*,row_number() OVER (ORDER BY points DESC,total_likes DESC,send_count DESC,last_send DESC)::int rank
+         FROM totals
+       ) SELECT * FROM ranked WHERE user_id=$6`,
+      [gymId ?? null, setId ?? null, scope, province ?? null, city ?? null, request.user.sub]
+    );
+    return { items, myRank: myRankResult.rows[0] ?? null,
       scoring: { completion: 10, gradeStep: 5, flash: 5, like: 2 } };
   });
 };

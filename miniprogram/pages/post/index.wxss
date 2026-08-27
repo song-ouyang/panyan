@@ -1,1 +1,36 @@
-.who{flex:1;margin-left:18rpx}.card video{width:100%;height:620rpx;border-radius:22rpx;margin-top:22rpx}.caption{margin-top:22rpx}.actions{display:flex;align-items:center;justify-content:space-between;margin-top:22rpx}.actions button{margin:0;font-size:26rpx;border-radius:999rpx}.report{color:#999;font-size:24rpx}.section-title{font-size:34rpx;font-weight:800;margin-top:36rpx}.comment{display:flex}.small{width:60rpx;height:60rpx;margin-right:18rpx}.name{font-weight:700;margin-bottom:8rpx}.composer{position:sticky;bottom:0;display:flex;background:#fff8ee;padding:18rpx 0}.composer input{flex:1;background:#fff;border-radius:999rpx;padding:0 24rpx}.composer button{margin-left:12rpx;font-size:26rpx}
+.post-page { padding-bottom: 0; }
+.post-card { margin-top: 0; }
+.who { flex: 1; min-width: 0; margin-left: 18rpx; }
+.post-name { font-weight: 850; }
+.post-card video { width: 100%; height: 620rpx; margin-top: 22rpx; border-radius: 22rpx; background: var(--color-surface-soft); }
+.caption { margin-top: 22rpx; line-height: 1.6; }
+.actions { display: flex; align-items: center; justify-content: space-between; margin-top: 12rpx; }
+.post-like { min-width: 88rpx; min-height: 88rpx; display: flex; align-items: center; gap: 8rpx; color: var(--color-text-secondary); font-weight: 800; }
+.heart { display: inline-block; font-size: 34rpx; transform-origin: center; }
+.liked { color: var(--color-accent); }
+.confirmed .heart { animation: postHeartConfirm 220ms var(--ease-out); }
+.share-button { min-height: 88rpx; margin: 0; padding: 0 20rpx; border-radius: 20rpx; background: var(--color-surface-soft); color: var(--color-text); font-size: 25rpx; font-weight: 800; }
+.report { min-width: 88rpx; min-height: 88rpx; display: flex; align-items: center; justify-content: flex-end; color: var(--color-muted); font-size: 24rpx; }
+.section-title { margin-top: 36rpx; font-size: 34rpx; font-weight: 850; }
+.comment { display: flex; }
+.comment.is-pending { opacity: .66; }
+.comment-body { flex: 1; min-width: 0; }
+.comment-entering { animation: commentEnter 200ms var(--ease-out) both; }
+.small { width: 60rpx; height: 60rpx; margin-right: 18rpx; }
+.name { margin-bottom: 8rpx; font-weight: 750; }
+.pending-label { margin-left: 12rpx; color: var(--color-muted); font-size: 20rpx; font-weight: 700; }
+.composer { position: sticky; bottom: 0; display: flex; gap: 12rpx; margin-top: 22rpx; padding: 18rpx 0 calc(18rpx + env(safe-area-inset-bottom)); background: rgba(255, 255, 255, .96); border-top: 2rpx solid var(--color-border); }
+.composer input { flex: 1; min-height: 88rpx; box-sizing: border-box; padding: 0 24rpx; border-radius: 22rpx; background: var(--color-surface-soft); }
+.composer button { min-width: 112rpx; min-height: 88rpx; margin: 0; font-size: 26rpx; }
+.post-loading { display: grid; grid-template-columns: 76rpx 1fr; gap: 18rpx; }
+.post-loading .skeleton-block { height: 520rpx; grid-column: 1 / -1; }
+
+@keyframes postHeartConfirm { 0% { transform: scale(.9); } 55% { transform: scale(1.16); } 100% { transform: scale(1); } }
+@keyframes commentEnter { from { opacity: 0; transform: translateY(6rpx); } to { opacity: 1; transform: translateY(0); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .confirmed .heart,
+  .comment-entering { animation: postReducedFade 160ms linear both !important; }
+}
+
+@keyframes postReducedFade { from { opacity: 0; } to { opacity: 1; } }

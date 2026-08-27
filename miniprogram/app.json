@@ -25,14 +25,14 @@
   ],
   "window": {
     "navigationBarTitleText": "完攀日记",
-    "navigationBarBackgroundColor": "#FFFCF8",
+    "navigationBarBackgroundColor": "#FFFFFF",
     "navigationBarTextStyle": "black",
-    "backgroundColor": "#F7F3EE"
+    "backgroundColor": "#FFFFFF"
   },
   "tabBar": {
     "color": "#7C868D",
-    "selectedColor": "#F56B52",
-    "backgroundColor": "#FFFCF8",
+    "selectedColor": "#F2674F",
+    "backgroundColor": "#FFFFFF",
     "borderStyle": "white",
     "list": [
       { "pagePath": "pages/gyms/index", "text": "岩馆", "iconPath": "assets/icons/gym.png", "selectedIconPath": "assets/icons/gym-active.png" },
@@ -42,5 +42,6 @@
     ]
   },
   "networkTimeout": { "request": 15000, "uploadFile": 120000 },
+  "lazyCodeLoading": "requiredComponents",
   "sitemapLocation": "sitemap.json"
 }

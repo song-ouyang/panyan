@@ -1,2 +1,29 @@
-<view class="page" wx:if="{{post}}"><view class="card"><view class="row"><image class="avatar" src="{{post.avatar_url || '/assets/logo.png'}}"/><view class="who"><view>{{post.nickname}}</view><view class="muted">{{post.gym_name}} · {{post.route_name}}</view></view><view class="grade">{{post.grade}}</view></view><video wx:if="{{post.video_url}}" src="{{post.video_url}}" controls object-fit="cover"></video><view class="caption">{{post.caption || '完成了这条线路'}}</view><view class="actions"><text bindtap="like">{{post.liked?'♥':'♡'}} {{post.like_count}}</text><button open-type="share">分享给岩友</button><text class="report" bindtap="report">举报</text></view></view>
-<view class="section-title">评论</view><view class="comment card" wx:for="{{post.comments}}" wx:key="id"><image class="avatar small" src="{{item.avatar_url || '/assets/logo.png'}}"/><view><view class="name">{{item.nickname}}</view><view>{{item.content}}</view></view></view><view class="empty" wx:if="{{!post.comments.length}}">来留下第一条评论</view><view class="composer"><input placeholder="友善交流，分享Beta…" value="{{content}}" bindinput="input"/><button class="primary" loading="{{sending}}" bindtap="sendComment">发送</button></view></view>
+<view class="page post-page" wx:if="{{post}}">
+  <view class="card post-card">
+    <view class="row">
+      <image class="avatar" src="{{post.avatar_url || '/assets/logo.png'}}" mode="aspectFill"/>
+      <view class="who"><view class="post-name">{{post.nickname}}</view><view class="muted">{{post.gym_name}}<text wx:if="{{post.route_name}}"> · {{post.route_name}}</text></view></view>
+      <view class="grade" wx:if="{{post.grade}}">{{post.grade}}</view>
+    </view>
+    <video wx:if="{{post.video_url}}" src="{{post.video_url}}" controls object-fit="cover"></video>
+    <view class="caption">{{post.caption || '完成了这条线路'}}</view>
+    <view class="actions">
+      <view class="post-like pressable {{post.liked?'liked':''}} {{likePulse?'confirmed':''}}" role="button" aria-label="{{post.liked?'取消点赞':'点赞'}}" bindtap="like"><text class="heart">{{post.liked?'♥':'♡'}}</text><text>{{post.like_count}}</text></view>
+      <button class="share-button pressable" open-type="share">分享给岩友</button>
+      <view class="report pressable" role="button" bindtap="report">举报</view>
+    </view>
+  </view>
+
+  <view class="section-title">评论</view>
+  <view class="comment card {{item.pending?'is-pending':''}} {{enteringCommentId===item.id?'comment-entering':''}}" wx:for="{{post.comments}}" wx:key="id">
+    <image class="avatar small" src="{{item.avatar_url || '/assets/logo.png'}}" mode="aspectFill"/>
+    <view class="comment-body"><view class="name">{{item.nickname}}<text wx:if="{{item.pending}}" class="pending-label">发送中</text></view><view>{{item.content}}</view></view>
+  </view>
+  <view class="empty" wx:if="{{!post.comments.length}}">来留下第一条评论</view>
+  <view class="composer">
+    <input placeholder="友善交流，分享 Beta…" value="{{content}}" bindinput="input"/>
+    <button class="primary pressable primary-action" loading="{{sending}}" disabled="{{sending || !content}}" bindtap="sendComment">{{sending?'发送中':'发送'}}</button>
+  </view>
+</view>
+
+<view class="page post-loading" wx:else><view class="skeleton-circle avatar"></view><view class="skeleton-line"></view><view class="skeleton-block"></view></view>

@@ -1,1 +1,6 @@
-{ "navigationBarTitleText": "约爬" }
+{
+  "navigationBarTitleText": "约爬",
+  "enablePullDownRefresh": true,
+  "backgroundColor": "#FFFFFF",
+  "backgroundTextStyle": "dark"
+}

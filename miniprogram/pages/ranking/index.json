@@ -1,1 +1,8 @@
-{ "navigationBarTitleText": "月度排名" }
+{
+  "navigationBarTitleText": "月度排名",
+  "navigationBarBackgroundColor": "#FFFFFF",
+  "navigationBarTextStyle": "black",
+  "backgroundColor": "#FFFFFF",
+  "enablePullDownRefresh": true,
+  "backgroundTextStyle": "dark"
+}

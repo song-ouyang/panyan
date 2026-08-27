@@ -1,1 +1,72 @@
-<view class="page"><view class="card post" wx:for="{{items}}" wx:key="id"><view class="between" data-id="{{item.id}}" bindtap="open"><view><view class="name">{{item.gym_name}} · {{item.route_name}}</view><view class="muted">{{item.grade}} · 尝试{{item.attempts}}次</view></view><view class="status {{item.moderation_status}}">{{item.moderation_status==='approved'?'已发布':item.moderation_status==='pending'?'审核中':'未通过'}}</view></view><view class="caption">{{item.caption || '完成了这条线路'}}</view><view class="between foot"><text class="tag">{{item.visibility==='public'?'公开':item.visibility==='friends'?'岩友可见':'仅自己'}}</text><text class="delete" data-id="{{item.id}}" bindtap="remove">删除</text></view></view><view class="empty" wx:if="{{!loading && !items.length}}">还没有完攀打卡</view></view>
+<view class="page my-posts-page">
+  <view class="refreshing" wx:if="{{refreshing}}">
+    <view class="refresh-dot"></view><text>正在更新审核状态</text>
+  </view>
+
+  <view class="post-skeleton" wx:if="{{loading && !items.length}}" aria-label="正在加载我的动态">
+    <view class="skeleton-card card" wx:for="{{skeletonRows}}" wx:key="*this">
+      <view class="skeleton-line skeleton-block wide"></view>
+      <view class="skeleton-line skeleton-block"></view>
+      <view class="skeleton-media skeleton-block"></view>
+    </view>
+  </view>
+
+  <view class="load-state error-state" wx:if="{{!loading && error && !items.length}}">
+    <view class="state-mark">!</view>
+    <view class="state-title">暂时没能打开我的动态</view>
+    <view class="state-copy">{{error}}</view>
+    <view class="retry pressable primary-action" role="button" bindtap="retry">重新加载</view>
+  </view>
+
+  <view class="inline-error" wx:if="{{error && items.length}}">
+    <text>{{error}}</text><view class="pressable" role="button" bindtap="retry">重试</view>
+  </view>
+
+  <view class="card post {{deletingId===item.id?'is-deleting':''}}" wx:for="{{items}}" wx:key="id">
+    <view class="post-open pressable" role="button" aria-label="查看{{item.typeLabel}}" data-id="{{item.id}}" bindtap="open">
+      <view class="post-head">
+        <view class="post-copy">
+          <view class="post-kind">{{item.typeLabel}}</view>
+          <view class="name">{{item.title}}</view>
+          <view class="muted detail">{{item.detail}}</view>
+        </view>
+        <view class="status {{item.moderation_status}}">{{item.statusLabel}}</view>
+      </view>
+
+      <view class="caption" wx:if="{{!item.isMoment && item.caption}}">{{item.caption}}</view>
+
+      <view class="image-grid images-{{item.image_urls.length}}" wx:if="{{item.image_urls.length}}">
+        <image
+          wx:for="{{item.image_urls}}"
+          wx:for-item="imageUrl"
+          wx:key="*this"
+          src="{{imageUrl}}"
+          mode="aspectFill"
+          lazy-load
+          fade-in="{{false}}"
+        />
+      </view>
+
+      <view class="video-summary" wx:if="{{item.video_url}}">
+        <view class="play-mark">▶</view><text>查看完攀视频</text>
+      </view>
+    </view>
+
+    <view class="post-foot">
+      <view class="post-meta"><text class="tag">{{item.visibilityLabel}}</text><text>{{item.sentAtText}}</text></view>
+      <view
+        class="delete pressable {{deletingId===item.id?'is-disabled':''}}"
+        role="button"
+        aria-disabled="{{deletingId===item.id}}"
+        data-id="{{item.id}}"
+        catchtap="remove"
+      >{{deletingId===item.id?'删除中':'删除'}}</view>
+    </view>
+  </view>
+
+  <view class="load-state empty-state" wx:if="{{!loading && !error && !items.length}}">
+    <view class="state-mark empty-mark">○</view>
+    <view class="state-title">还没有动态</view>
+    <view class="state-copy">从广场发布照片，或在线路页完成打卡后，都会记录在这里</view>
+  </view>
+</view>

@@ -1,9 +1,74 @@
-<view class="page" wx:if="{{route}}">
-  <view class="route-cover"><image wx:if="{{route.cover_url}}" src="{{route.cover_url}}" mode="aspectFill"/><view wx:else class="hold"></view><view wx:for="{{route.points}}" wx:key="index" class="marker {{item.type}}" style="left:{{item.x*100}}%;top:{{item.y*100}}%">{{item.type==='start'?'S':item.type==='finish'?'T':index+1}}</view></view>
-  <view class="between heading"><view><view class="title">{{route.name}}</view><view class="subtitle">{{route.gym_name}}</view></view><view class="grade">{{route.grade}}</view></view>
-  <view class="card"><view class="between"><text>线路颜色</text><text>{{route.color || '以现场为准'}}</text></view><view class="between line"><text>墙面区域</text><text>{{route.wall_zone || '以现场为准'}}</text></view><view class="between line"><text>换线周期</text><text>{{route.route_set_name || '长期线路'}}</text></view><view class="between line"><text>完攀人数</text><text>{{completionCount}} 人</text></view></view>
-  <button class="primary action" bindtap="checkin">上传视频 · 记录完攀</button>
-  <view class="leader-title"><view><text>这条线的完攀榜</text><view class="muted">按视频获赞数排名</view></view><view class="people">{{completionCount}}人完成</view></view>
-  <view class="send-card card {{item.rank<=3?'top':''}}" wx:for="{{leaderboard}}" wx:key="id"><view class="send-head"><view class="rank rank-{{item.rank}}">{{item.rank}}</view><image class="avatar" src="{{item.avatar_url || '/assets/logo.png'}}"/><view class="sender"><view>{{item.nickname}}</view><view class="muted">尝试 {{item.attempts}} 次</view></view><view class="likes" data-id="{{item.id}}" data-liked="{{item.liked}}" bindtap="like">{{item.liked?'♥':'♡'}} {{item.like_count}}</view></view><video wx:if="{{item.video_url}}" src="{{item.video_url}}" controls object-fit="cover"></video><view class="between send-foot" data-id="{{item.id}}" bindtap="openPost"><text>{{item.caption || '查看完攀视频与Beta'}}</text><text>评论 ›</text></view></view>
-  <view class="empty" wx:if="{{!leaderboard.length}}">还没有人上传完攀视频，成为第一个吧</view>
+<view class="page route-page">
+  <view wx:if="{{initialLoading && !route}}" class="route-skeleton" aria-label="正在加载线路">
+    <view class="skeleton-block skeleton-cover"></view>
+    <view class="skeleton-heading between">
+      <view class="skeleton-heading-copy">
+        <view class="skeleton-line skeleton-title"></view>
+        <view class="skeleton-line skeleton-subtitle"></view>
+      </view>
+      <view class="skeleton-block skeleton-grade"></view>
+    </view>
+    <view class="card skeleton-detail">
+      <view class="skeleton-line" wx:for="{{skeletons}}" wx:key="*this"></view>
+    </view>
+  </view>
+
+  <view class="inline-state" wx:if="{{error && !route}}">
+    <view class="state-title">暂时没能加载线路</view>
+    <view class="state-detail">{{error}}</view>
+    <button class="pressable" bindtap="retry">重新加载</button>
+  </view>
+
+  <view wx:if="{{route}}" class="route-content {{refreshing ? 'is-refreshing' : ''}}">
+    <view class="refresh-status" wx:if="{{refreshing}}" aria-label="正在更新线路">正在更新</view>
+    <view class="inline-error" wx:if="{{error}}">
+      <text>{{error}}</text>
+      <view class="pressable" role="button" bindtap="retry">重试</view>
+    </view>
+
+    <view
+      wx:if="{{checkinResult}}"
+      class="checkin-result {{checkinResult.pending ? 'is-pending' : ''}} {{checkinResultVisible ? 'is-visible' : ''}}"
+      aria-live="polite"
+    >
+      <view class="result-mark">{{checkinResult.pending ? '…' : '✓'}}</view>
+      <view class="result-copy">
+        <view class="result-title">{{checkinResult.title}}</view>
+        <view class="result-description">{{checkinResult.description}}</view>
+      </view>
+      <view class="result-close pressable" role="button" aria-label="关闭提示" bindtap="dismissCheckinResult">×</view>
+    </view>
+
+    <view class="route-cover">
+      <image wx:if="{{route.cover_url}}" src="{{route.cover_url}}" mode="aspectFill" fade-in="{{false}}" />
+      <view wx:else class="hold"></view>
+      <view wx:for="{{route.points}}" wx:key="index" class="marker {{item.type}}" style="left:{{item.x*100}}%;top:{{item.y*100}}%">{{item.type==='start'?'S':item.type==='finish'?'T':index+1}}</view>
+    </view>
+    <view class="between heading">
+      <view><view class="title">{{route.name}}</view><view class="subtitle">{{route.gym_name}}</view></view>
+      <view class="grade">{{route.grade}}</view>
+    </view>
+    <view class="card">
+      <view class="between"><text>线路颜色</text><text>{{route.color || '以现场为准'}}</text></view>
+      <view class="between line"><text>墙面区域</text><text>{{route.wall_zone || '以现场为准'}}</text></view>
+      <view class="between line"><text>换线周期</text><text>{{route.route_set_name || '长期线路'}}</text></view>
+      <view class="between line"><text>完攀人数</text><text class="completion-value {{completionPulse ? 'is-confirmed' : ''}}">{{completionCount}} 人</text></view>
+    </view>
+    <button class="primary primary-action pressable action" bindtap="checkin">上传视频 · 记录完攀</button>
+    <view class="leader-title">
+      <view><text>这条线的完攀榜</text><view class="muted">按视频获赞数排名</view></view>
+      <view class="people {{completionPulse ? 'is-confirmed' : ''}}">{{completionCount}}人完成</view>
+    </view>
+    <view class="send-card card {{item.rank<=3?'top':''}}" wx:for="{{leaderboard}}" wx:key="id">
+      <view class="send-head">
+        <view class="rank rank-{{item.rank}}">{{item.rank}}</view>
+        <image class="avatar" src="{{item.avatar_url || '/assets/logo.png'}}" fade-in="{{false}}" />
+        <view class="sender"><view>{{item.nickname}}</view><view class="muted">尝试 {{item.attempts}} 次</view></view>
+        <view class="likes pressable" role="button" aria-label="{{item.liked?'取消点赞':'点赞'}}" data-id="{{item.id}}" bindtap="like">{{item.liked?'♥':'♡'}} {{item.like_count}}</view>
+      </view>
+      <video wx:if="{{item.video_url}}" src="{{item.video_url}}" controls object-fit="cover"></video>
+      <view class="between send-foot pressable" role="button" aria-label="查看评论" data-id="{{item.id}}" bindtap="openPost"><text>{{item.caption || '查看完攀视频与Beta'}}</text><text>评论 ›</text></view>
+    </view>
+    <view class="empty" wx:if="{{!leaderboard.length}}">还没有人上传完攀视频，成为第一个吧</view>
+  </view>
 </view>

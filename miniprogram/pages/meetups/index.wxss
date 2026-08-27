@@ -1,1 +1,318 @@
-page{background:#fff8ef}.meetup-page{padding-top:24rpx}.compact-head{display:flex;align-items:center;justify-content:space-between}.create-button{margin:0;background:#ff6b4a;color:#fff;border-radius:999rpx;padding:0 26rpx;font-size:25rpx;font-weight:900;line-height:68rpx;box-shadow:0 6rpx 0 #d94d34}.create-button:active{transform:translateY(4rpx);box-shadow:0 2rpx 0 #d94d34}.tabs{display:grid;grid-template-columns:1fr 1fr;background:#eee6df;border-radius:24rpx;padding:7rpx;margin-top:28rpx}.tabs view{text-align:center;padding:16rpx;border-radius:18rpx;font-weight:900;color:#8b817a}.tabs .active{background:#fff;color:#ff6b4a;box-shadow:0 4rpx 0 #d9cec5}.create-sheet{background:#fff;border:3rpx solid #f0d7c5;border-radius:30rpx;padding:28rpx;margin-top:24rpx;box-shadow:0 8rpx 0 #e3c8b4}.sheet-title{font-size:34rpx;font-weight:900;margin-bottom:24rpx}.field-label{font-size:22rpx;color:#8b817a;font-weight:800;margin:18rpx 0 9rpx}.create-sheet input,.picker,.create-sheet textarea{background:#f7f3ef;border:3rpx solid transparent;border-radius:20rpx;padding:20rpx 22rpx;box-sizing:border-box}.create-sheet input:focus,.create-sheet textarea:focus{border-color:#ffc5b6;background:#fff}.picker{display:flex;justify-content:space-between}.placeholder{color:#aaa09a}.picker-row{display:grid;grid-template-columns:1fr 1fr;gap:16rpx}.people-stepper{display:flex;align-items:center;justify-content:space-between;background:#f7f3ef;border-radius:20rpx;padding:10rpx}.people-stepper view{width:66rpx;height:58rpx;background:#fff;border-radius:17rpx;display:flex;align-items:center;justify-content:center;color:#ff6b4a;font-size:38rpx;font-weight:900;box-shadow:0 4rpx 0 #ddd2ca}.people-stepper view:active{transform:translateY(3rpx);box-shadow:0 1rpx 0 #ddd2ca}.people-stepper text{font-weight:900}.create-sheet textarea{width:100%;height:150rpx}.publish{margin-top:28rpx}.meetup-card{background:#fff;border:3rpx solid #eee5de;border-radius:28rpx;padding:26rpx;margin-top:24rpx;box-shadow:0 7rpx 0 #ddd2ca}.meetup-top{display:flex;align-items:center;justify-content:space-between}.date-badge{color:#8054a8;font-size:23rpx;font-weight:900}.member-pill{background:#fff0e7;color:#d94d34;border-radius:999rpx;padding:7rpx 14rpx;font-size:21rpx;font-weight:900}.meetup-name{font-size:34rpx;font-weight:900;margin-top:18rpx}.gym-line{color:#ff6b4a;font-weight:800;margin-top:12rpx}.note{background:#f7f3ef;border-radius:16rpx;padding:16rpx;margin-top:16rpx;color:#615b57;line-height:1.5}.creator{font-size:21rpx;color:#9b928c;margin-top:14rpx}.meetup-action{margin-top:20rpx}.meetup-action button{width:100%;margin:0;font-size:26rpx}.text-action,.status-text{text-align:center;border-radius:18rpx;padding:18rpx;font-weight:900}.joined{background:#f2eaff;color:#8054a8}.danger{background:#fff0ee;color:#ff4b4b}.status-text{background:#f1eeeb;color:#9a928c}
+page {
+  background: #fff;
+  color: #202124;
+}
+
+.meetup-page {
+  min-height: 100vh;
+  padding-top: 24rpx;
+  background: #fff;
+}
+
+.compact-head { display: flex; align-items: center; justify-content: space-between; }
+.compact-head .title { color: #202124; }
+.compact-head .subtitle { color: #858a90; }
+
+.create-button {
+  min-width: 152rpx;
+  min-height: 88rpx;
+  margin: 0;
+  padding: 0 24rpx;
+  border: 0;
+  border-radius: 20rpx;
+  background: #f2674f;
+  box-shadow: 0 6rpx 0 #dc513b;
+  color: #fff;
+  font-size: 25rpx;
+  font-weight: 900;
+  line-height: 88rpx;
+}
+
+.create-button::after { border: 0; }
+
+/* A restrained underline keeps the section switch clear without a grey pill. */
+.tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin-top: 26rpx;
+  border-bottom: 2rpx solid #eceef0;
+  background: #fff;
+}
+
+.tab-option {
+  position: relative;
+  min-height: 88rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #858a90;
+  font-weight: 850;
+}
+
+.tab-option::after {
+  position: absolute;
+  right: 30%;
+  bottom: -2rpx;
+  left: 30%;
+  height: 5rpx;
+  border-radius: 999rpx;
+  background: transparent;
+  content: '';
+}
+
+.tab-option.active { color: #202124; }
+.tab-option.active::after { background: #f2674f; }
+
+.create-sheet {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 81;
+  max-height: calc(92vh - env(safe-area-inset-top));
+  box-sizing: border-box;
+  overflow-y: auto;
+  padding: 16rpx 28rpx calc(32rpx + env(safe-area-inset-bottom));
+  border-radius: 30rpx 30rpx 0 0;
+  background: #fff;
+  box-shadow: 0 -18rpx 54rpx rgba(21, 24, 28, .14);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(100%);
+  transition: transform 180ms cubic-bezier(.32, .72, 0, 1), opacity 140ms cubic-bezier(.23, 1, .32, 1);
+}
+
+.create-sheet.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+  transition-duration: 240ms, 180ms;
+}
+
+.create-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  pointer-events: none;
+  opacity: 0;
+  background: rgba(20, 22, 24, .44);
+  transition: opacity 140ms cubic-bezier(.23, 1, .32, 1);
+}
+
+.create-mask.is-visible {
+  pointer-events: auto;
+  opacity: 1;
+  transition-duration: 180ms;
+}
+
+.sheet-handle { width: 70rpx; height: 8rpx; margin: 0 auto 12rpx; border-radius: 999rpx; background: #d8dadd; }
+.sheet-head { min-height: 88rpx; display: flex; align-items: center; justify-content: space-between; }
+.sheet-title { color: #202124; font-size: 34rpx; font-weight: 900; }
+.sheet-close { width: 88rpx; height: 88rpx; display: flex; align-items: center; justify-content: flex-end; color: #687079; font-size: 48rpx; font-weight: 400; }
+.field-label { margin: 20rpx 0 9rpx; color: #737980; font-size: 22rpx; font-weight: 800; }
+
+.create-sheet input,
+.picker,
+.create-sheet textarea {
+  min-height: 88rpx;
+  box-sizing: border-box;
+  padding: 20rpx 22rpx;
+  border: 2rpx solid transparent;
+  border-radius: 16rpx;
+  background: #f6f7f8;
+  color: #202124;
+}
+
+.create-sheet input:focus,
+.create-sheet textarea:focus {
+  border-color: #d8dade;
+  background: #fff;
+}
+
+.picker { display: flex; align-items: center; justify-content: space-between; }
+.placeholder { color: #a0a5aa; }
+.picker-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16rpx; }
+
+.people-stepper {
+  min-height: 104rpx;
+  display: flex;
+  box-sizing: border-box;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8rpx;
+  border-radius: 18rpx;
+  background: #f6f7f8;
+}
+
+.people-stepper view {
+  width: 88rpx;
+  height: 88rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14rpx;
+  background: #fff;
+  box-shadow: 0 2rpx 8rpx rgba(20, 25, 30, .07);
+  color: #363b40;
+  font-size: 38rpx;
+  font-weight: 900;
+}
+
+.people-stepper text { color: #292d31; font-weight: 900; }
+.create-sheet textarea { width: 100%; height: 150rpx; }
+
+.publish {
+  min-height: 92rpx;
+  margin-top: 28rpx;
+  border-radius: 20rpx !important;
+  background: #f2674f !important;
+  box-shadow: 0 6rpx 0 #dc513b !important;
+}
+
+.publish.is-complete,
+.publish.is-complete[disabled] {
+  background: #3f8c67 !important;
+  box-shadow: 0 2rpx 0 #2f7151 !important;
+  opacity: 1;
+  animation: meetupComplete 220ms cubic-bezier(.23, 1, .32, 1) both;
+}
+
+.meetup-card {
+  margin-top: 20rpx;
+  padding: 26rpx;
+  border: 2rpx solid #eceef0;
+  border-radius: 24rpx;
+  background: #fff;
+  box-shadow: 0 7rpx 20rpx rgba(24, 29, 33, .045);
+}
+
+.meetup-top { display: flex; align-items: center; justify-content: space-between; gap: 18rpx; }
+.date-badge { color: #4f565e; font-size: 23rpx; font-weight: 850; }
+.member-pill { color: #8b9096; font-size: 21rpx; font-weight: 800; }
+.meetup-name { margin-top: 17rpx; color: #202124; font-size: 34rpx; font-weight: 900; }
+.gym-line { margin-top: 12rpx; color: #59616a; font-weight: 800; }
+
+.note {
+  margin-top: 16rpx;
+  padding: 16rpx 18rpx;
+  border-radius: 14rpx;
+  background: #f6f7f8;
+  color: #5f656c;
+  line-height: 1.55;
+}
+
+.creator { margin-top: 14rpx; color: #92979d; font-size: 21rpx; }
+.meetup-action { margin-top: 20rpx; }
+
+.meetup-action button {
+  width: 100%;
+  min-height: 88rpx;
+  margin: 0;
+  border-radius: 18rpx !important;
+  font-size: 26rpx;
+}
+
+.meetup-action .secondary {
+  background: #f2674f !important;
+  color: #fff !important;
+  box-shadow: 0 6rpx 0 #dc513b !important;
+}
+
+.text-action,
+.status-text {
+  min-height: 88rpx;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16rpx;
+  border-radius: 18rpx;
+  font-weight: 850;
+}
+
+.joined { background: #f3f5f6; color: #444b52; }
+.joined.is-joining { opacity: .7; }
+.join-check { display: inline-block; margin-right: 6rpx; transform-origin: center; }
+.join-confirmed .join-check { animation: joinConfirm 220ms cubic-bezier(.23, 1, .32, 1); }
+.danger { border: 2rpx solid #f0d3ce; background: #fff; color: #d9533e; }
+.status-text { background: #f6f7f8; color: #898f95; }
+
+.meetup-state {
+  min-height: 360rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 48rpx 30rpx;
+  color: #858a90;
+  text-align: center;
+}
+
+.state-spinner {
+  width: 42rpx;
+  height: 42rpx;
+  margin-bottom: 20rpx;
+  border: 4rpx solid #e6e8ea;
+  border-top-color: #f2674f;
+  border-radius: 50%;
+  animation: meetupSpin 700ms linear infinite;
+}
+
+.state-title { color: #202124; font-size: 30rpx; font-weight: 900; }
+.state-copy { max-width: 500rpx; margin-top: 10rpx; font-size: 23rpx; line-height: 1.5; }
+
+.retry-button {
+  min-width: 176rpx;
+  min-height: 88rpx;
+  margin-top: 26rpx;
+  border: 2rpx solid #e2e5e7;
+  border-radius: 18rpx;
+  background: #fff;
+  color: #3d4349;
+  font-size: 25rpx;
+  font-weight: 900;
+  line-height: 88rpx;
+}
+
+.retry-button::after { border: 0; }
+
+.inline-error {
+  min-height: 88rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 18rpx;
+  padding: 0 20rpx;
+  border: 2rpx solid #f0d6d0;
+  border-radius: 18rpx;
+  background: #fff;
+  color: #855047;
+  font-size: 23rpx;
+}
+
+.inline-error view {
+  min-width: 88rpx;
+  min-height: 88rpx;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  color: #d9533e;
+  font-weight: 900;
+}
+
+@keyframes meetupSpin { to { transform: rotate(360deg); } }
+@keyframes meetupComplete { from { opacity: .6; transform: scale(.96); } to { opacity: 1; transform: scale(1); } }
+@keyframes joinConfirm { 0% { transform: scale(.92); } 55% { transform: scale(1.08); } 100% { transform: scale(1); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .create-mask,
+  .create-sheet { transition: opacity 160ms linear; transform: none; }
+  .create-sheet { opacity: 0; }
+  .create-sheet.is-visible { opacity: 1; }
+  .publish.is-complete,
+  .join-confirmed .join-check { animation: meetupReducedFade 160ms linear both !important; }
+  .state-spinner { animation: none; opacity: .7; }
+}
+
+@keyframes meetupReducedFade { from { opacity: 0; } to { opacity: 1; } }

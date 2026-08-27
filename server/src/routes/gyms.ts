@@ -57,6 +57,7 @@ export const gymRoutes: FastifyPluginAsync = async (app) => {
     const result = await query(
       `SELECT r.*, count(s.id)::int send_count
        FROM routes r LEFT JOIN sends s ON s.route_id=r.id
+         AND s.moderation_status='approved' AND s.visibility='public' AND s.video_url IS NOT NULL
        WHERE r.gym_id=$1 AND r.published=true
          AND ($2::text IS NULL OR r.grade=$2) AND ($3::uuid IS NULL OR r.route_set_id=$3)
        GROUP BY r.id ORDER BY substring(r.grade from 2)::int,r.name`, [id, grade ?? null, setId ?? null]

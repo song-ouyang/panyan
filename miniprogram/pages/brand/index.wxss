@@ -1,1 +1,29 @@
-.brand-head{display:flex;align-items:center;margin:20rpx 0 48rpx}.brand-head image{width:110rpx;height:110rpx;border-radius:50%;margin-right:24rpx}.section-title{font-size:28rpx;color:#777;font-weight:700}.store{display:flex;align-items:center;justify-content:space-between}.store-name{font-size:34rpx;font-weight:750}.stats{color:#ff6648;font-size:24rpx;font-weight:700;margin-top:14rpx}.arrow{font-size:42rpx;color:#aaa}
+.brand-page { min-height: 100vh; }
+.brand-content { opacity: 1; transition: opacity 160ms var(--ease-out); }
+.brand-content.is-refreshing { opacity: .78; }
+.brand-head { display: flex; align-items: center; margin: 20rpx 0 48rpx; }
+.brand-head image,
+.skeleton-brand-logo { width: 110rpx; height: 110rpx; flex: none; margin-right: 24rpx; border-radius: 50%; }
+.brand-head image { border: 2rpx solid #e7e8e5; }
+.section-title { color: var(--color-muted); font-size: 26rpx; font-weight: 700; }
+.store { display: flex; align-items: center; justify-content: space-between; }
+.store-name { font-size: 34rpx; font-weight: 850; }
+.stats { margin-top: 14rpx; color: var(--color-accent-strong); font-size: 24rpx; font-weight: 800; }
+.arrow { color: #959ca4; font-size: 42rpx; }
+.refresh-status { min-height: 40rpx; display: flex; align-items: center; justify-content: center; color: var(--color-muted); font-size: 22rpx; }
+.inline-error { min-height: 70rpx; box-sizing: border-box; margin-bottom: 18rpx; padding: 12rpx 18rpx; display: flex; align-items: center; justify-content: space-between; color: var(--color-danger); font-size: 23rpx; background: #fff5f2; border-radius: var(--radius-small); }
+.inline-error .pressable { min-width: 88rpx; min-height: 48rpx; display: flex; align-items: center; justify-content: flex-end; font-weight: 900; }
+.state-title { color: var(--color-text); font-weight: 900; }
+.state-detail { margin-top: 8rpx; font-size: 23rpx; }
+.skeleton-head-copy { flex: 1; }
+.skeleton-title { width: 42%; height: 32rpx; }
+.skeleton-subtitle { width: 64%; height: 20rpx; margin-top: 16rpx; }
+.skeleton-section { width: 28%; height: 20rpx; }
+.skeleton-store { min-height: 142rpx; }
+.skeleton-store-copy { width: 100%; }
+.skeleton-store-name { width: 38%; height: 28rpx; }
+.skeleton-store-meta { width: 72%; height: 19rpx; margin-top: 18rpx; }
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-content { transition: opacity 120ms ease; }
+}

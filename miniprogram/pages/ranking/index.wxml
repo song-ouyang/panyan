@@ -1,15 +1,182 @@
-<view class="page">
-  <view class="title">抱石联赛</view><view class="subtitle">每一次完攀和点赞，都值得被看见。</view>
-  <view class="scope-tabs"><view wx:for="{{scopes}}" wx:key="key" class="{{scope===item.key?'active':''}}" data-scope="{{item.key}}" bindtap="scope">{{item.label}}</view></view>
-  <view class="region-pickers" wx:if="{{scope!=='national'}}"><picker range="{{provinces}}" value="{{provinceIndex}}" bindchange="chooseProvince"><view class="gym-picker">{{provinces[provinceIndex]}}⌄</view></picker><picker wx:if="{{scope==='city'}}" range="{{cities}}" value="{{cityIndex}}" bindchange="chooseCity"><view class="gym-picker">{{cities[cityIndex]}}⌄</view></picker></view>
-  <view class="league card"><view class="league-icon"><image src="/assets/icons/fire.png"/></view><view class="league-info"><view class="league-title">烈焰联赛</view><view class="league-sub">本月积分榜 · 每月1日重新开始</view><view class="progress"><view class="progress-fill"></view></view></view><image class="league-cat" src="/assets/mascot-celebrate.jpg" mode="aspectFit"/></view>
-  <view class="tabs"><view class="{{tab==='users'?'active':''}}" data-tab="users" bindtap="tab">岩友积分榜</view><view class="{{tab==='routes'?'active':''}}" data-tab="routes" bindtap="tab">热门线路</view></view>
-  <block wx:if="{{tab==='users'}}">
-    <view class="podium" wx:if="{{podium.length}}"><view class="podium-item place-{{item.rank}}" wx:for="{{podium}}" wx:key="user_id" data-id="{{item.user_id}}" bindtap="openUser"><view class="crown"><image wx:if="{{item.rank===1}}" src="/assets/icons/ranking-active.png"/><text wx:else>{{item.rank}}</text></view><image src="{{item.avatar_url || '/assets/logo.png'}}"/><view class="podium-name">{{item.nickname}}</view><view class="podium-score">{{item.points}} 分</view><view class="stand">{{item.rank}}</view></view></view>
-    <view class="my-rank card" wx:if="{{myRank}}" data-id="{{myRank.user_id}}" bindtap="openUser"><image src="{{myRank.avatar_url || '/assets/logo.png'}}"/><view class="my-info"><view>我的本月排名</view><view class="muted">{{myRank.send_count}}条完攀 · {{myRank.total_likes}}赞</view></view><view class="my-place">第 {{myRank.rank}} 名<text>{{myRank.points}} 分</text></view></view>
-    <view class="card rank" wx:for="{{rest}}" wx:key="user_id" data-id="{{item.user_id}}" bindtap="openUser"><view class="place">{{item.rank}}</view><image class="avatar" src="{{item.avatar_url || '/assets/logo.png'}}"/><view class="person"><view>{{item.nickname}}</view><view class="muted">{{item.send_count}}条完攀 · 最高V{{item.max_grade}}</view></view><view class="points">{{item.points}}<text>分</text></view></view>
-    <view class="score-rule card" wx:if="{{scoring}}"><view class="rule-title">本月加分规则</view><view class="rule-grid"><text>完攀 +{{scoring.completion}}</text><text>每级难度 +{{scoring.gradeStep}}</text><text>Flash +{{scoring.flash}}</text><text>每个赞 +{{scoring.like}}</text></view></view>
-    <view class="empty" wx:if="{{!loading && !items.length}}">本月榜单还在等第一位岩友</view>
-  </block>
-  <block wx:if="{{tab==='routes'}}"><view class="route-rank card" wx:for="{{routes}}" wx:key="route_id" data-id="{{item.route_id}}" bindtap="openRoute"><view class="grade">{{item.grade}}</view><view class="route-info"><view class="route-name">{{item.route_name}}</view><view class="muted">{{item.gym_name}} · {{item.wall_zone || item.color}}</view><view class="route-stats"><view><image src="/assets/icons/check.png"/>{{item.completion_count}}人完攀</view><view><image src="/assets/icons/heart.png"/>{{item.total_likes}}赞</view></view></view><view class="round-arrow"></view></view></block>
+<view class="page ranking-page">
+  <view class="page-kicker">本月联赛</view>
+  <view class="title">抱石联赛</view>
+  <view class="subtitle">每一次完攀和点赞，都值得被看见。</view>
+
+  <view class="scope-panel">
+    <view class="scope-tabs">
+      <view
+        wx:for="{{scopes}}"
+        wx:key="key"
+        class="scope-option pressable {{scope===item.key?'active':''}} {{regionsState!=='ready' && item.key!=='national'?'is-disabled':''}}"
+        data-scope="{{item.key}}"
+        role="button"
+        aria-label="查看{{item.label}}积分榜"
+        bindtap="scope"
+      >{{item.label}}</view>
+    </view>
+
+    <view class="scope-note">
+      <view class="scope-note-item {{regionsState==='loading'?'is-visible':''}}">正在读取可用地区…</view>
+      <view class="scope-note-item {{regionsState==='ready'?'is-visible':''}}">按完攀所在岩馆地区统计</view>
+      <view class="scope-note-item {{regionsState==='empty'?'is-visible':''}}">暂时还没有可用地区</view>
+      <view class="scope-note-item {{regionsState==='error'?'is-visible':''}}">
+        地区列表加载失败
+        <text class="inline-retry pressable" role="button" aria-label="重新加载地区列表" bindtap="retryRegions">重试</text>
+      </view>
+    </view>
+
+    <view class="scope-detail">
+      <view class="scope-detail-layer national-copy {{scope==='national'?'is-visible':''}}">
+        <text>全国榜</text>
+        <label>聚合本月所有已审核完攀</label>
+      </view>
+      <view class="scope-detail-layer region-pickers {{scope!=='national'?'is-visible':''}} {{scope==='province'?'single':''}}">
+        <picker range="{{provinces}}" value="{{provinceIndex}}" bindchange="chooseProvince" disabled="{{regionsState!=='ready'}}">
+          <view class="gym-picker {{regionsState==='ready'?'pressable':''}}">
+            <text>{{provinces[provinceIndex] || '选择省份'}}</text>
+            <text class="picker-arrow">⌄</text>
+          </view>
+        </picker>
+        <picker wx:if="{{scope==='city'}}" range="{{cities}}" value="{{cityIndex}}" bindchange="chooseCity" disabled="{{regionsState!=='ready'}}">
+          <view class="gym-picker {{regionsState==='ready'?'pressable':''}}">
+            <text>{{cities[cityIndex] || '选择城市'}}</text>
+            <text class="picker-arrow">⌄</text>
+          </view>
+        </picker>
+      </view>
+    </view>
+  </view>
+
+  <view class="league card">
+    <view class="league-glow"></view>
+    <view class="league-icon"><image src="/assets/icons/fire.png" mode="aspectFit" /></view>
+    <view class="league-info">
+      <view class="league-row">
+        <view class="league-title">烈焰联赛</view>
+        <view class="month-badge">本月</view>
+      </view>
+      <view class="league-sub">每月 1 日重新开始，只记录真实成长</view>
+      <view class="scoring-copy">{{scoringText}}</view>
+    </view>
+    <image class="league-cat" src="/assets/mascot-celebrate.jpg" mode="aspectFit" fade-in="{{false}}" />
+  </view>
+
+  <view class="tabs">
+    <view class="tab-option pressable {{tab==='users'?'active':''}}" data-tab="users" role="button" aria-label="查看岩友积分榜" bindtap="tab">岩友积分榜</view>
+    <view class="tab-option pressable {{tab==='routes'?'active':''}}" data-tab="routes" role="button" aria-label="查看热门线路" bindtap="tab">热门线路</view>
+  </view>
+
+  <view hidden="{{tab!=='users'}}" class="ranking-stage state-{{rankingState}}">
+    <view class="stage-content">
+      <view class="podium {{podiumReveal ? 'is-revealed' : ''}}" wx:if="{{podium.length}}">
+        <view
+          class="podium-item place-{{item.rank}} pressable"
+          wx:for="{{podium}}"
+          wx:key="user_id"
+          data-id="{{item.user_id}}"
+          role="button"
+          aria-label="查看{{item.nickname}}的主页，第{{item.rank}}名，{{item.points}}分"
+          bindtap="openUser"
+        >
+          <view class="crown">
+            <image wx:if="{{item.rank===1}}" src="/assets/icons/ranking-active.png" mode="aspectFit" />
+            <text wx:else>第 {{item.rank}} 名</text>
+          </view>
+          <image class="podium-avatar" src="{{item.avatar_url || '/assets/logo.png'}}" mode="aspectFill" lazy-load fade-in="{{false}}" />
+          <view class="podium-name">{{item.nickname}}</view>
+          <view class="podium-score">{{item.points}} 分</view>
+          <view class="stand"><text>{{item.rank}}</text><label>名</label></view>
+        </view>
+      </view>
+
+      <view class="my-rank card pressable" wx:if="{{myRank}}" data-id="{{myRank.user_id}}" role="button" aria-label="查看我的公开主页" bindtap="openUser">
+        <image src="{{myRank.avatar_url || '/assets/logo.png'}}" mode="aspectFill" lazy-load fade-in="{{false}}" />
+        <view class="my-info">
+          <view class="my-label">我的本月排名</view>
+          <view class="muted">{{myRank.send_count}} 条完攀 · {{myRank.total_likes}} 赞</view>
+        </view>
+        <view class="my-place">第 {{myRank.rank}} 名<text>{{myRank.points}} 分</text></view>
+      </view>
+
+      <view
+        class="card rank pressable"
+        wx:for="{{rest}}"
+        wx:key="user_id"
+        data-id="{{item.user_id}}"
+        role="button"
+        aria-label="查看{{item.nickname}}的主页，第{{item.rank}}名，{{item.points}}分"
+        bindtap="openUser"
+      >
+        <view class="place">{{item.rank}}</view>
+        <image class="avatar" src="{{item.avatar_url || '/assets/logo.png'}}" mode="aspectFill" lazy-load fade-in="{{false}}" />
+        <view class="person">
+          <view class="person-name">{{item.nickname}}</view>
+          <view class="muted">{{item.send_count}} 条完攀 · 最高 V{{item.max_grade}}</view>
+        </view>
+        <view class="points">{{item.points}}<text>分</text></view>
+        <view class="row-arrow"></view>
+      </view>
+    </view>
+
+    <view class="state-layer {{rankingState==='loading'?'is-visible':''}}">
+      <view class="state-orb loading-orb"><text></text><text></text><text></text></view>
+      <view class="state-title">正在更新本月榜单</view>
+      <view class="state-copy">计分和排名都来自真实完攀</view>
+    </view>
+    <view class="state-layer {{rankingState==='error'?'is-visible':''}}">
+      <view class="state-orb error-orb">!</view>
+      <view class="state-title">这次没能刷新榜单</view>
+      <view class="state-copy">{{rankingError}}</view>
+      <button class="state-action pressable" bindtap="retryUsers">重新加载</button>
+    </view>
+    <view class="state-layer {{rankingState==='empty'?'is-visible':''}}">
+      <view class="state-orb empty-orb">○</view>
+      <view class="state-title">本月榜单还在等第一位岩友</view>
+      <view class="state-copy">完成一条已审核线路后，积分会自动记入</view>
+    </view>
+  </view>
+
+  <view wx:if="{{routesMounted}}" hidden="{{tab!=='routes'}}" class="routes-stage state-{{routesState}}">
+    <view class="stage-content">
+      <view
+        class="route-rank card pressable"
+        wx:for="{{routes}}"
+        wx:key="route_id"
+        data-id="{{item.route_id}}"
+        role="button"
+        aria-label="查看线路{{item.route_name}}，难度{{item.grade}}"
+        bindtap="openRoute"
+      >
+        <view class="route-place">{{index + 1}}</view>
+        <view class="grade">{{item.grade}}</view>
+        <view class="route-info">
+          <view class="route-name">{{item.route_name}}</view>
+          <view class="muted">{{item.gym_name}} · {{item.wall_zone || item.color}}</view>
+          <view class="route-stats">
+            <view><image src="/assets/icons/check.png" mode="aspectFit" />{{item.completion_count}} 人完攀</view>
+            <view><image src="/assets/icons/heart.png" mode="aspectFit" />{{item.total_likes}} 赞</view>
+          </view>
+        </view>
+        <view class="row-arrow"></view>
+      </view>
+    </view>
+
+    <view class="state-layer {{routesState==='loading'?'is-visible':''}}">
+      <view class="state-orb loading-orb"><text></text><text></text><text></text></view>
+      <view class="state-title">正在寻找本月热门线路</view>
+      <view class="state-copy">按完攀数和获赞数实时排序</view>
+    </view>
+    <view class="state-layer {{routesState==='error'?'is-visible':''}}">
+      <view class="state-orb error-orb">!</view>
+      <view class="state-title">热门线路暂时没有加载好</view>
+      <view class="state-copy">{{routesError}}</view>
+      <button class="state-action pressable" bindtap="retryRoutes">重新加载</button>
+    </view>
+    <view class="state-layer {{routesState==='empty'?'is-visible':''}}">
+      <view class="state-orb empty-orb">○</view>
+      <view class="state-title">暂时还没有热门线路</view>
+      <view class="state-copy">第一次完攀会让这里开始有故事</view>
+    </view>
+  </view>
 </view>

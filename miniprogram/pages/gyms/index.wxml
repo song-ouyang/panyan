@@ -1,8 +1,90 @@
 <view class="gym-page">
-  <view class="content"><view class="gym-filter-row"><picker range="{{cities}}" value="{{cityIndex}}" bindchange="chooseCity"><view class="city-pill"><image src="/assets/icons/gym-active.png"/>{{cities[cityIndex]}}⌄</view></picker></view><view class="search row"><image class="search-icon" src="/assets/icons/search.png"/><input placeholder="搜索岩馆" value="{{q}}" bindinput="onInput" confirm-type="search" bindconfirm="search"/><text wx:if="{{q}}" class="clear" bindtap="clearSearch">×</text></view>
-  <view class="gym-row" wx:for="{{items}}" wx:key="brand_id" data-id="{{item.brand_id}}" bindtap="open"><view class="brand-main"><image wx:if="{{item.logo_url}}" src="{{item.logo_url}}"/><view wx:else class="brand-fallback"><image src="/assets/icons/gym-active.png"/></view><view><view class="name">{{item.brand_name}}</view><view class="count">{{item.route_count}}条线路</view></view></view><view class="row-meta"><text wx:if="{{item.store_count>1}}" class="multi">{{item.store_count}}个门店</text><text wx:elif="{{item.verified}}" class="verified">已认证</text><view class="round-arrow"></view></view></view>
-  <view class="empty" wx:if="{{!loading && !items.length}}"><image src="/assets/mascot-welcome.jpg"/><view>小猫还没找到这里的岩馆</view></view>
-  <view class="meetup-head between"><view class="section-heading"><view class="icon-badge"><image class="ui-icon" src="/assets/icons/friends.png"/></view><view class="meetup-title">最近约爬</view></view><view class="meetup-link" bindtap="goMeetups">查看全部 ›</view></view>
-  <view class="meetup-card" wx:for="{{meetups}}" wx:key="id" bindtap="goMeetups"><view><view class="meetup-name">{{item.title}}</view><view class="count">{{item.gym_name}} · {{item.member_count}}/{{item.max_people}}人</view></view><view class="round-arrow"></view></view>
-  <view class="meetup-empty" wx:if="{{!loading && !meetups.length}}" bindtap="goMeetups">暂时没有约爬，发起第一次约爬 ›</view>
-  </view></view>
+  <view class="content">
+    <view class="filter-row">
+      <picker range="{{cities}}" value="{{cityIndex}}" bindchange="chooseCity">
+        <view class="city-pill pressable" role="button" aria-label="切换城市，当前{{cities[cityIndex]}}">
+          <image src="/assets/icons/gym-active.png" />
+          <text>{{cities[cityIndex]}}</text>
+          <text class="city-chevron">⌄</text>
+        </view>
+      </picker>
+      <text class="result-count" wx:if="{{!loading && !error}}">{{items.length}} 个品牌</text>
+    </view>
+
+    <view class="search row {{q ? 'has-value' : ''}}">
+      <image class="search-icon" src="/assets/icons/search.png" />
+      <input
+        aria-label="搜索岩馆"
+        placeholder="搜索品牌或门店"
+        value="{{q}}"
+        bindinput="onInput"
+        confirm-type="search"
+        bindconfirm="search"
+      />
+      <view wx:if="{{q}}" class="clear pressable" role="button" aria-label="清空搜索" bindtap="clearSearch">×</view>
+    </view>
+
+    <view wx:if="{{loading && !items.length}}" class="skeleton-list">
+      <view class="gym-row skeleton-row" wx:for="{{skeletons}}" wx:key="*this">
+        <view class="skeleton-circle skeleton-logo"></view>
+        <view class="skeleton-copy">
+          <view class="skeleton-line skeleton-name"></view>
+          <view class="skeleton-line skeleton-meta"></view>
+        </view>
+      </view>
+    </view>
+
+    <view class="inline-state" wx:if="{{error && !items.length}}">
+      <view>暂时没能加载岩馆</view>
+      <view class="state-detail">{{error}}</view>
+      <button class="pressable" bindtap="retry">重新加载</button>
+    </view>
+
+    <view
+      class="gym-row pressable"
+      wx:for="{{items}}"
+      wx:key="brand_id"
+      data-id="{{item.brand_id}}"
+      bindtap="open"
+      role="button"
+      aria-label="打开{{item.brand_name}}，{{item.route_count}}条线路"
+    >
+      <view class="brand-main">
+        <image wx:if="{{item.logo_url}}" src="{{item.logo_url}}" mode="aspectFill" lazy-load fade-in="{{false}}" />
+        <view wx:else class="brand-fallback"><image src="/assets/icons/gym-active.png" /></view>
+        <view>
+          <view class="name">{{item.brand_name}}</view>
+          <view class="count">{{item.route_count}} 条线路</view>
+        </view>
+      </view>
+      <view class="row-meta">
+        <text wx:if="{{item.store_count>1}}" class="multi">{{item.store_count}} 个门店</text>
+        <text wx:elif="{{item.verified}}" class="verified">已认证</text>
+        <view class="round-arrow"></view>
+      </view>
+    </view>
+
+    <view class="empty" wx:if="{{!loading && !error && !items.length}}">
+      <image src="/assets/mascot-welcome.jpg" mode="aspectFit" />
+      <view>小猫还没找到这里的岩馆</view>
+      <view class="empty-sub">换个城市或关键词试试</view>
+    </view>
+
+    <view class="meetup-head between">
+      <view class="section-heading">
+        <view class="icon-badge"><image class="ui-icon" src="/assets/icons/friends.png" /></view>
+        <view class="meetup-title">最近约爬</view>
+      </view>
+      <view class="meetup-link pressable" role="button" aria-label="查看全部约爬" bindtap="goMeetups">查看全部</view>
+    </view>
+
+    <view class="meetup-card pressable" wx:for="{{meetups}}" wx:key="id" bindtap="goMeetups" role="button">
+      <view>
+        <view class="meetup-name">{{item.title}}</view>
+        <view class="count">{{item.gym_name}} · {{item.member_count}}/{{item.max_people}} 人</view>
+      </view>
+      <view class="round-arrow"></view>
+    </view>
+    <view class="meetup-empty pressable" wx:if="{{!loading && !meetups.length}}" bindtap="goMeetups">暂时没有约爬，发起第一次约爬</view>
+  </view>
+</view>
