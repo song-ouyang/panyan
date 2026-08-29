@@ -3,6 +3,7 @@ dist/
 .env
 .env.production
 backups/
+.deploy/
 .DS_Store
 coverage/
 uploads/

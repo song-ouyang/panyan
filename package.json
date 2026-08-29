@@ -6,8 +6,12 @@
     "dev:server": "npm --workspace server run dev",
     "build": "npm --workspace server run build",
     "check": "npm --workspace server run check",
-    "test": "npm --workspace server run test"
+    "test": "npm --workspace server run test",
+    "test:server:e2e": "npm --workspace server run test:e2e",
+    "flutter:analyze": "cd flutter_app && dart analyze lib test",
+    "flutter:test": "cd flutter_app && flutter test",
+    "flutter:run": "cd flutter_app && flutter run",
+    "release:check": "bash deploy/release-check.sh"
   },
   "engines": { "node": ">=20" }
 }
-

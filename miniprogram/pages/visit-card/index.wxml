@@ -1,0 +1,10 @@
+<view class="page visit-card-page">
+  <view class="inline-state" wx:if="{{loading}}">正在加载次卡</view>
+  <view class="inline-state" wx:if="{{error}}">{{error}}</view>
+  <view wx:if="{{gym && !card}}" class="card form-card">
+    <view class="title">分享 {{gym.name}} 次卡</view><view class="muted">这是一张岩友转赠记录，实际入场请以岩馆规则为准。</view>
+    <input data-field="title" value="{{title}}" bindinput="input" placeholder="次卡名称"/><input data-field="visits" type="number" value="{{visits}}" bindinput="input" placeholder="次数"/><input data-field="expiresOn" value="{{expiresOn}}" bindinput="input" placeholder="有效期 YYYY-MM-DD（可选）"/><textarea data-field="note" value="{{note}}" bindinput="input" placeholder="给岩友的说明（可选）"/>
+    <button class="pressable primary" loading="{{saving}}" bindtap="create">创建并分享</button>
+  </view>
+  <view wx:if="{{card}}" class="card card-detail"><view class="eyebrow">岩友次卡</view><view class="title">{{card.title}}</view><view class="gym-name">{{card.gym_name}}</view><view class="visits">剩余 {{card.visits_remaining}} 次</view><view class="muted">{{card.city}} · {{card.address}}</view><view class="note" wx:if="{{card.note}}">{{card.note}}</view><view class="muted">分享人：{{card.creator_name}}</view><button wx:if="{{card.claimable}}" class="pressable primary" bindtap="claim">领取次卡</button><button wx:if="{{card.status==='open'}}" class="pressable" open-type="share">分享给岩友</button></view>
+</view>

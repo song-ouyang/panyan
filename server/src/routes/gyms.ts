@@ -1,4 +1,5 @@
 import type { FastifyPluginAsync } from 'fastify';
+import { z } from 'zod';
 import { query } from '../db.js';
 import { idParams } from '../schemas.js';
 
@@ -53,7 +54,10 @@ export const gymRoutes: FastifyPluginAsync = async (app) => {
 
   app.get('/:id/routes', async (request) => {
     const { id } = idParams.parse(request.params);
-    const { grade, setId } = request.query as { grade?: string; setId?: string };
+    const { grade, setId } = z.object({
+      grade: z.string().regex(/^V([0-9]|1[0-7])$/).optional(),
+      setId: z.string().uuid().optional()
+    }).parse(request.query);
     const result = await query(
       `SELECT r.*, count(s.id)::int send_count
        FROM routes r LEFT JOIN sends s ON s.route_id=r.id

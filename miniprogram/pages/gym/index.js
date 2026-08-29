@@ -5,6 +5,7 @@ Page({
   data: {
     gym: null,
     routes: [],
+    visitCards: [],
     grades: ['全部', 'V0', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7'],
     grade: '全部',
     setId: '',
@@ -67,6 +68,9 @@ Page({
         initialLoading: false,
         error: ''
       });
+      request(`/visit-cards?gymId=${this.id}`).then(cards => {
+        if (!this._disposed && sequence === this.gymLoadSequence) this.setData({ visitCards: cards.items || [] });
+      }).catch(() => {});
       await this.loadRoutes(this.data.grade, setId);
       if (!this._disposed && sequence === this.gymLoadSequence) {
         this.setData({ refreshing: false });
@@ -135,5 +139,13 @@ Page({
 
   submitRoute() {
     wx.navigateTo({ url: `/pages/route-submit/index?gymId=${this.id}` });
+  },
+
+  createVisitCard() {
+    wx.navigateTo({ url: `/pages/visit-card/index?gymId=${this.id}` });
+  },
+
+  openVisitCard(e) {
+    wx.navigateTo({ url: `/pages/visit-card/index?id=${e.currentTarget.dataset.id}` });
   }
 });

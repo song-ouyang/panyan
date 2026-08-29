@@ -54,6 +54,13 @@
       >{{item}}</view>
     </scroll-view>
     <button class="submit-route pressable" bindtap="submitRoute">＋ 标记并投稿新线路</button>
+    <view class="visit-card card">
+      <view class="visit-card-head"><view><view class="visit-card-title">岩友次卡分享</view><view class="muted">转赠到店次数，不含支付与官方核销</view></view><view class="visit-card-create pressable" bindtap="createVisitCard">分享次卡</view></view>
+      <view class="visit-card-item pressable" wx:for="{{visitCards}}" wx:key="id" data-id="{{item.id}}" bindtap="openVisitCard">
+        <view><view>{{item.title}}</view><view class="muted">剩余 {{item.visits_remaining}} 次 · {{item.creator_name}}</view></view><text>›</text>
+      </view>
+      <view class="muted" wx:if="{{!visitCards.length}}">暂时没有可领取的次卡</view>
+    </view>
 
     <view class="routes-region {{routesRefreshing ? 'is-refreshing' : ''}}">
       <view class="routes-refresh" wx:if="{{routesRefreshing}}">正在更新线路</view>

@@ -10,10 +10,19 @@ const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(3000),
   HOST: z.string().default('0.0.0.0'),
-  DATABASE_URL: z.string().min(1),
+  DATABASE_URL: z.string().default(''),
+  PGHOST: z.string().default(''),
+  PGPORT: z.coerce.number().int().positive().default(5432),
+  PGDATABASE: z.string().default(''),
+  PGUSER: z.string().default(''),
+  PGPASSWORD: z.string().default(''),
   JWT_SECRET: z.string().min(16),
   WECHAT_APP_ID: z.string().default(''),
   WECHAT_APP_SECRET: z.string().default(''),
+  WECHAT_MOBILE_APP_ID: z.string().default(''),
+  WECHAT_MOBILE_APP_SECRET: z.string().default(''),
+  APPLE_CLIENT_ID: z.string().default(''),
+  APPLE_TEAM_ID: z.string().default(''),
   UPLOAD_MODE: z.enum(['local', 'oss']).default('local'),
   OSS_REGION: z.string().default('oss-cn-shenzhen'),
   OSS_BUCKET: z.string().default(''),
@@ -23,6 +32,39 @@ const schema = z.object({
   PUBLIC_BASE_URL: z.string().url().default('http://localhost:3000'),
   UPLOAD_DIR: z.string().default('./uploads'),
   MODERATION_MODE: z.enum(['off', 'manual']).default('off')
+}).superRefine((value, context) => {
+  const hasDatabaseUrl = value.DATABASE_URL.length > 0;
+  const hasPostgresFields = Boolean(value.PGHOST && value.PGDATABASE && value.PGUSER && value.PGPASSWORD);
+  if (!hasDatabaseUrl && !hasPostgresFields) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['DATABASE_URL'],
+      message: '请设置 DATABASE_URL，或完整设置 PGHOST/PGDATABASE/PGUSER/PGPASSWORD'
+    });
+  }
+  if (value.UPLOAD_MODE === 'oss') {
+    const required = [
+      ['OSS_BUCKET', value.OSS_BUCKET],
+      ['OSS_ACCESS_KEY_ID', value.OSS_ACCESS_KEY_ID],
+      ['OSS_ACCESS_KEY_SECRET', value.OSS_ACCESS_KEY_SECRET],
+      ['OSS_PUBLIC_BASE_URL', value.OSS_PUBLIC_BASE_URL]
+    ] as const;
+    for (const [key, setting] of required) {
+      if (!setting) {
+        context.addIssue({ code: z.ZodIssueCode.custom, path: [key], message: `UPLOAD_MODE=oss 时必须设置 ${key}` });
+      }
+    }
+    if (value.OSS_PUBLIC_BASE_URL && !value.OSS_PUBLIC_BASE_URL.startsWith('https://')) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ['OSS_PUBLIC_BASE_URL'], message: 'OSS_PUBLIC_BASE_URL 必须使用 HTTPS' });
+    }
+  }
+  if (Boolean(value.WECHAT_MOBILE_APP_ID) !== Boolean(value.WECHAT_MOBILE_APP_SECRET)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['WECHAT_MOBILE_APP_ID'],
+      message: 'WECHAT_MOBILE_APP_ID 与 WECHAT_MOBILE_APP_SECRET 必须同时设置或同时留空'
+    });
+  }
 });
 
 export const config = schema.parse(process.env);

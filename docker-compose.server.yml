@@ -15,9 +15,14 @@ services:
       interval: 5s
       timeout: 5s
       retries: 20
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
     networks: [internal]
 
   api:
+    image: wanpan-diary-api:${API_IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: server/Dockerfile
@@ -26,12 +31,20 @@ services:
       NODE_ENV: production
       HOST: 0.0.0.0
       PORT: 3000
-      DATABASE_URL: postgresql://${POSTGRES_USER:-wanpan}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-wanpan}
+      PGHOST: postgres
+      PGPORT: 5432
+      PGDATABASE: ${POSTGRES_DB:-wanpan}
+      PGUSER: ${POSTGRES_USER:-wanpan}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
       PUBLIC_BASE_URL: https://${DOMAIN}
       UPLOAD_DIR: /app/uploads
       JWT_SECRET: ${JWT_SECRET:?请设置 JWT_SECRET}
       WECHAT_APP_ID: ${WECHAT_APP_ID:?请设置 WECHAT_APP_ID}
       WECHAT_APP_SECRET: ${WECHAT_APP_SECRET:?请设置 WECHAT_APP_SECRET}
+      WECHAT_MOBILE_APP_ID: ${WECHAT_MOBILE_APP_ID:-}
+      WECHAT_MOBILE_APP_SECRET: ${WECHAT_MOBILE_APP_SECRET:-}
+      APPLE_CLIENT_ID: ${APPLE_CLIENT_ID:-com.wanpan.wanpanDiary}
+      APPLE_TEAM_ID: ${APPLE_TEAM_ID:-}
       MODERATION_MODE: ${MODERATION_MODE:-manual}
       UPLOAD_MODE: ${UPLOAD_MODE:-local}
       OSS_REGION: ${OSS_REGION:-oss-cn-chengdu}
@@ -40,6 +53,8 @@ services:
       OSS_ACCESS_KEY_SECRET: ${OSS_ACCESS_KEY_SECRET:-}
       OSS_PUBLIC_BASE_URL: ${OSS_PUBLIC_BASE_URL:-}
     command: ["sh", "-c", "node server/dist/db/migrate.js && node server/dist/index.js"]
+    init: true
+    stop_grace_period: 30s
     ports:
       - "127.0.0.1:${API_HOST_PORT:-3100}:3000"
     volumes:
@@ -48,10 +63,14 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
       interval: 10s
       timeout: 5s
       retries: 12
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "5"
     networks: [internal]
 
 networks:

@@ -8,6 +8,7 @@ import { resolve } from 'node:path';
 import { mkdir } from 'node:fs/promises';
 import { ZodError } from 'zod';
 import { config } from './config.js';
+import { query } from './db.js';
 import { authPlugin } from './auth.js';
 import { authRoutes } from './routes/auth.js';
 import { gymRoutes } from './routes/gyms.js';
@@ -21,9 +22,15 @@ import { adminRoutes } from './routes/admin.js';
 import { submissionRoutes } from './routes/submissions.js';
 import { reportRoutes } from './routes/reports.js';
 import { notificationRoutes } from './routes/notifications.js';
+import { visitCardRoutes } from './routes/visit-cards.js';
 
 export async function buildApp() {
-  const app = Fastify({ logger: true, bodyLimit: 2 * 1024 * 1024 });
+  const app = Fastify({
+    logger: true,
+    bodyLimit: 2 * 1024 * 1024,
+    // 生产 API 只通过本机 Nginx 或 Compose 内的 Caddy 暴露；启用后限流和日志才能取得真实客户端 IP。
+    trustProxy: config.NODE_ENV === 'production'
+  });
   await mkdir(resolve(config.UPLOAD_DIR), { recursive: true });
   await app.register(cors, { origin: config.NODE_ENV === 'production' ? false : true });
   await app.register(sensible);
@@ -43,7 +50,34 @@ export async function buildApp() {
   await app.register(submissionRoutes, { prefix: '/api/submissions' });
   await app.register(reportRoutes, { prefix: '/api/reports' });
   await app.register(notificationRoutes, { prefix: '/api/notifications' });
+  await app.register(visitCardRoutes, { prefix: '/api/visit-cards' });
+  app.get('/.well-known/apple-app-site-association', async (_request, reply) => {
+    if (!config.APPLE_TEAM_ID || !config.APPLE_CLIENT_ID) {
+      throw app.httpErrors.serviceUnavailable('Associated Domains 尚未配置');
+    }
+    reply.header('content-type', 'application/json');
+    reply.header('cache-control', 'public, max-age=3600');
+    return {
+      applinks: {
+        apps: [],
+        details: [{
+          appID: `${config.APPLE_TEAM_ID}.${config.APPLE_CLIENT_ID}`,
+          paths: ['/wechat/*'],
+          components: [{ '/': '/wechat/*', comment: 'WeChat OpenSDK Universal Link' }]
+        }]
+      }
+    };
+  });
   app.get('/health', async () => ({ ok: true, timestamp: new Date().toISOString() }));
+  app.get('/ready', async (_request, reply) => {
+    try {
+      await query('SELECT 1');
+      return { ok: true, database: 'ready', timestamp: new Date().toISOString() };
+    } catch (error) {
+      app.log.error({ err: error }, 'Database readiness check failed');
+      return reply.status(503).send({ ok: false, database: 'unavailable' });
+    }
+  });
   app.setErrorHandler((error: unknown, _request, reply) => {
     if (error instanceof ZodError) return reply.status(400).send({ code: 'VALIDATION_ERROR', message: error.issues[0]?.message, issues: error.issues });
     const known = error instanceof Error ? error as Error & { statusCode?: number; code?: string } : null;

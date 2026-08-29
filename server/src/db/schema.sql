@@ -19,10 +19,15 @@ CREATE TABLE IF NOT EXISTS users (
   nickname varchar(32) NOT NULL DEFAULT '岩友',
   avatar_url text,
   bio varchar(120),
+  profile_completed boolean NOT NULL DEFAULT true,
   role user_role NOT NULL DEFAULT 'user',
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
+
+-- Existing accounts stay complete. Auth endpoints explicitly mark new accounts
+-- incomplete when the identity provider did not provide usable profile data.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_completed boolean NOT NULL DEFAULT true;
 
 CREATE TABLE IF NOT EXISTS gym_brands (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -46,6 +51,32 @@ CREATE TABLE IF NOT EXISTS gyms (
   description text,
   verified boolean NOT NULL DEFAULT false,
   created_at timestamptz NOT NULL DEFAULT now()
+);
+
+-- A shareable visit-card is user generated until a gym admin connects a real
+-- point-of-sale / redemption workflow.  It intentionally carries no payment
+-- state, so a card cannot be mistaken for an official membership product.
+CREATE TABLE IF NOT EXISTS gym_visit_cards (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  gym_id uuid NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
+  creator_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  title varchar(80) NOT NULL,
+  visits_total integer NOT NULL CHECK (visits_total BETWEEN 1 AND 100),
+  visits_remaining integer NOT NULL CHECK (visits_remaining BETWEEN 0 AND 100),
+  expires_on date,
+  note varchar(200),
+  status varchar(16) NOT NULL DEFAULT 'open' CHECK (status IN ('open','claimed','expired','cancelled')),
+  claimed_by uuid REFERENCES users(id) ON DELETE SET NULL,
+  claimed_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  CHECK (visits_remaining <= visits_total)
+);
+
+CREATE TABLE IF NOT EXISTS gym_admins (
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  gym_id uuid NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY(user_id, gym_id)
 );
 
 ALTER TABLE gyms ADD COLUMN IF NOT EXISTS district varchar(40);
@@ -137,6 +168,7 @@ CREATE TABLE IF NOT EXISTS meetup_members (
 CREATE TABLE IF NOT EXISTS route_submissions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   submitter_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  client_request_id uuid,
   gym_id uuid NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
   route_set_id uuid REFERENCES route_sets(id) ON DELETE SET NULL,
   name varchar(80) NOT NULL,
@@ -144,10 +176,14 @@ CREATE TABLE IF NOT EXISTS route_submissions (
   color varchar(24) NOT NULL,
   wall_zone varchar(40),
   cover_url text NOT NULL,
+  video_url text,
+  caption varchar(300),
+  visibility varchar(12) NOT NULL DEFAULT 'public' CHECK (visibility IN ('public','friends','private')),
   points jsonb NOT NULL DEFAULT '[]'::jsonb,
   status review_status NOT NULL DEFAULT 'pending',
   review_note varchar(300),
   reviewer_id uuid REFERENCES users(id) ON DELETE SET NULL,
+  published_route_id uuid REFERENCES routes(id) ON DELETE SET NULL,
   reviewed_at timestamptz,
   created_at timestamptz NOT NULL DEFAULT now()
 );
@@ -179,13 +215,27 @@ ALTER TABLE sends ADD COLUMN IF NOT EXISTS moderation_status review_status NOT N
 ALTER TABLE sends ALTER COLUMN route_id DROP NOT NULL;
 ALTER TABLE sends ADD COLUMN IF NOT EXISTS image_urls text[] NOT NULL DEFAULT '{}';
 ALTER TABLE comments ADD COLUMN IF NOT EXISTS moderation_status review_status NOT NULL DEFAULT 'approved';
+ALTER TABLE route_submissions ADD COLUMN IF NOT EXISTS published_route_id uuid REFERENCES routes(id) ON DELETE SET NULL;
+ALTER TABLE route_submissions ADD COLUMN IF NOT EXISTS client_request_id uuid;
+ALTER TABLE route_submissions ADD COLUMN IF NOT EXISTS video_url text;
+ALTER TABLE route_submissions ADD COLUMN IF NOT EXISTS caption varchar(300);
+ALTER TABLE route_submissions ADD COLUMN IF NOT EXISTS visibility varchar(12) NOT NULL DEFAULT 'public';
+
+DO $$ BEGIN
+  ALTER TABLE route_submissions
+    ADD CONSTRAINT route_submissions_visibility_check
+    CHECK (visibility IN ('public','friends','private'));
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 CREATE INDEX IF NOT EXISTS idx_routes_gym_set ON routes(gym_id, route_set_id);
 CREATE INDEX IF NOT EXISTS idx_gyms_city_district_brand ON gyms(city,district,brand_id);
+CREATE INDEX IF NOT EXISTS idx_gym_visit_cards_gym_status ON gym_visit_cards(gym_id,status,created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_sends_user_time ON sends(user_id, sent_at DESC);
 CREATE INDEX IF NOT EXISTS idx_sends_route ON sends(route_id);
 CREATE INDEX IF NOT EXISTS idx_meetups_gym_time ON meetups(gym_id, starts_at);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_friendships_pair ON friendships(LEAST(requester_id,addressee_id),GREATEST(requester_id,addressee_id));
 CREATE INDEX IF NOT EXISTS idx_route_submissions_status ON route_submissions(status,created_at);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_route_submissions_idempotency ON route_submissions(submitter_id,client_request_id);
+CREATE INDEX IF NOT EXISTS idx_gym_admins_gym ON gym_admins(gym_id,user_id);
 CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status,created_at);
 CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id,created_at DESC);

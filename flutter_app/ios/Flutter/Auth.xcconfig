@@ -1,0 +1,5 @@
+// Public identifiers only. The AppSecret always belongs on the server.
+// Replace the placeholder after creating a WeChat Open Platform mobile app.
+WECHAT_MOBILE_APP_ID=wanpan-wechat-unconfigured
+WECHAT_UNIVERSAL_LINK_DOMAIN=panyan-api.gblh.cloud
+#include? "Auth.local.xcconfig"

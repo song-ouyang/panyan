@@ -1,10 +1,34 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { query } from '../db.js';
+import { query, transaction } from '../db.js';
 import { commentBody, idParams, pagination, sendBody } from '../schemas.js';
 import { initialModerationStatus } from '../moderation.js';
 
 export const sendRoutes: FastifyPluginAsync = async (app) => {
+  const assertVisibleSend = async (sendId: string, viewerId: string) => {
+    const visible = await query(
+      `SELECT s.id
+       FROM sends s
+       WHERE s.id=$1 AND (
+         s.user_id=$2 OR (
+           s.moderation_status='approved' AND (
+             s.visibility='public' OR (
+               s.visibility='friends' AND EXISTS (
+                 SELECT 1 FROM friendships f
+                 WHERE f.status='accepted' AND (
+                   (f.requester_id=$2 AND f.addressee_id=s.user_id) OR
+                   (f.addressee_id=$2 AND f.requester_id=s.user_id)
+                 )
+               )
+             )
+           )
+         )
+       )`,
+      [sendId, viewerId]
+    );
+    if (!visible.rowCount) throw app.httpErrors.notFound('动态不存在');
+  };
+
   app.post('/moments', { preHandler: app.authenticate }, async (request) => {
     const body = z.object({ caption: z.string().trim().max(300).default(''), imageUrls: z.array(z.string().url()).max(9).default([]), visibility: z.enum(['public', 'friends', 'private']).default('public') }).parse(request.body);
     if (!body.caption && !body.imageUrls.length) throw app.httpErrors.badRequest('请填写内容或选择图片');
@@ -27,13 +51,16 @@ export const sendRoutes: FastifyPluginAsync = async (app) => {
        FROM sends s JOIN routes r ON r.id=s.route_id
        WHERE s.user_id=$1 AND s.moderation_status='approved'`, [request.user.sub]
     );
-    const result = await query(
-      `INSERT INTO sends(user_id,route_id,attempts,video_url,caption,visibility,moderation_status)
-       VALUES($1,$2,$3,$4,$5,$6,$7)
-       ON CONFLICT(user_id,route_id) DO UPDATE SET attempts=EXCLUDED.attempts,video_url=EXCLUDED.video_url,
-       caption=EXCLUDED.caption,visibility=EXCLUDED.visibility,moderation_status=EXCLUDED.moderation_status,sent_at=now()
-       RETURNING *`, [request.user.sub, body.routeId, body.attempts, body.videoUrl ?? null, body.caption ?? null, body.visibility, moderationStatus]
-    );
+    const result = await transaction(async (client) => {
+      return client.query(
+        `INSERT INTO sends(user_id,route_id,attempts,video_url,caption,visibility,moderation_status)
+         VALUES($1,$2,$3,$4,$5,$6,$7)
+         ON CONFLICT(user_id,route_id) DO UPDATE SET attempts=EXCLUDED.attempts,video_url=EXCLUDED.video_url,
+         caption=EXCLUDED.caption,visibility=EXCLUDED.visibility,moderation_status=EXCLUDED.moderation_status,sent_at=now()
+         RETURNING *`,
+        [request.user.sub, body.routeId, body.attempts, body.videoUrl ?? null, body.caption ?? null, body.visibility, moderationStatus]
+      );
+    });
     const routeInfo = route.rows[0]!;
     const previousMax = previous.rows[0]?.max_grade ?? -1;
     const gradeNumber = routeInfo.grade_number as number;
@@ -51,16 +78,31 @@ export const sendRoutes: FastifyPluginAsync = async (app) => {
   });
 
   app.get('/feed', { preHandler: app.authenticate }, async (request) => {
-    const { cursor, limit } = pagination.parse(request.query);
+    const { cursor, limit, scope } = pagination.extend({
+      scope: z.enum(['square', 'friends']).default('square')
+    }).parse(request.query);
     const result = await query(
-      `SELECT s.id,s.attempts,s.video_url,s.image_urls,s.caption,s.sent_at,u.id user_id,u.nickname,u.avatar_url,
+      `SELECT s.id,s.attempts,s.video_url,s.image_urls,s.caption,s.visibility,s.sent_at,u.id user_id,u.nickname,u.avatar_url,
               r.id route_id,r.name route_name,r.grade,r.color,g.id gym_id,g.name gym_name,
               count(DISTINCT l.user_id)::int like_count,count(DISTINCT c.id)::int comment_count,
               coalesce(bool_or(l.user_id=$1),false) liked
        FROM sends s JOIN users u ON u.id=s.user_id LEFT JOIN routes r ON r.id=s.route_id LEFT JOIN gyms g ON g.id=r.gym_id
-       LEFT JOIN post_likes l ON l.send_id=s.id LEFT JOIN comments c ON c.send_id=s.id
-       WHERE s.visibility='public' AND s.moderation_status='approved' AND ($2::timestamptz IS NULL OR s.sent_at<$2)
-       GROUP BY s.id,u.id,r.id,g.id ORDER BY s.sent_at DESC LIMIT $3`, [request.user.sub, cursor ?? null, limit]
+       LEFT JOIN post_likes l ON l.send_id=s.id
+       LEFT JOIN comments c ON c.send_id=s.id AND c.moderation_status='approved'
+       WHERE s.moderation_status='approved' AND ($2::timestamptz IS NULL OR s.sent_at<$2) AND (
+         ($4::text='square' AND s.visibility='public') OR
+         ($4::text='friends' AND s.visibility IN ('public','friends') AND (
+           s.user_id=$1 OR EXISTS (
+             SELECT 1 FROM friendships f
+             WHERE f.status='accepted' AND (
+               (f.requester_id=$1 AND f.addressee_id=s.user_id) OR
+               (f.addressee_id=$1 AND f.requester_id=s.user_id)
+             )
+           )
+         ))
+       )
+       GROUP BY s.id,u.id,r.id,g.id ORDER BY s.sent_at DESC,s.id DESC LIMIT $3`,
+      [request.user.sub, cursor ?? null, limit, scope]
     );
     return { items: result.rows, nextCursor: result.rows.at(-1)?.sent_at ?? null };
   });
@@ -68,12 +110,28 @@ export const sendRoutes: FastifyPluginAsync = async (app) => {
   app.get('/:id', { preHandler: app.authenticate }, async (request) => {
     const { id } = idParams.parse(request.params);
     const result = await query(
-      `SELECT s.id,s.attempts,s.video_url,s.image_urls,s.caption,s.visibility,s.sent_at,
+      `SELECT s.id,s.attempts,s.video_url,s.image_urls,s.caption,s.visibility,s.moderation_status,s.sent_at,
               u.id user_id,u.nickname,u.avatar_url,r.id route_id,r.name route_name,r.grade,r.color,
               g.id gym_id,g.name gym_name,count(DISTINCT l.user_id)::int like_count,
+              (SELECT count(*)::int FROM comments c WHERE c.send_id=s.id AND c.moderation_status='approved') comment_count,
               coalesce(bool_or(l.user_id=$2),false) liked
        FROM sends s JOIN users u ON u.id=s.user_id LEFT JOIN routes r ON r.id=s.route_id LEFT JOIN gyms g ON g.id=r.gym_id
-       LEFT JOIN post_likes l ON l.send_id=s.id WHERE s.id=$1
+       LEFT JOIN post_likes l ON l.send_id=s.id
+       WHERE s.id=$1 AND (
+         s.user_id=$2 OR (
+           s.moderation_status='approved' AND (
+             s.visibility='public' OR (
+               s.visibility='friends' AND EXISTS (
+                 SELECT 1 FROM friendships f
+                 WHERE f.status='accepted' AND (
+                   (f.requester_id=$2 AND f.addressee_id=s.user_id) OR
+                   (f.addressee_id=$2 AND f.requester_id=s.user_id)
+                 )
+               )
+             )
+           )
+         )
+       )
        GROUP BY s.id,u.id,r.id,g.id`, [id, request.user.sub]
     );
     if (!result.rowCount) throw app.httpErrors.notFound('动态不存在');
@@ -86,6 +144,7 @@ export const sendRoutes: FastifyPluginAsync = async (app) => {
 
   app.post('/:id/like', { preHandler: app.authenticate }, async (request) => {
     const { id } = idParams.parse(request.params);
+    await assertVisibleSend(id, request.user.sub);
     await query('INSERT INTO post_likes(send_id,user_id) VALUES($1,$2) ON CONFLICT DO NOTHING', [id, request.user.sub]);
     return { liked: true };
   });
@@ -97,6 +156,7 @@ export const sendRoutes: FastifyPluginAsync = async (app) => {
   app.post('/:id/comments', { preHandler: app.authenticate }, async (request) => {
     const { id } = idParams.parse(request.params);
     const { content } = commentBody.parse(request.body);
+    await assertVisibleSend(id, request.user.sub);
     const result = await query('INSERT INTO comments(send_id,user_id,content,moderation_status) VALUES($1,$2,$3,$4) RETURNING *', [id, request.user.sub, content, initialModerationStatus()]);
     return result.rows[0];
   });

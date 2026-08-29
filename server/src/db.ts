@@ -1,7 +1,15 @@
 import pg from 'pg';
 import { config } from './config.js';
 
-export const pool = new pg.Pool({ connectionString: config.DATABASE_URL });
+export const pool = new pg.Pool(config.DATABASE_URL ? {
+  connectionString: config.DATABASE_URL
+} : {
+  host: config.PGHOST,
+  port: config.PGPORT,
+  database: config.PGDATABASE,
+  user: config.PGUSER,
+  password: config.PGPASSWORD
+});
 
 export async function query<T extends pg.QueryResultRow>(text: string, values: unknown[] = []) {
   return pool.query<T>(text, values);
@@ -21,4 +29,3 @@ export async function transaction<T>(fn: (client: pg.PoolClient) => Promise<T>) 
     client.release();
   }
 }
-

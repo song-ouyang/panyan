@@ -45,6 +45,7 @@ export const rankingRoutes: FastifyPluginAsync = async (app) => {
          LEFT JOIN post_likes l ON l.send_id=s.id
          WHERE ($1::uuid IS NULL OR r.gym_id=$1) AND ($2::uuid IS NULL OR r.route_set_id=$2)
            AND s.sent_at>=date_trunc('month',now()) AND s.moderation_status='approved'
+           AND s.visibility='public'
            AND ($3='national' OR ($3='province' AND g.province=$4) OR ($3='city' AND g.province=$4 AND g.city=$5))
          GROUP BY s.id,r.id
        )
@@ -64,6 +65,7 @@ export const rankingRoutes: FastifyPluginAsync = async (app) => {
          LEFT JOIN post_likes l ON l.send_id=s.id
          WHERE ($1::uuid IS NULL OR r.gym_id=$1) AND ($2::uuid IS NULL OR r.route_set_id=$2)
            AND s.sent_at>=date_trunc('month',now()) AND s.moderation_status='approved'
+           AND s.visibility='public'
            AND ($3='national' OR ($3='province' AND g.province=$4) OR ($3='city' AND g.province=$4 AND g.city=$5))
          GROUP BY s.id,r.id
        ), totals AS (

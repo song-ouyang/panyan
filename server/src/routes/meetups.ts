@@ -35,9 +35,14 @@ export const meetupRoutes: FastifyPluginAsync = async (app) => {
     return transaction(async (client) => {
       const meetup = await client.query(`SELECT max_people,status FROM meetups WHERE id=$1 FOR UPDATE`, [id]);
       if (!meetup.rowCount || meetup.rows[0].status !== 'open') throw app.httpErrors.notFound('约爬不存在或已结束');
+      const existingMember = await client.query(
+        'SELECT 1 FROM meetup_members WHERE meetup_id=$1 AND user_id=$2',
+        [id, request.user.sub]
+      );
+      if (existingMember.rowCount) return { joined: true };
       const count = await client.query('SELECT count(*)::int count FROM meetup_members WHERE meetup_id=$1', [id]);
       if (count.rows[0].count >= meetup.rows[0].max_people) throw app.httpErrors.conflict('人数已满');
-      await client.query('INSERT INTO meetup_members(meetup_id,user_id) VALUES($1,$2) ON CONFLICT DO NOTHING', [id, request.user.sub]);
+      await client.query('INSERT INTO meetup_members(meetup_id,user_id) VALUES($1,$2)', [id, request.user.sub]);
       await client.query(`INSERT INTO notifications(user_id,type,title,content,target_path) SELECT creator_id,'meetup_join','新的约爬成员','有岩友加入了你发起的约爬','/pages/meetups/index' FROM meetups WHERE id=$1 AND creator_id<>$2`, [id,request.user.sub]);
       return { joined: true };
     });

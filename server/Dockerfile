@@ -12,7 +12,9 @@ ENV NODE_ENV=production
 COPY package*.json ./
 COPY server/package.json ./server/package.json
 RUN npm ci --omit=dev
-COPY --from=build /app/server/dist ./server/dist
-COPY server/src/db/schema.sql ./server/dist/db/schema.sql
+COPY --from=build --chown=node:node /app/server/dist ./server/dist
+COPY --chown=node:node server/src/db/schema.sql ./server/dist/db/schema.sql
+RUN mkdir -p /app/uploads && chown -R node:node /app/uploads
+USER node
 EXPOSE 3000
 CMD ["node", "server/dist/index.js"]

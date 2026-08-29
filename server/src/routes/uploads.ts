@@ -1,14 +1,20 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { createWriteStream } from 'node:fs';
-import { mkdir } from 'node:fs/promises';
-import { extname, resolve } from 'node:path';
+import { mkdir, rm } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { randomUUID } from 'node:crypto';
 import OSS from 'ali-oss';
 import { z } from 'zod';
 import { config } from '../config.js';
 
-const allowed = new Set(['video/mp4', 'video/quicktime', 'image/jpeg', 'image/png', 'image/webp']);
+const extensionByMime = new Map([
+  ['video/mp4', '.mp4'],
+  ['video/quicktime', '.mov'],
+  ['image/jpeg', '.jpg'],
+  ['image/png', '.png'],
+  ['image/webp', '.webp']
+]);
 
 function ossClient() {
   if (config.UPLOAD_MODE !== 'oss' || !config.OSS_BUCKET || !config.OSS_ACCESS_KEY_ID || !config.OSS_ACCESS_KEY_SECRET) {
@@ -17,32 +23,44 @@ function ossClient() {
   return new OSS({ region: config.OSS_REGION, bucket: config.OSS_BUCKET, accessKeyId: config.OSS_ACCESS_KEY_ID, accessKeySecret: config.OSS_ACCESS_KEY_SECRET, secure: true });
 }
 
-function assertOwnedKey(key: string, userId: string) {
-  if (!key.startsWith(`videos/${userId}/`) || key.includes('..')) throw new Error('无权操作该上传任务');
-}
-
 function publicOssUrl(key: string) {
   const base = config.OSS_PUBLIC_BASE_URL || `https://${config.OSS_BUCKET}.${config.OSS_REGION}.aliyuncs.com`;
   return `${base.replace(/\/$/, '')}/${key.split('/').map(encodeURIComponent).join('/')}`;
 }
 
 export const uploadRoutes: FastifyPluginAsync = async (app) => {
+  const assertOwnedKey = (key: string, userId: string) => {
+    if (!key.startsWith(`videos/${userId}/`) || key.includes('..')) {
+      throw app.httpErrors.forbidden('无权操作该上传任务');
+    }
+  };
+
   app.post('/', { preHandler: app.authenticate }, async (request) => {
     const part = await request.file({ limits: { fileSize: 100 * 1024 * 1024, files: 1 } });
-    if (!part || !allowed.has(part.mimetype)) throw app.httpErrors.badRequest('仅支持 MP4/MOV/JPG/PNG/WebP');
-    const extension = extname(part.filename).toLowerCase() || (part.mimetype.startsWith('video/') ? '.mp4' : '.jpg');
+    const extension = part ? extensionByMime.get(part.mimetype) : null;
+    if (!part || !extension) throw app.httpErrors.badRequest('仅支持 MP4/MOV/JPG/PNG/WebP');
     const date = new Date().toISOString().slice(0, 7);
     const relative = `${date}/${randomUUID()}${extension}`;
     const directory = resolve(config.UPLOAD_DIR, date);
     await mkdir(directory, { recursive: true });
-    await pipeline(part.file, createWriteStream(resolve(config.UPLOAD_DIR, relative)));
+    const target = resolve(config.UPLOAD_DIR, relative);
+    await pipeline(part.file, createWriteStream(target));
+    if (part.file.truncated) {
+      await rm(target, { force: true });
+      throw app.httpErrors.payloadTooLarge('文件不能超过 100MB');
+    }
     return { url: `${config.PUBLIC_BASE_URL}/uploads/${relative}` };
   });
 
   app.post('/multipart/init', { preHandler: app.authenticate, config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (request) => {
-    const body = z.object({ filename: z.string().min(1).max(180), mimeType: z.literal('video/mp4'), size: z.number().int().positive().max(1024 * 1024 * 1024) }).parse(request.body);
+    const body = z.object({
+      filename: z.string().min(1).max(180),
+      mimeType: z.enum(['video/mp4', 'video/quicktime']),
+      size: z.number().int().positive().max(1024 * 1024 * 1024)
+    }).parse(request.body);
     const client = ossClient();
-    const key = `videos/${request.user.sub}/${new Date().toISOString().slice(0, 7)}/${randomUUID()}.mp4`;
+    const extension = body.mimeType === 'video/quicktime' ? '.mov' : '.mp4';
+    const key = `videos/${request.user.sub}/${new Date().toISOString().slice(0, 7)}/${randomUUID()}${extension}`;
     const result = await client.initMultipartUpload(key, { mime: body.mimeType, headers: { 'Cache-Control': 'public, max-age=31536000' } });
     return { key, uploadId: result.uploadId, partSize: 5 * 1024 * 1024, size: body.size };
   });

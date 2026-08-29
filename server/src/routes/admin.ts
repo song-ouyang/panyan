@@ -13,39 +13,53 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     await app.authenticate(request);
     if (!['gym_admin', 'admin'].includes(request.user.role)) throw app.httpErrors.forbidden('需要岩馆管理员权限');
   };
-  app.post('/gyms', { preHandler: admin }, async (request) => {
+  const platformAdmin = async (request: FastifyRequest) => {
+    await app.authenticate(request);
+    if (request.user.role !== 'admin') throw app.httpErrors.forbidden('需要平台管理员权限');
+  };
+  const assertGymAccess = async (request: FastifyRequest, gymId: string) => {
+    if (request.user.role === 'admin') return;
+    const membership = await query(
+      'SELECT 1 FROM gym_admins WHERE user_id=$1 AND gym_id=$2',
+      [request.user.sub, gymId]
+    );
+    if (!membership.rowCount) throw app.httpErrors.forbidden('无权管理这个岩馆');
+  };
+  app.post('/gyms', { preHandler: platformAdmin }, async (request) => {
     const b = gym.parse(request.body);
     const result = await query(`INSERT INTO gyms(name,city,district,brand_id,address,latitude,longitude,cover_url,description) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`, [b.name,b.city,b.district??null,b.brandId??null,b.address,b.latitude??null,b.longitude??null,b.coverUrl??null,b.description??null]);
     return result.rows[0];
   });
-  app.post('/brands', { preHandler: admin }, async (request) => {
+  app.post('/brands', { preHandler: platformAdmin }, async (request) => {
     const b = brand.parse(request.body);
     const result = await query(`INSERT INTO gym_brands(name,logo_url,description) VALUES($1,$2,$3) ON CONFLICT(name) DO UPDATE SET logo_url=EXCLUDED.logo_url,description=EXCLUDED.description RETURNING *`, [b.name,b.logoUrl??null,b.description??null]);
     return result.rows[0];
   });
   app.post('/route-sets', { preHandler: admin }, async (request) => {
     const b = routeSet.parse(request.body);
+    await assertGymAccess(request, b.gymId);
     const result = await query(`INSERT INTO route_sets(gym_id,name,starts_on,ends_on) VALUES($1,$2,$3,$4) RETURNING *`, [b.gymId,b.name,b.startsOn,b.endsOn??null]);
     return result.rows[0];
   });
   app.post('/routes', { preHandler: admin }, async (request) => {
     const b = route.parse(request.body);
+    await assertGymAccess(request, b.gymId);
     const result = await query(`INSERT INTO routes(gym_id,route_set_id,name,grade,color,wall_zone,cover_url,setter_name,points) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`, [b.gymId,b.routeSetId??null,b.name,b.grade,b.color,b.wallZone??null,b.coverUrl??null,b.setterName??null,JSON.stringify(b.points)]);
     return result.rows[0];
   });
-  app.get('/moderation', { preHandler: admin }, async () => {
+  app.get('/moderation', { preHandler: platformAdmin }, async () => {
     const sends = await query(`SELECT s.id,s.caption,s.video_url,s.created_at,u.nickname FROM sends s JOIN users u ON u.id=s.user_id WHERE s.moderation_status='pending' ORDER BY s.created_at`);
     const comments = await query(`SELECT c.id,c.content,c.created_at,u.nickname FROM comments c JOIN users u ON u.id=c.user_id WHERE c.moderation_status='pending' ORDER BY c.created_at`);
     const reports = await query(`SELECT * FROM reports WHERE status='pending' ORDER BY created_at`);
     return { sends: sends.rows, comments: comments.rows, reports: reports.rows };
   });
-  app.post('/moderation/:id', { preHandler: admin }, async (request) => {
+  app.post('/moderation/:id', { preHandler: platformAdmin }, async (request) => {
     const { id } = idParams.parse(request.params);
     const b = z.object({ targetType: z.enum(['send','comment','report']), action: z.enum(['approve','reject']) }).parse(request.body);
     const status = b.action === 'approve' ? 'approved' : 'rejected';
     if (b.targetType === 'send') {
-      const reviewed = await query<{ user_id: string; route_id: string | null }>(
-        `UPDATE sends SET moderation_status=$2 WHERE id=$1 AND moderation_status='pending' RETURNING user_id,route_id`,
+      const reviewed = await query<{ user_id: string; route_id: string | null; visibility: string }>(
+        `UPDATE sends SET moderation_status=$2 WHERE id=$1 AND moderation_status='pending' RETURNING user_id,route_id,visibility`,
         [id,status]
       );
       const item = reviewed.rows[0];
@@ -55,7 +69,11 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
           ? (isCheckin ? '完攀审核已通过' : '动态审核已通过')
           : (isCheckin ? '完攀审核未通过' : '动态审核未通过');
         const content = b.action === 'approve'
-          ? (isCheckin ? '本次完攀已进入线路榜和月度排名' : '你的动态已经发布到广场')
+          ? (item.visibility === 'public'
+              ? (isCheckin ? '本次完攀已进入线路榜和月度排名' : '你的动态已经发布到广场')
+              : item.visibility === 'friends'
+                ? (isCheckin ? '本次完攀已分享给岩友，公开榜单不会展示' : '你的动态已经发布到朋友圈')
+                : '内容已通过审核，仅你自己可见')
           : '你可以前往“我的动态”查看本次审核结果';
         await query(
           `INSERT INTO notifications(user_id,type,title,content,target_path) VALUES($1,'content_review',$2,$3,'/pages/my-posts/index')`,

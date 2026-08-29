@@ -1,158 +1,171 @@
-# 完攀日记部署命令（Ubuntu 22.04/24.04）
+# 完攀日记生产部署
 
-## 需要提前准备
+当前服务器环境：CentOS 7、项目目录 `/www/wwwroot/wanpan-diary`，并由宝塔/Nginx 承担 HTTPS。CentOS 7 已停止维护，Docker 官方也只支持仍在维护的 CentOS 版本；安装脚本因此固定使用官方仓库最后的 CentOS 7 构建。本方案可用于当前上线，但系统与 Docker 均无法继续获得完整安全更新，应尽快迁移到 Alibaba Cloud Linux 3 或 Rocky Linux 9。
 
-- 一台有公网 IP 的 Ubuntu 22.04 或 24.04 服务器
-- 一个已备案域名，例如 `api.wanpan.example.com`
-- 域名的 A 记录已指向服务器公网 IP
-- 安全组放行 TCP `22`、`80`、`443`，以及 UDP `443`
-- 微信公众平台重置后的新 AppSecret
+生产 Compose 的 PostgreSQL 不暴露 `5432`，API 只监听服务器本机 `127.0.0.1:3100`；公网只开放 Nginx 的 `80/443`。
 
-不要开放 PostgreSQL 的 `5432` 端口，生产 Compose 只允许 API 在内部网络访问数据库。
+## 首次部署
 
-## 1. 首次安装 Docker
+域名需提前将 A 记录指向服务器公网 IP；阿里云安全组放行 TCP `22`、`80`、`443`，不要放行 `3100` 或 `5432`。
 
-SSH 登录服务器后执行：
+在 Mac 推送代码前，可一键复验后端、Flutter、依赖审计、Compose 和生产镜像：
 
 ```bash
-sudo apt update
-sudo apt install -y ca-certificates curl
-sudo install -m 0755 -d /etc/apt/keyrings
-sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
-sudo chmod a+r /etc/apt/keyrings/docker.asc
-
-sudo tee /etc/apt/sources.list.d/docker.sources >/dev/null <<EOF
-Types: deb
-URIs: https://download.docker.com/linux/ubuntu
-Suites: $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}")
-Components: stable
-Architectures: $(dpkg --print-architecture)
-Signed-By: /etc/apt/keyrings/docker.asc
-EOF
-
-sudo apt update
-sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-sudo systemctl enable --now docker
-sudo docker run --rm hello-world
+npm run release:check
 ```
 
-如果使用非 root 用户，可执行：
+服务器执行下面这一整段：
 
 ```bash
-sudo usermod -aG docker "$USER"
+set -euo pipefail
+cd /www/wwwroot/wanpan-diary
+git pull --ff-only origin main
+bash deploy/install-docker-centos7.sh
+test -f .env.production || cp .env.production.example .env.production
+chmod 600 .env.production
+echo "请确认 /www/wwwroot/wanpan-diary/.env.production 已填写，再执行：bash deploy/server-deploy.sh"
 ```
 
-退出 SSH 后重新登录，让用户组权限生效。
-
-## 2. 在 Mac 上生成生产配置
-
-```bash
-cd "/Users/guoba/Documents/爬墙高手"
-cp .env.production.example .env.production
-openssl rand -hex 32
-openssl rand -hex 32
-```
-
-将两次生成的不同随机值分别用于 `POSTGRES_PASSWORD` 和 `JWT_SECRET`，然后编辑 `.env.production`：
+如果 `.env.production` 还没填写，可使用宝塔文件管理器或 `vi .env.production`，不依赖 `nano`。至少配置：
 
 ```env
-DOMAIN=api.你的域名.com
-ACME_EMAIL=你的邮箱
+DOMAIN=panyan-api.gblh.cloud
+ACME_EMAIL=你的证书通知邮箱
+API_HOST_PORT=3100
+
 POSTGRES_DB=wanpan
 POSTGRES_USER=wanpan
-POSTGRES_PASSWORD=第一段随机值
-JWT_SECRET=第二段随机值
-WECHAT_APP_ID=wx87ff92b724ffea73
-WECHAT_APP_SECRET=重置后的新AppSecret
+POSTGRES_PASSWORD=至少32位随机值
+JWT_SECRET=另一段至少32位随机值
+
+WECHAT_APP_ID=微信小程序AppID
+WECHAT_APP_SECRET=微信小程序AppSecret
+# 未申请微信开放平台「移动应用」时保持为空
+WECHAT_MOBILE_APP_ID=
+WECHAT_MOBILE_APP_SECRET=
+APPLE_CLIENT_ID=com.wanpan.wanpanDiary
+APPLE_TEAM_ID=Apple开发者TeamID
+
 MODERATION_MODE=manual
 UPLOAD_MODE=oss
-OSS_REGION=oss-cn-shenzhen
-OSS_BUCKET=你的Bucket名称
+OSS_REGION=oss-cn-chengdu
+OSS_BUCKET=Bucket名称
 OSS_ACCESS_KEY_ID=RAM用户AccessKeyId
 OSS_ACCESS_KEY_SECRET=RAM用户AccessKeySecret
-OSS_PUBLIC_BASE_URL=https://你的Bucket访问域名
+OSS_PUBLIC_BASE_URL=https://Bucket的HTTPS访问域名
 ```
 
-`DOMAIN` 不要包含 `https://` 或路径。
+不要把 `.env.production` 提交到 Git，不要在聊天、日志或截图中展示密钥。小程序凭据与微信开放平台“移动应用”凭据不是同一套；后两项未配置时服务仍可上线，但 Flutter 微信登录会明确返回 503。
 
-## 3. 从 Mac 上传并启动
-
-把命令中的服务器 IP 和 SSH 用户替换掉：
+填好后启动：
 
 ```bash
-cd "/Users/guoba/Documents/爬墙高手"
-bash deploy/deploy-from-mac.sh root@服务器公网IP /opt/wanpan-diary
+cd /www/wwwroot/wanpan-diary && bash deploy/server-deploy.sh
 ```
 
-脚本会上传代码、构建镜像、启动 PostgreSQL/API/Caddy、执行数据库迁移，并自动申请 HTTPS 证书。
+该脚本会依次执行：配置检查、已有数据库备份、`git fetch/fast-forward`、构建带 Git 提交号标签的镜像、幂等数据库 migration、启动容器、数据库就绪检查。失败时会输出最近日志，并在存在上一镜像时自动恢复 API。
 
-## 4. 验证
+## 宝塔 Nginx 与 HTTPS
+
+在宝塔中新建站点 `panyan-api.gblh.cloud`，申请 Let's Encrypt 证书并开启强制 HTTPS，然后添加反向代理：
+
+- 代理名称：`wanpan-api`
+- 目标 URL：`http://127.0.0.1:3100`
+- 发送域名：`$host`
+
+将“客户端请求体限制”调到 `110m`，代理读写超时设为 `180s`。完整参考配置见 `deploy/nginx-panyan.conf.example`；证书路径与宝塔实际生成路径不一致时，以宝塔配置为准。修改后必须检查：
 
 ```bash
-curl https://api.你的域名.com/health
-ssh root@服务器公网IP 'cd /opt/wanpan-diary && docker compose --env-file .env.production -f docker-compose.prod.yml ps'
-ssh root@服务器公网IP 'cd /opt/wanpan-diary && docker compose --env-file .env.production -f docker-compose.prod.yml logs --tail=100 api caddy'
+/www/server/nginx/sbin/nginx -t && /www/server/nginx/sbin/nginx -s reload
 ```
 
-健康检查应返回 `{"ok":true,...}`。
+不要让本项目占用 Crush 直聘的域名或端口。若不用宝塔/Nginx，也可以设置 `WANPAN_COMPOSE_FILE=docker-compose.prod.yml`，由仓库内 Caddy 独立占用 `80/443` 并申请证书。
 
-## 5. 修改小程序接口
+## 上线验证
 
-修改 `miniprogram/utils/config.js`：
-
-```js
-module.exports = {
-  API_BASE_URL: 'https://api.你的域名.com/api',
-  UPLOAD_MODE: 'oss',
-  DEV_LOGIN: false
-};
-```
-
-在微信公众平台将 `https://api.你的域名.com` 分别加入：
-
-- request 合法域名
-- uploadFile 合法域名
-- downloadFile 合法域名
-
-还需将 OSS Bucket 的 HTTPS 访问域名加入小程序的 `request` 和 `downloadFile` 合法域名。
-
-## 6. 配置 OSS MP4 分片上传
-
-创建仅允许访问指定 Bucket `videos/*` 路径的 RAM 用户，不要使用阿里云主账号 AccessKey。Bucket 跨域规则至少配置：
-
-- 来源：小程序调试阶段可用 `*`，正式环境按实际来源收紧
-- 允许 Methods：`PUT`、`GET`、`HEAD`
-- 允许 Headers：`*`
-- 暴露 Headers：`ETag`、`x-oss-request-id`
-
-小程序上传流程为：后端初始化 Multipart Upload → 小程序读取 5MB 分片 → 使用15分钟有效的签名 URL 直传 OSS → 后端完成合并。AccessKey Secret 始终只保存在服务器环境变量中。
-
-## 日常更新
-
-代码修改后重新执行同一条命令：
+服务器本机：
 
 ```bash
-bash deploy/deploy-from-mac.sh root@服务器公网IP /opt/wanpan-diary
+cd /www/wwwroot/wanpan-diary
+curl -fsS http://127.0.0.1:3100/health
+curl -fsS http://127.0.0.1:3100/ready
+docker compose --env-file .env.production -f docker-compose.server.yml ps
+docker compose --env-file .env.production -f docker-compose.server.yml logs --tail=100 api postgres
 ```
 
-## 与 Crush直聘共用服务器
-
-如果服务器上的 Nginx/宝塔和 `api.gblh.cloud` 已由 Crush直聘使用，不要启动本项目的 Caddy。使用独立域名 `panyan-api.gblh.cloud`，并让 API 只监听本机 `3100` 端口：
+公网：
 
 ```bash
-docker compose --env-file .env.production -f docker-compose.server.yml up -d --build
-curl http://127.0.0.1:3100/health
+curl -fsS https://panyan-api.gblh.cloud/health
+curl -fsS https://panyan-api.gblh.cloud/ready
+curl -i https://panyan-api.gblh.cloud/.well-known/apple-app-site-association
 ```
 
-将 `deploy/nginx-panyan.conf.example` 加入现有 Nginx 配置并为 `panyan-api.gblh.cloud` 申请 HTTPS 证书。阿里云 OSS 可沿用 Crush直聘的 `crush-oss` Bucket 和 `cn-chengdu` 地域，但建议使用只允许 `videos/*` 前缀的独立 RAM 密钥。
+`/health` 验证 API 进程，`/ready` 会实际查询 PostgreSQL；两者都成功才算后端可用。AASA 应直接返回 `200` 和 `application/json`，不能有 HTTPS 地址之间的 30x 跳转。
 
-## 查看日志和回滚前备份
+仓库还提供真实 PostgreSQL 的后端全流程测试。它会创建和删除测试数据，只能连接本地或预发测试库，绝不能对生产库执行：
 
 ```bash
-ssh root@服务器公网IP
-cd /opt/wanpan-diary
-docker compose --env-file .env.production -f docker-compose.prod.yml logs -f --tail=200 api
-bash deploy/backup.sh
+npm run test:server:e2e
 ```
 
-建议通过服务器 `crontab` 每天执行备份，并把备份同步到另一台机器或对象存储。
+脚本自身也会拒绝在 `NODE_ENV=production` 下运行。
+
+## 以后更新：服务器只复制这一条
+
+```bash
+cd /www/wwwroot/wanpan-diary && bash deploy/server-deploy.sh
+```
+
+脚本自身会拉取 `origin/main`，无需再单独执行 `git pull`。如果服务器 tracked 文件被人工修改，脚本会停止，避免覆盖；`.env.production`、备份和部署状态均已从 Git 排除。
+
+## 备份与回滚
+
+手动数据库备份：
+
+```bash
+cd /www/wwwroot/wanpan-diary && bash deploy/backup.sh
+```
+
+回滚到上一份健康 API 镜像（不回退数据库）：
+
+```bash
+cd /www/wwwroot/wanpan-diary && bash deploy/rollback.sh
+```
+
+备份默认保存于 `backups/`、权限为仅 root 可读、保留 14 天。建议另行同步至 OSS。可加入 root 的 `crontab -e`：
+
+```cron
+15 3 * * * cd /www/wwwroot/wanpan-diary && bash deploy/backup.sh >> /var/log/wanpan-backup.log 2>&1
+```
+
+恢复数据库会覆盖现有数据，必须先停 API、再由运维人员确认备份文件后执行：
+
+```bash
+cd /www/wwwroot/wanpan-diary
+docker compose --env-file .env.production -f docker-compose.server.yml stop api
+gunzip -c backups/要恢复的文件.sql.gz | docker compose --env-file .env.production -f docker-compose.server.yml exec -T postgres sh -ec 'exec psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" "$POSTGRES_DB"'
+docker compose --env-file .env.production -f docker-compose.server.yml up -d api
+curl -fsS http://127.0.0.1:3100/ready
+```
+
+## OSS 与客户端配置
+
+- 使用只允许目标 Bucket（推荐进一步限制 `videos/*`）的独立 RAM 用户，不使用阿里云主账号 AccessKey。
+- 客户端使用 5MB 分片和 15 分钟预签名 URL 直传 OSS；AccessKey Secret 只存在后端。
+- 当前 App 直接保存并展示 `OSS_PUBLIC_BASE_URL` 下的 URL，因此该域名必须可经 HTTPS 读取对象；如果 Bucket 为私有读，需要后续增加 CDN 鉴权或读取签名。
+- OSS CORS 至少允许 `PUT/GET/HEAD`，Headers 为 `*`，暴露 `ETag` 和 `x-oss-request-id`。
+- 微信公众平台把 API HTTPS 域名加入 `request/uploadFile/downloadFile` 合法域名，把 OSS HTTPS 域名加入 `request/downloadFile` 合法域名。
+- Flutter 正式包使用 `PRODUCTION_API_BASE_URL=https://panyan-api.gblh.cloud/api`，并配置微信开放平台移动应用 AppID 和 Universal Link `https://panyan-api.gblh.cloud/wechat/`。
+
+## 常用排障
+
+```bash
+cd /www/wwwroot/wanpan-diary
+docker compose --env-file .env.production -f docker-compose.server.yml ps
+docker compose --env-file .env.production -f docker-compose.server.yml logs -f --tail=200 api postgres
+df -h
+docker system df
+```
+
+不要执行 `docker compose down -v`，`-v` 会删除 PostgreSQL 和本地上传持久卷。

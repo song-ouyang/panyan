@@ -28,6 +28,11 @@
   border: 2rpx dashed rgba(242, 103, 79, .34);
   border-radius: 22rpx;
 }
+.visit-card { margin-bottom: 24rpx; }
+.visit-card-head,.visit-card-item { display:flex; align-items:center; justify-content:space-between; }
+.visit-card-title { font-size:32rpx; font-weight:900; }
+.visit-card-create { color:var(--color-accent-strong); font-weight:900; }
+.visit-card-item { margin-top:20rpx; padding-top:18rpx; border-top:1rpx solid #edf0f2; font-weight:800; }
 .routes-region { opacity: 1; transition: opacity 160ms var(--ease-out); }
 .routes-region.is-refreshing { opacity: .68; }
 .routes-refresh,

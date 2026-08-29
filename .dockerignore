@@ -1,8 +1,12 @@
-.git
-node_modules
-server/node_modules
-server/dist
-server/.env
-.env.production
-uploads
-.DS_Store
+# The production image only builds the Fastify workspace. Keep Flutter,
+# mini-program, local databases, credentials and generated artifacts out of
+# the Docker build context so server deployments stay fast and reproducible.
+*
+!package.json
+!package-lock.json
+!server/
+!server/Dockerfile
+!server/package.json
+!server/tsconfig.json
+!server/src/
+!server/src/**

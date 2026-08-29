@@ -4,6 +4,7 @@
     "pages/gyms/index",
     "pages/brand/index",
     "pages/gym/index",
+    "pages/visit-card/index",
     "pages/route/index",
     "pages/route-submit/index",
     "pages/submissions/index",
