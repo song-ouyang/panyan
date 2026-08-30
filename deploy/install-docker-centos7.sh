@@ -25,16 +25,79 @@ if [[ "${ID:-}" != "centos" || "${VERSION_ID%%.*}" != "7" ]]; then
 fi
 
 echo "注意：CentOS 7 已停止维护。这里仅完成现有服务器部署，建议后续迁移到 Alibaba Cloud Linux 3 或 Rocky Linux 9。"
-yum install -y yum-utils ca-certificates curl git
-yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+
+# CentOS 7 的公共 mirrorlist 已下线。阿里云旧镜像通常已经切到
+# Vault；若当前 yum 源失效，仅对本脚本后续命令使用阿里云 Vault，
+# 不删除服务器原有 repo 文件。
+YUM_BASE_ARGS=()
+if ! yum -q makecache >/dev/null 2>&1; then
+  case "$(uname -m)" in
+    x86_64)
+      vault_root="centos-vault"
+      vault_gpg_key="RPM-GPG-KEY-CentOS-7"
+      ;;
+    aarch64)
+      vault_root="centos-altarch"
+      vault_gpg_key="RPM-GPG-KEY-CentOS-7-aarch64"
+      ;;
+    *) echo "不支持的 CPU 架构：$(uname -m)" >&2; exit 1 ;;
+  esac
+  cat > /etc/yum.repos.d/wanpan-centos-vault.repo <<EOF
+[wanpan-base]
+name=Wanpan CentOS 7 Base Vault
+baseurl=https://mirrors.aliyun.com/${vault_root}/7.9.2009/os/\$basearch/
+enabled=1
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/${vault_gpg_key}
+       file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7
+
+[wanpan-updates]
+name=Wanpan CentOS 7 Updates Vault
+baseurl=https://mirrors.aliyun.com/${vault_root}/7.9.2009/updates/\$basearch/
+enabled=1
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/${vault_gpg_key}
+       file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7
+
+[wanpan-extras]
+name=Wanpan CentOS 7 Extras Vault
+baseurl=https://mirrors.aliyun.com/${vault_root}/7.9.2009/extras/\$basearch/
+enabled=1
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/${vault_gpg_key}
+       file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7
+EOF
+  YUM_BASE_ARGS=(--disablerepo=* --enablerepo=wanpan-base,wanpan-updates,wanpan-extras)
+fi
+
+yum "${YUM_BASE_ARGS[@]}" install -y yum-utils ca-certificates curl git
+yum-config-manager --add-repo https://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo
 # Docker 官方已不再支持 CentOS 7，因此不能安装仓库中面向新系统的 latest。
 # 固定到官方仓库最后一组 el7 构建，保证这台遗留服务器可重复安装。
-yum install -y \
-  docker-ce-26.1.4-1.el7 \
-  docker-ce-cli-26.1.4-1.el7 \
-  containerd.io-1.6.33-3.1.el7 \
-  docker-buildx-plugin-0.14.1-1.el7 \
+docker_packages=(
+  docker-ce-26.1.4-1.el7
+  docker-ce-cli-26.1.4-1.el7
+  containerd.io-1.6.33-3.1.el7
+  docker-buildx-plugin-0.14.1-1.el7
   docker-compose-plugin-2.27.1-1.el7
+)
+docker_installed=0
+for attempt in 1 2 3; do
+  if yum "${YUM_BASE_ARGS[@]}" --enablerepo=docker-ce-stable \
+    --setopt=docker-ce-stable.timeout=60 \
+    --setopt=docker-ce-stable.retries=5 \
+    install -y "${docker_packages[@]}"; then
+    docker_installed=1
+    break
+  fi
+  echo "Docker 软件源连接失败（第 ${attempt}/3 次），清理缓存后重试……" >&2
+  yum "${YUM_BASE_ARGS[@]}" --enablerepo=docker-ce-stable clean metadata >/dev/null 2>&1 || true
+  sleep 3
+done
+if [[ "$docker_installed" != "1" ]]; then
+  echo "Docker 安装失败。请检查服务器能否访问 mirrors.aliyun.com 后重新执行本脚本。" >&2
+  exit 1
+fi
 systemctl enable --now docker
 
 if ! docker compose version >/dev/null 2>&1; then
@@ -51,5 +114,5 @@ fi
 
 docker --version
 docker compose version
-docker run --rm hello-world >/dev/null
+docker info >/dev/null
 echo "Docker 安装并启动完成。"
