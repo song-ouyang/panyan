@@ -20,11 +20,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
   UserProfile? _profile;
   bool _loading = true;
   String? _error;
+  late bool _wasAuthenticated;
 
   @override
   void initState() {
     super.initState();
+    _wasAuthenticated = widget.session.isAuthenticated;
+    widget.session.addListener(_handleSessionChanged);
     _load();
+  }
+
+  @override
+  void dispose() {
+    widget.session.removeListener(_handleSessionChanged);
+    super.dispose();
+  }
+
+  void _handleSessionChanged() {
+    final authenticated = widget.session.isAuthenticated;
+    if (authenticated == _wasAuthenticated) return;
+    _wasAuthenticated = authenticated;
+    if (authenticated) {
+      _load();
+    } else if (mounted) {
+      setState(() {
+        _profile = null;
+        _loading = false;
+        _error = null;
+      });
+    }
   }
 
   Future<void> _load() async {
@@ -94,7 +118,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
     }
     final profile = _profile;
-    if (profile == null) return const SizedBox.shrink();
+    if (profile == null) {
+      return Center(
+        key: const ValueKey('profile-empty-fallback'),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.cloud_off_rounded,
+              size: 52,
+              color: WanpanColors.muted,
+            ),
+            const SizedBox(height: 14),
+            Text(
+              '成长记录暂时没有加载出来',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            TextButton(onPressed: _load, child: const Text('重新加载')),
+          ],
+        ),
+      );
+    }
     return RefreshIndicator(
       key: ValueKey(profile.user.id),
       onRefresh: _load,
@@ -119,10 +163,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
             },
           ),
           const SizedBox(height: 10),
-          const _ActionTile(
+          _ActionTile(
+            key: const Key('profile-calendar-tile'),
             icon: Icons.calendar_month_outlined,
             title: '攀岩日历',
             subtitle: '按日期回看每次上墙',
+            onTap: () {
+              context.push<void>('/profile/calendar');
+            },
           ),
           const SizedBox(height: 10),
           const _ActionTile(
@@ -300,6 +348,7 @@ class _Stat extends StatelessWidget {
 
 class _ActionTile extends StatelessWidget {
   const _ActionTile({
+    super.key,
     required this.icon,
     required this.title,
     required this.subtitle,

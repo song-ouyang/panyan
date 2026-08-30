@@ -528,3 +528,48 @@ describe('route submission validation', () => {
     await app.close();
   });
 });
+
+describe('month dashboard contract', () => {
+  it('rejects an impossible month before querying PostgreSQL', async () => {
+    const app = await createApp(userRoutes, '/api/users');
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/users/me/month-dashboard?month=2026-13'
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(mocks.query).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('uses Shanghai month boundaries for every calendar query', async () => {
+    mocks.query
+      .mockResolvedValueOnce(result())
+      .mockResolvedValueOnce(result([{
+        climbing_days: 0,
+        sends: 0,
+        gyms: 0,
+        max_grade: 0,
+        flashes: 0,
+        videos: 0
+      }]))
+      .mockResolvedValueOnce(result())
+      .mockResolvedValueOnce(result());
+    const app = await createApp(userRoutes, '/api/users');
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/users/me/month-dashboard?month=2026-08'
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({ month: '2026-08', days: [] });
+    expect(mocks.query).toHaveBeenCalledTimes(4);
+    for (const call of mocks.query.mock.calls) {
+      expect(call[0]).toContain("AT TIME ZONE 'Asia/Shanghai'");
+      expect(call[1]).toEqual([viewerId, '2026-08-01']);
+    }
+    await app.close();
+  });
+});

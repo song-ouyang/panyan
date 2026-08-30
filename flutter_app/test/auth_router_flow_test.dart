@@ -54,6 +54,23 @@ class _ProfileApiClient extends ApiClient {
         },
       };
     }
+    if (path == '/users/me/month-dashboard') {
+      final month = queryParameters?['month'] as String;
+      return {
+        'month': month,
+        'days': const [],
+        'summary': {
+          'climbing_days': 0,
+          'sends': 0,
+          'gyms': 0,
+          'max_grade': 0,
+          'flashes': 0,
+          'videos': 0,
+        },
+        'byGrade': const [],
+        'byGym': const [],
+      };
+    }
     throw StateError('Unexpected GET $path');
   }
 }
@@ -134,6 +151,28 @@ void main() {
     expect(find.text('小欧'), findsOneWidget);
     expect(find.text('本月攀爬进度'), findsOneWidget);
 
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('profile-calendar-tile')),
+      220,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.ensureVisible(find.byKey(const Key('profile-calendar-tile')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const Key('profile-calendar-tile')).hitTestable(),
+      findsOneWidget,
+    );
+    await tester.tap(
+      find.byKey(const Key('profile-calendar-tile')).hitTestable(),
+    );
+    await tester.pumpAndSettle();
+
+    expect(router.state.uri.path, '/profile/calendar');
+    expect(find.text('攀岩日历'), findsOneWidget);
+    expect(find.text('第一次记录会在日历里亮起来'), findsOneWidget);
+
+    router.pop();
+    await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
       find.text('退出登录'),
       260,

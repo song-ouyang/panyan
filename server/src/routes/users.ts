@@ -23,8 +23,10 @@ export const userRoutes: FastifyPluginAsync = async (app) => {
     const stats = await query(
       `SELECT count(*)::int total_sends,count(DISTINCT r.gym_id)::int gym_count,
        coalesce(max(substring(r.grade from 2)::int),0)::int max_grade,
-       count(*) FILTER (WHERE s.sent_at>=date_trunc('month',now()))::int monthly_sends,
-       coalesce(max(substring(r.grade from 2)::int) FILTER (WHERE s.sent_at>=date_trunc('month',now())),0)::int monthly_max_grade
+       count(*) FILTER (WHERE s.sent_at >=
+         (date_trunc('month',now() AT TIME ZONE 'Asia/Shanghai') AT TIME ZONE 'Asia/Shanghai'))::int monthly_sends,
+       coalesce(max(substring(r.grade from 2)::int) FILTER (WHERE s.sent_at >=
+         (date_trunc('month',now() AT TIME ZONE 'Asia/Shanghai') AT TIME ZONE 'Asia/Shanghai')),0)::int monthly_max_grade
        FROM sends s JOIN routes r ON r.id=s.route_id
        WHERE s.user_id=$1 AND s.moderation_status='approved'`, [request.user.sub]
     );
@@ -43,24 +45,30 @@ export const userRoutes: FastifyPluginAsync = async (app) => {
     const { months = '6' } = request.query as { months?: string };
     const safeMonths = Math.min(24, Math.max(1, Number(months) || 6));
     const result = await query(
-      `SELECT date_trunc('month',s.sent_at)::date AS "month",r.grade,count(*)::int sends
+      `SELECT date_trunc('month',s.sent_at AT TIME ZONE 'Asia/Shanghai')::date AS "month",r.grade,count(*)::int sends
        FROM sends s JOIN routes r ON r.id=s.route_id
        WHERE s.user_id=$1 AND s.moderation_status='approved'
-       AND s.sent_at >= date_trunc('month',now()) - ($2::int-1)*interval '1 month'
+       AND s.sent_at >= ((date_trunc('month',now() AT TIME ZONE 'Asia/Shanghai') -
+         ($2::int-1)*interval '1 month') AT TIME ZONE 'Asia/Shanghai')
        GROUP BY 1,2 ORDER BY 1,substring(r.grade from 2)::int`, [request.user.sub, safeMonths]
     );
     return { items: result.rows };
   });
   app.get('/me/month-dashboard', { preHandler: app.authenticate }, async (request) => {
-    const rawMonth = (request.query as { month?: string }).month ?? new Date().toISOString().slice(0, 7);
-    if (!/^\d{4}-\d{2}$/.test(rawMonth)) throw app.httpErrors.badRequest('月份格式应为 YYYY-MM');
+    const shanghaiNow = new Date(Date.now() + 8 * 60 * 60 * 1000);
+    const rawMonth = (request.query as { month?: string }).month ?? shanghaiNow.toISOString().slice(0, 7);
+    const monthNumber = Number(rawMonth.slice(5));
+    if (!/^\d{4}-\d{2}$/.test(rawMonth) || monthNumber < 1 || monthNumber > 12) {
+      throw app.httpErrors.badRequest('月份格式应为 YYYY-MM');
+    }
     const monthStart = `${rawMonth}-01`;
     const daily = await query(
       `SELECT to_char(s.sent_at AT TIME ZONE 'Asia/Shanghai','YYYY-MM-DD') AS "day",g.name gym_name,r.grade,
        count(DISTINCT s.route_id)::int sends
        FROM sends s JOIN routes r ON r.id=s.route_id JOIN gyms g ON g.id=r.gym_id
        WHERE s.user_id=$1 AND s.moderation_status='approved'
-       AND s.sent_at >= $2::date AND s.sent_at < $2::date + interval '1 month'
+       AND s.sent_at >= ($2::date::timestamp AT TIME ZONE 'Asia/Shanghai')
+       AND s.sent_at < (($2::date + interval '1 month')::timestamp AT TIME ZONE 'Asia/Shanghai')
        GROUP BY 1,g.id,r.grade ORDER BY 1,g.name,substring(r.grade from 2)::int`, [request.user.sub, monthStart]
     );
     const summary = await query(
@@ -70,19 +78,22 @@ export const userRoutes: FastifyPluginAsync = async (app) => {
        count(*) FILTER (WHERE s.attempts=1)::int flashes,count(*) FILTER (WHERE s.video_url IS NOT NULL)::int videos
        FROM sends s JOIN routes r ON r.id=s.route_id
        WHERE s.user_id=$1 AND s.moderation_status='approved'
-       AND s.sent_at >= $2::date AND s.sent_at < $2::date + interval '1 month'`, [request.user.sub, monthStart]
+       AND s.sent_at >= ($2::date::timestamp AT TIME ZONE 'Asia/Shanghai')
+       AND s.sent_at < (($2::date + interval '1 month')::timestamp AT TIME ZONE 'Asia/Shanghai')`, [request.user.sub, monthStart]
     );
     const byGrade = await query(
       `SELECT r.grade,count(DISTINCT s.route_id)::int sends FROM sends s JOIN routes r ON r.id=s.route_id
        WHERE s.user_id=$1 AND s.moderation_status='approved'
-       AND s.sent_at >= $2::date AND s.sent_at < $2::date + interval '1 month'
+       AND s.sent_at >= ($2::date::timestamp AT TIME ZONE 'Asia/Shanghai')
+       AND s.sent_at < (($2::date + interval '1 month')::timestamp AT TIME ZONE 'Asia/Shanghai')
        GROUP BY r.grade ORDER BY substring(r.grade from 2)::int DESC`, [request.user.sub, monthStart]
     );
     const byGym = await query(
       `SELECT g.id gym_id,g.name gym_name,count(DISTINCT s.route_id)::int sends FROM sends s
        JOIN routes r ON r.id=s.route_id JOIN gyms g ON g.id=r.gym_id
        WHERE s.user_id=$1 AND s.moderation_status='approved'
-       AND s.sent_at >= $2::date AND s.sent_at < $2::date + interval '1 month'
+       AND s.sent_at >= ($2::date::timestamp AT TIME ZONE 'Asia/Shanghai')
+       AND s.sent_at < (($2::date + interval '1 month')::timestamp AT TIME ZONE 'Asia/Shanghai')
        GROUP BY g.id ORDER BY sends DESC,g.name`, [request.user.sub, monthStart]
     );
     return { month: rawMonth, days: daily.rows, summary: summary.rows[0], byGrade: byGrade.rows, byGym: byGym.rows };
@@ -136,7 +147,7 @@ export const userRoutes: FastifyPluginAsync = async (app) => {
        WHERE s.user_id=$1 AND s.visibility='public' AND s.moderation_status='approved'`, [id]
     );
     const monthly = await query(
-      `SELECT to_char(date_trunc('month',s.sent_at),'YYYY-MM') AS "month",g.name gym_name,r.grade,
+      `SELECT to_char(date_trunc('month',s.sent_at AT TIME ZONE 'Asia/Shanghai'),'YYYY-MM') AS "month",g.name gym_name,r.grade,
        count(DISTINCT s.route_id)::int sends
        FROM sends s JOIN routes r ON r.id=s.route_id JOIN gyms g ON g.id=r.gym_id
        WHERE s.user_id=$1 AND s.visibility='public' AND s.moderation_status='approved'

@@ -298,6 +298,37 @@ suite('real PostgreSQL API flow', () => {
     const monthDashboard = await app.inject({ method: 'GET', url: '/api/users/me/month-dashboard', headers: authHeader(owner) });
     expect(monthDashboard.statusCode).toBe(200);
     expect(monthDashboard.json().summary).toMatchObject({ sends: 1, gyms: 1, max_grade: 3 });
+
+    const boundaryRoutes: string[] = [];
+    for (const [name, grade] of [['月界内', 'V1'], ['月界前', 'V2'], ['月界后', 'V4']] as const) {
+      const created = await query<{ id: string }>(
+        `INSERT INTO routes(gym_id,route_set_id,name,grade,color,cover_url,points)
+         VALUES($1,$2,$3,$4,'白色','https://cdn.example.com/month-boundary.jpg',$5) RETURNING id`,
+        [gymId, routeSetId, `E2E ${name}`, grade, JSON.stringify([
+          { x: 0.2, y: 0.8, type: 'start' },
+          { x: 0.7, y: 0.2, type: 'finish' }
+        ])]
+      );
+      boundaryRoutes.push(created.rows[0]!.id);
+    }
+    await query(
+      `INSERT INTO sends(user_id,route_id,attempts,visibility,moderation_status,sent_at)
+       VALUES($1,$2,1,'private','approved','2024-07-31T16:30:00Z'),
+             ($1,$3,1,'private','approved','2024-07-31T15:30:00Z'),
+             ($1,$4,1,'private','approved','2024-08-31T16:30:00Z')`,
+      [owner.user.id, ...boundaryRoutes]
+    );
+    const boundaryCalendar = await app.inject({
+      method: 'GET',
+      url: '/api/users/me/month-dashboard?month=2024-08',
+      headers: authHeader(owner)
+    });
+    expect(boundaryCalendar.statusCode).toBe(200);
+    expect(boundaryCalendar.json().days).toEqual([
+      expect.objectContaining({ day: '2024-08-01', grade: 'V1', sends: 1 })
+    ]);
+    expect(boundaryCalendar.json().summary).toMatchObject({ climbing_days: 1, sends: 1, max_grade: 1 });
+
     const growthSummary = await app.inject({
       method: 'GET',
       url: `/api/users/me/growth-summary?gymId=${gymId}&setId=${routeSetId}`,

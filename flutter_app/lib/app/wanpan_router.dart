@@ -16,6 +16,7 @@ import '../features/gyms/gyms_screen.dart';
 import '../features/gyms/route_picker_screen.dart';
 import '../features/gyms/route_screen.dart';
 import '../features/gyms/route_submission_screen.dart';
+import '../features/profile/climbing_calendar_screen.dart';
 import '../features/profile/friends_screen.dart';
 import '../features/profile/profile_screen.dart';
 import '../features/profile/public_profile_screen.dart';
@@ -94,6 +95,11 @@ GoRouter createWanpanRouter({
           returnTo: _safeReturnTo(state.uri.queryParameters['from']),
           editing: state.uri.queryParameters['editing'] == 'true',
         ),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: '/profile/calendar',
+        builder: (context, state) => ClimbingCalendarScreen(api: api),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>
@@ -231,7 +237,7 @@ GoRouter createWanpanRouter({
 
 bool _isProtectedPath(String path) {
   if (path == '/feed' || path == '/ranking' || path == '/profile') return true;
-  if (path == '/profile/setup') return true;
+  if (path == '/profile/setup' || path.startsWith('/profile/')) return true;
   if (path == '/friends' || path.startsWith('/users/')) return true;
   if (path.startsWith('/posts/')) return true;
   if (path == '/route-submissions' || path.startsWith('/route-submissions/')) {
