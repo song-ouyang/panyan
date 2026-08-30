@@ -109,7 +109,11 @@ suite('real PostgreSQL API flow', () => {
       payload: submissionPayload
     });
     expect(submitted.statusCode).toBe(200);
-    expect(submitted.json()).toMatchObject({ status: 'approved', video_url: submissionPayload.videoUrl });
+    expect(submitted.json()).toMatchObject({
+      status: 'approved',
+      video_url: submissionPayload.videoUrl,
+      send_moderation_status: 'approved'
+    });
     const routeId = submitted.json().published_route_id as string;
     const checkinId = submitted.json().send_id as string;
     expect(routeId).toBeTruthy();
@@ -130,7 +134,11 @@ suite('real PostgreSQL API flow', () => {
     );
     expect(routeCount.rows[0]!.count).toBe(1);
 
-    await query("UPDATE sends SET moderation_status='approved' WHERE id=$1", [checkinId]);
+    const submittedSend = await query<{ moderation_status: string }>(
+      'SELECT moderation_status FROM sends WHERE id=$1',
+      [checkinId]
+    );
+    expect(submittedSend.rows[0]!.moderation_status).toBe('approved');
     const filteredRoutes = await app.inject({
       method: 'GET',
       url: `/api/gyms/${gymId}/routes?grade=V3&setId=${routeSetId}`

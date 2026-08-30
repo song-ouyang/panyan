@@ -461,7 +461,7 @@ describe('route submission validation', () => {
     await app.close();
   });
 
-  it('publishes the route immediately while leaving its video send pending in manual moderation mode', async () => {
+  it('publishes the route and its video immediately even in manual moderation mode', async () => {
     mocks.initialModerationStatus.mockReturnValue('pending');
     mocks.clientQuery
       .mockResolvedValueOnce(result())
@@ -471,7 +471,7 @@ describe('route submission validation', () => {
       .mockResolvedValueOnce(result([{ id: routeId }]))
       .mockResolvedValueOnce(result([{ id: sendId }]))
       .mockResolvedValueOnce(result())
-      .mockResolvedValueOnce(result([{ id: submissionId, status: 'approved', published_route_id: routeId, send_id: sendId, send_moderation_status: 'pending' }]));
+      .mockResolvedValueOnce(result([{ id: submissionId, status: 'approved', published_route_id: routeId, send_id: sendId, send_moderation_status: 'approved' }]));
     const app = await createApp(submissionRoutes, '/api/submissions');
 
     const response = await app.inject({
@@ -484,10 +484,11 @@ describe('route submission validation', () => {
     expect(response.json()).toMatchObject({
       status: 'approved',
       published_route_id: routeId,
-      send_moderation_status: 'pending'
+      send_moderation_status: 'approved'
     });
     const sendCall = mocks.clientQuery.mock.calls.find(([sql]) => (sql as string).includes('INSERT INTO sends'))!;
-    expect(sendCall[1]).toEqual([viewerId, routeId, 'https://example.com/route.mp4', null, 'public', 'pending']);
+    expect(sendCall[1]).toEqual([viewerId, routeId, 'https://example.com/route.mp4', null, 'public', 'approved']);
+    expect(mocks.initialModerationStatus).not.toHaveBeenCalled();
     await app.close();
   });
 

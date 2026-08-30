@@ -1,7 +1,6 @@
 import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { query, transaction } from '../db.js';
-import { initialModerationStatus } from '../moderation.js';
 import { idParams } from '../schemas.js';
 
 const body = z.object({
@@ -39,7 +38,6 @@ export const submissionRoutes: FastifyPluginAsync = async (app) => {
     config: { rateLimit: { max: 12, timeWindow: '1 minute' } }
   }, async (request) => {
     const b = body.parse(request.body);
-    const sendModerationStatus = initialModerationStatus();
     return transaction(async (client) => {
       if (b.clientRequestId) {
         const existing = await client.query(
@@ -97,7 +95,7 @@ export const submissionRoutes: FastifyPluginAsync = async (app) => {
         await client.query<{ id: string }>(
           `INSERT INTO sends(user_id,route_id,attempts,video_url,caption,visibility,moderation_status)
            VALUES($1,$2,1,$3,$4,$5,$6) RETURNING id`,
-          [request.user.sub,routeId,b.videoUrl,b.caption||null,b.visibility,sendModerationStatus]
+          [request.user.sub,routeId,b.videoUrl,b.caption||null,b.visibility,'approved']
         );
       }
       await client.query(
