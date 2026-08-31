@@ -39,9 +39,10 @@ jobs:
             --tag "wanpan-diary-api:$SHORT_REVISION" \
             --file server/Dockerfile \
             .
-          docker pull --platform linux/amd64 postgres:16-alpine
+          docker pull --platform linux/amd64 postgres:16.15-bookworm
           test "$(docker image inspect --format '{{.Architecture}}' "wanpan-diary-api:$SHORT_REVISION")" = amd64
-          test "$(docker image inspect --format '{{.Architecture}}' postgres:16-alpine)" = amd64
+          test "$(docker image inspect --format '{{.Architecture}}' postgres:16.15-bookworm)" = amd64
+          test "$(docker run --rm --pull=never --platform linux/amd64 --entrypoint sh postgres:16.15-bookworm -ec '. /etc/os-release; printf %s:%s "$ID" "$VERSION_CODENAME"')" = debian:bookworm
 
       - name: Package and checksum images
         shell: bash
@@ -51,10 +52,51 @@ jobs:
           mkdir -p release
           docker save "wanpan-diary-api:$SHORT_REVISION" \
             | gzip -1 > release/wanpan-diary-api-amd64.tar.gz
-          docker save postgres:16-alpine \
-            | gzip -1 > release/postgres-16-alpine-amd64.tar.gz
+          docker save postgres:16.15-bookworm \
+            | gzip -1 > release/postgres-16.15-bookworm-amd64.tar.gz
           printf '%s\n' "$GITHUB_SHA" > release/REVISION
           (cd release && sha256sum *.tar.gz > SHA256SUMS)
+
+      - name: Smoke test PostgreSQL with default seccomp
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          CONTAINER="wanpan-bookworm-smoke-$GITHUB_RUN_ID"
+          VOLUME="wanpan-bookworm-smoke-$GITHUB_RUN_ID"
+          cleanup() {
+            docker stop --time 10 "$CONTAINER" >/dev/null 2>&1 || true
+            docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
+            docker volume rm "$VOLUME" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT INT TERM
+          docker volume create "$VOLUME" >/dev/null
+          docker run -d \
+            --pull=never \
+            --name "$CONTAINER" \
+            --network none \
+            -e PGDATA=/var/lib/postgresql/data/pgdata \
+            -e POSTGRES_USER=probe \
+            -e POSTGRES_DB=probe \
+            -e POSTGRES_PASSWORD=wanpan-smoke-only \
+            -v "$VOLUME:/var/lib/postgresql/data" \
+            postgres:16.15-bookworm \
+            postgres -c shared_buffers=16MB -c max_connections=10 >/dev/null
+          ready=0
+          for _ in $(seq 1 60); do
+            if docker logs "$CONTAINER" 2>&1 | grep -q 'PostgreSQL init process complete' && \
+               docker exec "$CONTAINER" pg_isready -q -h 127.0.0.1 -U probe -d probe; then
+              ready=1
+              break
+            fi
+            test "$(docker inspect -f '{{.State.Running}}' "$CONTAINER")" = true || break
+            sleep 1
+          done
+          test "$ready" = 1 || {
+            docker logs --tail=100 "$CONTAINER" >&2
+            exit 1
+          }
+          test "$(docker exec -e PGPASSWORD=wanpan-smoke-only "$CONTAINER" \
+            psql -h 127.0.0.1 -U probe -d probe -Atqc 'select 1')" = 1
 
       - name: Publish public release assets
         shell: bash

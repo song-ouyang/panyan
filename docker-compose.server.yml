@@ -2,13 +2,13 @@ name: wanpan-diary
 
 services:
   postgres:
-    image: postgres:16-alpine
+    # Debian/glibc avoids the Alpine/musl syscall path rejected by Docker's
+    # default seccomp stack on the legacy CentOS 7 host.
+    image: postgres:16.15-bookworm
     restart: unless-stopped
     environment:
-      # Keep PGDATA below the named-volume mount root. Some CentOS 7 hosts
-      # reject PostgreSQL's WAL/lock-file operations at the bare mount root.
-      # The fallback stays at the historical root for upgrade safety. Fresh
-      # installs set POSTGRES_PGDATA to the pgdata subdirectory in the env file.
+      # Keep fresh installs below the named-volume mount root. The fallback
+      # stays at the historical root so an older valid cluster is never hidden.
       PGDATA: ${POSTGRES_PGDATA:-/var/lib/postgresql/data}
       POSTGRES_DB: ${POSTGRES_DB:-wanpan}
       POSTGRES_USER: ${POSTGRES_USER:-wanpan}

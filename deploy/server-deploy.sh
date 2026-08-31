@@ -15,6 +15,8 @@ REMOTE="${WANPAN_REMOTE:-origin}"
 WAIT_SECONDS="${WANPAN_WAIT_SECONDS:-180}"
 SKIP_BUILD="${WANPAN_SKIP_BUILD:-0}"
 EXPECTED_REVISION="${WANPAN_EXPECT_REVISION:-}"
+POSTGRES_IMAGE="postgres:16.15-bookworm"
+ALLOW_POSTGRES_LIBC_SWITCH="${WANPAN_ALLOW_POSTGRES_LIBC_SWITCH:-0}"
 
 cd "$ROOT_DIR"
 
@@ -55,9 +57,76 @@ env_value() {
   printf '%s' "$line"
 }
 
-# New installs use a subdirectory inside the named volume. Running initdb at
-# the bare mount root returns EPERM on some CentOS 7 storage/kernel setups.
-# Refuse to silently hide an older, valid root-level database if one exists.
+smoke_test_postgres_image() (
+  set -Eeuo pipefail
+
+  local suffix probe_container probe_volume ready
+  suffix="$(date +%s)-$$"
+  probe_container="wanpan-postgres-smoke-$suffix"
+  probe_volume="wanpan-postgres-smoke-$suffix"
+  ready=0
+
+  if [[ "$probe_volume" == "wanpan-diary_postgres-data" ]] || \
+     [[ -n "${postgres_volume:-}" && "$probe_volume" == "$postgres_volume" ]]; then
+    echo "错误：PostgreSQL 预检卷名与生产卷冲突，已停止。" >&2
+    return 1
+  fi
+
+  cleanup() {
+    docker stop --time 10 "$probe_container" >/dev/null 2>&1 || true
+    docker rm -f "$probe_container" >/dev/null 2>&1 || true
+    docker volume rm "$probe_volume" >/dev/null 2>&1 || true
+  }
+  trap cleanup EXIT INT TERM
+
+  if [[ "$(docker image inspect --format '{{.Architecture}}' "$POSTGRES_IMAGE")" != "amd64" ]]; then
+    echo "错误：$POSTGRES_IMAGE 不是服务器需要的 amd64 镜像。" >&2
+    return 1
+  fi
+  if [[ "$(docker run --rm --pull=never --network none --entrypoint sh "$POSTGRES_IMAGE" -ec '. /etc/os-release; printf %s:%s "$ID" "$VERSION_CODENAME"')" != "debian:bookworm" ]]; then
+    echo "错误：$POSTGRES_IMAGE 不是预期的 Debian/Bookworm 变体。" >&2
+    return 1
+  fi
+
+  docker volume create "$probe_volume" >/dev/null
+  docker run -d \
+    --pull=never \
+    --name "$probe_container" \
+    --network none \
+    -e PGDATA=/var/lib/postgresql/data/pgdata \
+    -e POSTGRES_USER=probe \
+    -e POSTGRES_DB=probe \
+    -e POSTGRES_PASSWORD=wanpan-smoke-only \
+    -v "$probe_volume:/var/lib/postgresql/data" \
+    "$POSTGRES_IMAGE" \
+    postgres -c shared_buffers=16MB -c max_connections=10 >/dev/null
+
+  for _ in $(seq 1 60); do
+    if docker logs "$probe_container" 2>&1 | grep -q 'PostgreSQL init process complete' && \
+       docker exec "$probe_container" pg_isready -q -h 127.0.0.1 -U probe -d probe; then
+      ready=1
+      break
+    fi
+    [[ "$(docker inspect -f '{{.State.Running}}' "$probe_container" 2>/dev/null || true)" == "true" ]] || break
+    sleep 1
+  done
+
+  if [[ "$ready" != "1" ]]; then
+    echo "错误：$POSTGRES_IMAGE 在 Docker 默认 seccomp 下未能完成一次性初始化。" >&2
+    docker logs --tail=100 "$probe_container" >&2 || true
+    return 1
+  fi
+  if [[ "$(
+    docker exec -e PGPASSWORD=wanpan-smoke-only "$probe_container" \
+      psql -h 127.0.0.1 -U probe -d probe -Atqc 'select 1'
+  )" != "1" ]]; then
+    echo "错误：PostgreSQL 一次性预检查询失败。" >&2
+    return 1
+  fi
+)
+
+# New installs use a subdirectory inside the named volume. Refuse to silently
+# hide an older, valid root-level database if one already exists.
 existing_postgres_id="$("${COMPOSE[@]}" --env-file "$ENV_FILE" -f "$COMPOSE_FILE" ps -aq postgres 2>/dev/null || true)"
 postgres_volume=""
 if [[ -n "$existing_postgres_id" ]]; then
@@ -94,6 +163,18 @@ if [[ -n "$postgres_volume" ]]; then
 
   if [[ "$root_cluster" == 1 && "$nested_cluster" == 1 ]]; then
     echo "错误：PostgreSQL 卷同时存在根目录与 pgdata 子目录数据库，已停止部署以避免连接错误数据库。" >&2
+    exit 1
+  fi
+
+  existing_postgres_image=""
+  if [[ -n "$existing_postgres_id" ]]; then
+    existing_postgres_image="$(docker inspect -f '{{.Config.Image}}' "$existing_postgres_id" 2>/dev/null || true)"
+  fi
+  if [[ "$root_cluster" == 1 || "$nested_cluster" == 1 ]] && \
+     [[ "$existing_postgres_image" == *alpine* ]] && \
+     [[ "$ALLOW_POSTGRES_LIBC_SWITCH" != "1" ]]; then
+    echo "错误：检测到由 Alpine 镜像运行的有效 PostgreSQL 集群，不能静默切换 libc。" >&2
+    echo "请先完成数据库备份与排序规则/索引维护评估，再显式设置 WANPAN_ALLOW_POSTGRES_LIBC_SWITCH=1。" >&2
     exit 1
   fi
   if [[ "$root_cluster" == 1 && "$configured_pgdata" != "/var/lib/postgresql/data" ]]; then
@@ -151,8 +232,8 @@ if [[ "$SKIP_BUILD" == "1" ]]; then
     echo "错误：本机缺少预构建镜像 wanpan-diary-api:$NEW_TAG。" >&2
     exit 1
   fi
-  if ! docker image inspect postgres:16-alpine >/dev/null 2>&1; then
-    echo "错误：本机缺少预构建镜像 postgres:16-alpine。" >&2
+  if ! docker image inspect "$POSTGRES_IMAGE" >/dev/null 2>&1; then
+    echo "错误：本机缺少预构建镜像 $POSTGRES_IMAGE。" >&2
     exit 1
   fi
   echo "使用已校验的预构建 API 镜像 $NEW_TAG。"
@@ -163,11 +244,23 @@ else
     build_args+=(--pull)
   fi
   "${COMPOSE[@]}" --env-file "$ENV_FILE" -f "$COMPOSE_FILE" "${build_args[@]}" api
+  if ! docker image inspect "$POSTGRES_IMAGE" >/dev/null 2>&1; then
+    echo "拉取 $POSTGRES_IMAGE……"
+    docker pull "$POSTGRES_IMAGE"
+  fi
 fi
+
+echo "使用一次性卷验证 $POSTGRES_IMAGE 与 Docker 默认 seccomp……"
+if ! smoke_test_postgres_image; then
+  echo "错误：兼容性预检失败；未挂载、修改或删除生产数据库卷。" >&2
+  exit 1
+fi
+echo "PostgreSQL 默认 seccomp 兼容性预检通过。"
+
 echo "启动 PostgreSQL 与 API（启动时自动执行幂等 migration）……"
 up_args=(up -d --remove-orphans)
 if [[ "$SKIP_BUILD" == "1" ]]; then
-  up_args+=(--no-build)
+  up_args+=(--no-build --pull never)
 fi
 if ! "${COMPOSE[@]}" --env-file "$ENV_FILE" -f "$COMPOSE_FILE" "${up_args[@]}"; then
   echo "错误：Compose 启动失败。最近日志如下：" >&2

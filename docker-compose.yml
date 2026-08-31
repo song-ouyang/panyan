@@ -2,7 +2,7 @@ name: wanpan-diary
 
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:16.15-bookworm
     environment:
       POSTGRES_DB: wanpan
       POSTGRES_USER: postgres

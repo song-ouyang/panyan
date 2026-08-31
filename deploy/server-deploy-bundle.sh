@@ -57,7 +57,7 @@ echo "下载 GitHub Release 预构建镜像包 $BUNDLE_TAG……"
 download REVISION
 download SHA256SUMS
 download wanpan-diary-api-amd64.tar.gz
-download postgres-16-alpine-amd64.tar.gz
+download postgres-16.15-bookworm-amd64.tar.gz
 
 bundle_revision="$(tr -d '\r\n' < "$TMP_DIR/REVISION")"
 if [[ "$bundle_revision" != "$REVISION" ]]; then
@@ -71,14 +71,14 @@ fi
 )
 
 echo "加载 PostgreSQL 与 API 镜像……"
-gzip -dc "$TMP_DIR/postgres-16-alpine-amd64.tar.gz" | docker load
+gzip -dc "$TMP_DIR/postgres-16.15-bookworm-amd64.tar.gz" | docker load
 gzip -dc "$TMP_DIR/wanpan-diary-api-amd64.tar.gz" | docker load
 
-docker image inspect postgres:16-alpine >/dev/null
+docker image inspect postgres:16.15-bookworm >/dev/null
 docker image inspect "wanpan-diary-api:$SHORT_REVISION" >/dev/null
 
 api_arch="$(docker image inspect --format '{{.Architecture}}' "wanpan-diary-api:$SHORT_REVISION")"
-postgres_arch="$(docker image inspect --format '{{.Architecture}}' postgres:16-alpine)"
+postgres_arch="$(docker image inspect --format '{{.Architecture}}' postgres:16.15-bookworm)"
 api_revision="$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "wanpan-diary-api:$SHORT_REVISION")"
 if [[ "$api_arch" != "amd64" || "$postgres_arch" != "amd64" ]]; then
   echo "错误：镜像架构不匹配（API=$api_arch，PostgreSQL=$postgres_arch）。" >&2
