@@ -13,6 +13,8 @@ COMPOSE_FILE="${WANPAN_COMPOSE_FILE:-docker-compose.server.yml}"
 BRANCH="${WANPAN_BRANCH:-main}"
 REMOTE="${WANPAN_REMOTE:-origin}"
 WAIT_SECONDS="${WANPAN_WAIT_SECONDS:-180}"
+SKIP_BUILD="${WANPAN_SKIP_BUILD:-0}"
+EXPECTED_REVISION="${WANPAN_EXPECT_REVISION:-}"
 
 cd "$ROOT_DIR"
 
@@ -56,6 +58,11 @@ fi
 
 echo "拉取 $REMOTE/$BRANCH……"
 git fetch --prune "$REMOTE" "$BRANCH"
+TARGET_REV="$(git rev-parse "$REMOTE/$BRANCH")"
+if [[ -n "$EXPECTED_REVISION" && "$TARGET_REV" != "$EXPECTED_REVISION" ]]; then
+  echo "错误：预构建镜像对应 Git $EXPECTED_REVISION，但远端 $REMOTE/$BRANCH 已更新为 $TARGET_REV。" >&2
+  exit 1
+fi
 current_branch="$(git symbolic-ref --quiet --short HEAD || true)"
 if [[ "$current_branch" != "$BRANCH" ]]; then
   echo "错误：当前分支是 ${current_branch:-detached HEAD}，请先切换到 $BRANCH。" >&2
@@ -65,18 +72,39 @@ git merge --ff-only "$REMOTE/$BRANCH"
 NEW_REV="$(git rev-parse HEAD)"
 NEW_TAG="${NEW_REV:0:12}"
 
+if [[ -n "$EXPECTED_REVISION" && "$NEW_REV" != "$EXPECTED_REVISION" ]]; then
+  echo "错误：预构建镜像对应 Git $EXPECTED_REVISION，但服务器当前为 $NEW_REV。" >&2
+  exit 1
+fi
+
 bash deploy/check-production-env.sh "$ENV_FILE"
 export API_IMAGE_TAG="$NEW_TAG"
 "${COMPOSE[@]}" --env-file "$ENV_FILE" -f "$COMPOSE_FILE" config --quiet
 
-echo "构建 API 镜像 $NEW_TAG……"
-build_args=(build)
-if [[ "${WANPAN_PULL_BASE:-0}" == "1" ]]; then
-  build_args+=(--pull)
+if [[ "$SKIP_BUILD" == "1" ]]; then
+  if ! docker image inspect "wanpan-diary-api:$NEW_TAG" >/dev/null 2>&1; then
+    echo "错误：本机缺少预构建镜像 wanpan-diary-api:$NEW_TAG。" >&2
+    exit 1
+  fi
+  if ! docker image inspect postgres:16-alpine >/dev/null 2>&1; then
+    echo "错误：本机缺少预构建镜像 postgres:16-alpine。" >&2
+    exit 1
+  fi
+  echo "使用已校验的预构建 API 镜像 $NEW_TAG。"
+else
+  echo "构建 API 镜像 $NEW_TAG……"
+  build_args=(build)
+  if [[ "${WANPAN_PULL_BASE:-0}" == "1" ]]; then
+    build_args+=(--pull)
+  fi
+  "${COMPOSE[@]}" --env-file "$ENV_FILE" -f "$COMPOSE_FILE" "${build_args[@]}" api
 fi
-"${COMPOSE[@]}" --env-file "$ENV_FILE" -f "$COMPOSE_FILE" "${build_args[@]}" api
 echo "启动 PostgreSQL 与 API（启动时自动执行幂等 migration）……"
-"${COMPOSE[@]}" --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d --remove-orphans
+up_args=(up -d --remove-orphans)
+if [[ "$SKIP_BUILD" == "1" ]]; then
+  up_args+=(--no-build)
+fi
+"${COMPOSE[@]}" --env-file "$ENV_FILE" -f "$COMPOSE_FILE" "${up_args[@]}"
 
 api_id="$("${COMPOSE[@]}" --env-file "$ENV_FILE" -f "$COMPOSE_FILE" ps -q api)"
 deadline=$((SECONDS + WAIT_SECONDS))

@@ -65,6 +65,16 @@ cd /www/wwwroot/wanpan-diary && bash deploy/server-deploy.sh
 
 该脚本会依次执行：配置检查、已有数据库备份、`git fetch/fast-forward`、构建带 Git 提交号标签的镜像、幂等数据库 migration、启动容器、数据库就绪检查。失败时会输出最近日志，并在存在上一镜像时自动恢复 API。
 
+### Docker Hub 无法访问时
+
+阿里云 ECS 无法稳定拉取 Docker Hub 基础镜像时，不要改用来源不明的公共镜像。仓库支持由 GitHub Actions 在隔离环境中构建 Linux AMD64 镜像、生成 SHA-256 校验文件并发布到与代码提交绑定的 Release。维护者为目标提交推送 `server-bundle-<12位提交号>` 标签后，服务器执行：
+
+```bash
+cd /www/wwwroot/wanpan-diary && bash deploy/server-deploy-bundle.sh
+```
+
+该脚本会先 fetch 并锁定最新 `main` 提交，下载该提交对应的两份镜像，验证 Release 中的完整 Git 提交号和 SHA-256，再加载镜像并由常规部署流程执行唯一一次 fast-forward。生产环境变量不会进入镜像或 Release。
+
 ## 宝塔 Nginx 与 HTTPS
 
 在宝塔中新建站点 `panyan-api.gblh.cloud`，申请 Let's Encrypt 证书并开启强制 HTTPS，然后添加反向代理：

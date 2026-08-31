@@ -1,0 +1,73 @@
+name: Build server image bundle
+
+on:
+  push:
+    tags:
+      - 'server-bundle-*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out tagged revision
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Verify immutable bundle tag
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          EXPECTED_TAG="server-bundle-${GITHUB_SHA:0:12}"
+          test "$GITHUB_REF_NAME" = "$EXPECTED_TAG" || {
+            echo "Expected tag $EXPECTED_TAG, received $GITHUB_REF_NAME" >&2
+            exit 1
+          }
+
+      - name: Build Linux AMD64 images
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          SHORT_REVISION="${GITHUB_SHA:0:12}"
+          docker build \
+            --platform linux/amd64 \
+            --pull \
+            --label "org.opencontainers.image.revision=$GITHUB_SHA" \
+            --tag "wanpan-diary-api:$SHORT_REVISION" \
+            --file server/Dockerfile \
+            .
+          docker pull --platform linux/amd64 postgres:16-alpine
+          test "$(docker image inspect --format '{{.Architecture}}' "wanpan-diary-api:$SHORT_REVISION")" = amd64
+          test "$(docker image inspect --format '{{.Architecture}}' postgres:16-alpine)" = amd64
+
+      - name: Package and checksum images
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          SHORT_REVISION="${GITHUB_SHA:0:12}"
+          mkdir -p release
+          docker save "wanpan-diary-api:$SHORT_REVISION" \
+            | gzip -1 > release/wanpan-diary-api-amd64.tar.gz
+          docker save postgres:16-alpine \
+            | gzip -1 > release/postgres-16-alpine-amd64.tar.gz
+          printf '%s\n' "$GITHUB_SHA" > release/REVISION
+          (cd release && sha256sum *.tar.gz > SHA256SUMS)
+
+      - name: Publish public release assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -Eeuo pipefail
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "Release $GITHUB_REF_NAME already exists; refusing to replace immutable assets." >&2
+            exit 1
+          fi
+          gh release create "$GITHUB_REF_NAME" release/* \
+            --verify-tag \
+            --latest=false \
+            --title "Server image bundle ${GITHUB_SHA:0:12}" \
+            --notes "Linux AMD64 deployment images for commit $GITHUB_SHA. Checksums are included in SHA256SUMS."
