@@ -1,9 +1,10 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
-import type { FastifyPluginAsync, FastifyReply } from 'fastify';
+import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from 'jose';
 import { z } from 'zod';
 import { query } from '../db.js';
 import { config } from '../config.js';
+import { SmsProviderError, sendSmsCode, verifySmsCode } from '../services/sms_provider.js';
 
 const codeBody = z.object({ code: z.string().trim().min(1).max(512) });
 const appleBody = z.object({
@@ -12,6 +13,8 @@ const appleBody = z.object({
   givenName: z.string().trim().max(80).nullable().optional(),
   familyName: z.string().trim().max(80).nullable().optional()
 });
+const smsSendBody = z.object({ phone: z.string().trim().regex(/^1\d{10}$/, '请输入中国大陆 11 位手机号') });
+const smsLoginBody = smsSendBody.extend({ code: z.string().trim().regex(/^\d{6}$/, '请输入 6 位验证码') });
 
 type AuthUser = {
   id: string;
@@ -26,6 +29,13 @@ const appleJwks = createRemoteJWKSet(
   { timeoutDuration: 10_000 }
 );
 const authRateLimit = { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } };
+const smsPhoneKey = (scope: string, request: FastifyRequest): string => {
+  const phone = (request.body as { phone?: unknown } | null)?.phone;
+  const normalized = typeof phone === 'string' ? phone.trim() : '';
+  return /^1\d{10}$/.test(normalized)
+    ? `${scope}:phone:${normalized}`
+    : `${scope}:invalid:${request.ip}`;
+};
 
 function safeNickname(value: unknown): string {
   if (typeof value !== 'string') return '岩友';
@@ -136,6 +146,87 @@ async function verifiedAppleSubject(identityToken: string, rawNonce: string): Pr
 }
 
 export const authRoutes: FastifyPluginAsync = async (app) => {
+  // createRateLimit deliberately bypasses @fastify/rate-limit's per-request
+  // "already ran" flag, so both the global limiter and these two independent
+  // dimensions are enforced for every SMS request.
+  const smsSendIpLimit = app.createRateLimit({
+    max: 10,
+    timeWindow: '10 minutes',
+    keyGenerator: (request) => `sms-send:ip:${request.ip}`
+  });
+  const smsSendPhoneLimit = app.createRateLimit({
+    max: 5,
+    timeWindow: '10 minutes',
+    keyGenerator: (request) => smsPhoneKey('sms-send', request)
+  });
+  const smsLoginIpLimit = app.createRateLimit({
+    max: 20,
+    timeWindow: '10 minutes',
+    keyGenerator: (request) => `sms-login:ip:${request.ip}`
+  });
+  const smsLoginPhoneLimit = app.createRateLimit({
+    max: 8,
+    timeWindow: '10 minutes',
+    keyGenerator: (request) => smsPhoneKey('sms-login', request)
+  });
+
+  const enforceRateLimits = (
+    checks: Array<ReturnType<typeof app.createRateLimit>>
+  ) => async (request: FastifyRequest, reply: FastifyReply) => {
+    for (const check of checks) {
+      const result = await check(request);
+      if (result.isAllowed || !result.isExceeded) continue;
+
+      reply
+        .header('x-ratelimit-limit', result.max)
+        .header('x-ratelimit-remaining', 0)
+        .header('x-ratelimit-reset', result.ttlInSeconds)
+        .header('retry-after', result.ttlInSeconds);
+      throw app.httpErrors.tooManyRequests('请求太频繁，请稍后再试');
+    }
+  };
+
+  const enforceSmsSendLimits = enforceRateLimits([smsSendIpLimit, smsSendPhoneLimit]);
+  const enforceSmsLoginLimits = enforceRateLimits([smsLoginIpLimit, smsLoginPhoneLimit]);
+
+  app.post('/sms/send', {
+    preHandler: enforceSmsSendLimits
+  }, async (request) => {
+    const { phone } = smsSendBody.parse(request.body);
+    try {
+      await sendSmsCode(phone);
+      return { sent: true };
+    } catch (error) {
+      if (error instanceof SmsProviderError) {
+        throw app.httpErrors.serviceUnavailable(error.message);
+      }
+      throw error;
+    }
+  });
+
+  app.post('/sms/login', {
+    preHandler: enforceSmsLoginLimits
+  }, async (request, reply) => {
+    const { phone, code } = smsLoginBody.parse(request.body);
+    let verified: { isReview: boolean };
+    try {
+      verified = await verifySmsCode(phone, code);
+    } catch (error) {
+      if (error instanceof SmsProviderError) {
+        throw error.statusCode === 401
+          ? app.httpErrors.unauthorized(error.message)
+          : app.httpErrors.serviceUnavailable(error.message);
+      }
+      throw error;
+    }
+    const user = await upsertProviderUser({
+      identity: `phone:+86${phone}`,
+      nickname: verified.isReview ? 'App 审核员' : '岩友',
+      profileCompleted: verified.isReview
+    });
+    return sessionResponse(reply, user);
+  });
+
   // Mini Program login remains separate: its code is only valid for jscode2session.
   app.post('/wechat', authRateLimit, async (request, reply) => {
     const { code } = codeBody.parse(request.body);

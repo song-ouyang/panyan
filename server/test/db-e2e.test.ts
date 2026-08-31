@@ -56,6 +56,28 @@ suite('real PostgreSQL API flow', () => {
     const friend = await devLogin('friend');
     const stranger = await devLogin('stranger');
 
+    if (config.APP_REVIEW_LOGIN_PHONE && config.APP_REVIEW_LOGIN_CODE) {
+      const reviewSend = await app.inject({
+        method: 'POST',
+        url: '/api/auth/sms/send',
+        payload: { phone: config.APP_REVIEW_LOGIN_PHONE }
+      });
+      expect(reviewSend.statusCode).toBe(200);
+      expect(reviewSend.json()).toEqual({ sent: true });
+      const reviewLogin = await app.inject({
+        method: 'POST',
+        url: '/api/auth/sms/login',
+        payload: {
+          phone: config.APP_REVIEW_LOGIN_PHONE,
+          code: config.APP_REVIEW_LOGIN_CODE
+        }
+      });
+      expect(reviewLogin.statusCode).toBe(200);
+      const reviewSession = reviewLogin.json() as Session & { needsProfile: boolean };
+      expect(reviewSession.needsProfile).toBe(false);
+      createdUserIds.push(reviewSession.user.id);
+    }
+
     for (const [session, nickname] of [[owner, '线路主理人'], [friend, '岩友小林'], [stranger, '陌生岩友']] as const) {
       const profile = await app.inject({
         method: 'PATCH',

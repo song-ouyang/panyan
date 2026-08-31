@@ -60,16 +60,48 @@ elif [[ "$upload_mode" != "local" ]]; then
   fail "UPLOAD_MODE 只能是 local 或 oss"
 fi
 
-mobile_id="$(env_value WECHAT_MOBILE_APP_ID)"
-mobile_secret="$(env_value WECHAT_MOBILE_APP_SECRET)"
-if [[ -z "$mobile_id" || -z "$mobile_secret" || "$mobile_id" =~ 请|填写 || "$mobile_secret" =~ 请|填写 ]]; then
-  warn "微信开放平台移动应用凭据尚未完整配置，Flutter 微信登录会返回 503（小程序登录不受影响）"
-fi
-
 apple_client="$(env_value APPLE_CLIENT_ID)"
 apple_team="$(env_value APPLE_TEAM_ID)"
 if [[ -z "$apple_client" || -z "$apple_team" || "$apple_client" =~ 请|填写 || "$apple_team" =~ 请|填写 ]]; then
   warn "Apple Client ID/Team ID 尚未完整配置，Apple 登录或 AASA 将不可用"
+fi
+
+review_phone="$(env_value APP_REVIEW_LOGIN_PHONE)"
+review_code="$(env_value APP_REVIEW_LOGIN_CODE)"
+review_ready=0
+if [[ -n "$review_phone" || -n "$review_code" ]]; then
+  if [[ ! "$review_phone" =~ ^1[0-9]{10}$ ]]; then
+    fail "APP_REVIEW_LOGIN_PHONE 必须是中国大陆 11 位手机号"
+  elif [[ ! "$review_code" =~ ^[0-9]{6}$ ]]; then
+    fail "APP_REVIEW_LOGIN_CODE 必须是 6 位数字"
+  elif [[ "$review_code" == "246810" ]]; then
+    fail "APP_REVIEW_LOGIN_CODE 仍是仓库曾使用的公开示例值，请立即轮换"
+  else
+    review_ready=1
+  fi
+else
+  warn "未配置 App Store 审核固定账号，提交审核前需补充"
+fi
+
+aliyun_keys=(ALIYUN_ACCESS_KEY_ID ALIYUN_ACCESS_KEY_SECRET ALIYUN_SMS_SIGN_NAME ALIYUN_SMS_TEMPLATE_CODE)
+aliyun_count=0
+for key in "${aliyun_keys[@]}"; do
+  value="$(env_value "$key")"
+  if [[ -n "$value" && ! "$value" =~ 请|填写|替换|replace|example ]]; then
+    aliyun_count=$((aliyun_count + 1))
+  fi
+done
+aliyun_ready=0
+if (( aliyun_count == ${#aliyun_keys[@]} )); then
+  aliyun_ready=1
+elif (( aliyun_count > 0 )); then
+  fail "阿里云短信配置不完整，ALIYUN_ACCESS_KEY_ID/SECRET、SIGN_NAME、TEMPLATE_CODE 必须全部填写"
+else
+  warn "未配置阿里云号码认证服务，普通手机号验证码登录将不可用"
+fi
+
+if (( review_ready == 0 && aliyun_ready == 0 )); then
+  fail "手机号登录没有任何可用通道：至少配置审核账号或完整阿里云短信"
 fi
 
 mode="$(stat -c '%a' "$ENV_FILE" 2>/dev/null || stat -f '%Lp' "$ENV_FILE")"

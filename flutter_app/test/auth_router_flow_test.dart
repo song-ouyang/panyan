@@ -78,6 +78,27 @@ class _ProfileApiClient extends ApiClient {
 class _ProfileAuthRepository extends AuthRepository {
   _ProfileAuthRepository(super.api);
 
+  final sentSmsPhones = <String>[];
+  final smsLoginAttempts = <({String phone, String code})>[];
+
+  @override
+  Future<void> sendSmsCode({required String phone}) async {
+    sentSmsPhones.add(phone);
+  }
+
+  @override
+  Future<AuthSession> signInWithSms({
+    required String phone,
+    required String code,
+  }) async {
+    smsLoginAttempts.add((phone: phone, code: code));
+    return const AuthSession(
+      token: 'sms-session-token',
+      user: _completeUser,
+      needsProfile: false,
+    );
+  }
+
   @override
   Future<UserSummary> updateProfile({
     required String nickname,
@@ -94,6 +115,60 @@ class _ProfileAuthRepository extends AuthRepository {
 }
 
 void main() {
+  testWidgets('手机号验证码发送并登录后返回原目标页面', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(430, 932));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    SharedPreferences.setMockInitialValues({});
+    final session = SessionController(
+      preferences: await SharedPreferences.getInstance(),
+      config: _config,
+      tokenStore: MemorySessionTokenStore(),
+    );
+    final api = _ProfileApiClient();
+    final repository = _ProfileAuthRepository(api);
+    await session.initialize(repository);
+    final router = createWanpanRouter(
+      api: api,
+      session: session,
+      authRepository: repository,
+      nativeAuth: NativeAuthService(),
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      WanpanApp(api: api, session: session, router: router),
+    );
+    router.go('/login?from=/profile');
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byKey(const Key('sms-phone')), '13800138000');
+    await tester.tap(find.byKey(const Key('sms-send-code')));
+    await tester.pump();
+    expect(find.text('请先阅读并同意用户协议与隐私政策。'), findsOneWidget);
+    expect(repository.sentSmsPhones, isEmpty);
+
+    await tester.tap(find.byType(Checkbox));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('sms-send-code')));
+    await tester.pump();
+
+    expect(repository.sentSmsPhones, ['13800138000']);
+    expect(find.byKey(const Key('login-success')), findsOneWidget);
+    expect(find.textContaining('后重发'), findsOneWidget);
+
+    await tester.enterText(find.byKey(const Key('sms-code')), '135790');
+    await tester.tap(find.byKey(const Key('sms-login')));
+    await tester.pumpAndSettle();
+
+    expect(repository.smsLoginAttempts, [
+      (phone: '13800138000', code: '135790'),
+    ]);
+    expect(session.isAuthenticated, isTrue);
+    expect(router.routeInformationProvider.value.uri.path, '/profile');
+    expect(find.text('小欧'), findsOneWidget);
+  });
+
   testWidgets('游客登录后补资料、返回原页面并可退出登录', (tester) async {
     await tester.binding.setSurfaceSize(const Size(430, 932));
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -112,7 +187,7 @@ void main() {
       api: api,
       session: session,
       authRepository: repository,
-      nativeAuth: NativeAuthService(config: _config),
+      nativeAuth: NativeAuthService(),
     );
     addTearDown(router.dispose);
 
@@ -200,7 +275,7 @@ void main() {
       api: api,
       session: session,
       authRepository: repository,
-      nativeAuth: NativeAuthService(config: _config),
+      nativeAuth: NativeAuthService(),
     );
     addTearDown(router.dispose);
 

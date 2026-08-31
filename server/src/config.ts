@@ -23,6 +23,19 @@ const schema = z.object({
   WECHAT_MOBILE_APP_SECRET: z.string().default(''),
   APPLE_CLIENT_ID: z.string().default(''),
   APPLE_TEAM_ID: z.string().default(''),
+  APP_REVIEW_LOGIN_PHONE: z.string().trim().refine(
+    (value) => value === '' || /^1\d{10}$/.test(value),
+    'APP_REVIEW_LOGIN_PHONE 必须是中国大陆 11 位手机号'
+  ).default(''),
+  APP_REVIEW_LOGIN_CODE: z.string().trim().refine(
+    (value) => value === '' || /^\d{6}$/.test(value),
+    'APP_REVIEW_LOGIN_CODE 必须是 6 位数字'
+  ).default(''),
+  ALIYUN_ACCESS_KEY_ID: z.string().default(''),
+  ALIYUN_ACCESS_KEY_SECRET: z.string().default(''),
+  ALIYUN_SMS_SIGN_NAME: z.string().default(''),
+  ALIYUN_SMS_TEMPLATE_CODE: z.string().default(''),
+  ALIYUN_SMS_TEMPLATE_MIN: z.coerce.number().int().min(1).max(30).default(5),
   UPLOAD_MODE: z.enum(['local', 'oss']).default('local'),
   OSS_REGION: z.string().default('oss-cn-shenzhen'),
   OSS_BUCKET: z.string().default(''),
@@ -63,6 +76,26 @@ const schema = z.object({
       code: z.ZodIssueCode.custom,
       path: ['WECHAT_MOBILE_APP_ID'],
       message: 'WECHAT_MOBILE_APP_ID 与 WECHAT_MOBILE_APP_SECRET 必须同时设置或同时留空'
+    });
+  }
+  const smsSettings = [
+    value.ALIYUN_ACCESS_KEY_ID,
+    value.ALIYUN_ACCESS_KEY_SECRET,
+    value.ALIYUN_SMS_SIGN_NAME,
+    value.ALIYUN_SMS_TEMPLATE_CODE
+  ];
+  if (smsSettings.some(Boolean) && !smsSettings.every(Boolean)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['ALIYUN_ACCESS_KEY_ID'],
+      message: '阿里云短信配置必须完整设置或全部留空'
+    });
+  }
+  if (Boolean(value.APP_REVIEW_LOGIN_PHONE) !== Boolean(value.APP_REVIEW_LOGIN_CODE)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['APP_REVIEW_LOGIN_PHONE'],
+      message: 'APP_REVIEW_LOGIN_PHONE 与 APP_REVIEW_LOGIN_CODE 必须同时设置或同时留空'
     });
   }
 });

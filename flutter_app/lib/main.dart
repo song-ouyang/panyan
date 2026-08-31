@@ -23,7 +23,7 @@ Future<void> main() async {
   );
   api.onUnauthorized = session.handleUnauthorized;
   final authRepository = AuthRepository(api);
-  final nativeAuth = NativeAuthService(config: config);
+  final nativeAuth = NativeAuthService();
   final router = createWanpanRouter(
     api: api,
     session: session,

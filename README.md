@@ -58,9 +58,7 @@ flutter run --dart-define=API_BASE_URL=http://你的地址:3000/api
 ```bash
 flutter run \
   --dart-define=APP_ENV=production \
-  --dart-define=PRODUCTION_API_BASE_URL=https://panyan-api.gblh.cloud/api \
-  --dart-define=WECHAT_MOBILE_APP_ID=微信开放平台移动应用AppID \
-  --dart-define=WECHAT_UNIVERSAL_LINK=https://panyan-api.gblh.cloud/wechat/
+  --dart-define=PRODUCTION_API_BASE_URL=https://panyan-api.gblh.cloud/api
 ```
 
 应用允许游客浏览岩馆；进入打卡、动态、投稿、好友、排行和「我的」时会跳转登录，登录后自动回到原操作。JWT 保存在 iOS Keychain / Android 加密存储中，401 会立即清理失效会话。

@@ -159,7 +159,7 @@ void main() {
       api: api,
       session: session,
       authRepository: repository,
-      nativeAuth: NativeAuthService(config: _developmentConfig),
+      nativeAuth: NativeAuthService(),
     );
     addTearDown(router.dispose);
 

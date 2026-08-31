@@ -49,21 +49,21 @@ flutter run --dart-define=API_BASE_URL=http://192.168.x.x:3000/api
 ```bash
 flutter run \
   --dart-define=APP_ENV=production \
-  --dart-define=PRODUCTION_API_BASE_URL=https://panyan-api.gblh.cloud/api \
-  --dart-define=WECHAT_MOBILE_APP_ID=微信开放平台移动应用AppID \
-  --dart-define=WECHAT_UNIVERSAL_LINK=https://panyan-api.gblh.cloud/wechat/
+  --dart-define=PRODUCTION_API_BASE_URL=https://panyan-api.gblh.cloud/api
 ```
 
 ## 登录说明
 
 开发环境默认也不自动登录。需要调试受保护流程时，使用 `--dart-define=ENABLE_DEV_LOGIN=true`，再在登录页点击「开发账号登录」。生产环境强制关闭该入口。
 
-Flutter App 已接入 `fluwx 6.0.2` 和 `sign_in_with_apple`。微信移动应用 code 会发往 `/auth/wechat-mobile`，不会误用小程序 `/auth/wechat`；Apple identity token 由后端验签。正式发布前仍需完成：
+Flutter App 以手机号验证码作为主登录方式；Apple identity token 由后端验签。短信验证码仅由后端调用阿里云发送及校验，密钥不会进入 App。正式发布前仍需完成：
 
-1. 在微信开放平台创建移动应用；
-2. 在开放平台填写 iOS Bundle ID、Android package 与正式签名；
-3. 配置 iOS Universal Link/AASA 和 Android 正式签名；
-4. 在 Apple Developer 为 Bundle ID 开启 Sign in with Apple capability。
+1. 在阿里云号码认证服务中配置短信签名、验证码模板和生产环境密钥；
+2. 在 Apple Developer 为 Bundle ID 开启 Sign in with Apple capability（如保留 Apple 登录）。
+
+### App Store 审核登录
+
+后端同时配置 `APP_REVIEW_LOGIN_PHONE` 与 `APP_REVIEW_LOGIN_CODE` 后，该手机号不调用短信服务，仍可用固定验证码登录。仓库不提供默认审核凭据；生产环境必须将它们放在 `.env.production`，并使用未公开、可定期轮换的 6 位验证码。提交审核时，在 App Review 的“登录信息”填写这组手机号和验证码，并注明“输入审核手机号后获取验证码，再填写固定验证码即可登录”。
 
 JWT 使用 iOS Keychain / Android 加密存储；旧版 SharedPreferences token 会一次性迁移并删除。启动时会调用 `/users/me` 验证会话，任何 API 401 都会清理会话并回到登录。
 
@@ -75,8 +75,6 @@ JWT 使用 iOS Keychain / Android 加密存储；旧版 SharedPreferences token 
 - `API_BASE_URL`
 - `PRODUCTION_API_BASE_URL`
 - `ENABLE_DEV_LOGIN=true|false`
-- `WECHAT_MOBILE_APP_ID`
-- `WECHAT_UNIVERSAL_LINK`（例如 `https://panyan-api.gblh.cloud/wechat/`）
 
 ## 质量检查
 

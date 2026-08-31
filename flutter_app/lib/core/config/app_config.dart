@@ -7,8 +7,6 @@ class AppConfig {
     required this.environment,
     required this.apiBaseUrl,
     required this.enableDevelopmentLogin,
-    this.wechatMobileAppId = '',
-    this.wechatUniversalLink = '',
   });
 
   static const String productionApiBaseUrl = String.fromEnvironment(
@@ -26,8 +24,6 @@ class AppConfig {
       'ENABLE_DEV_LOGIN',
       defaultValue: false,
     );
-    const wechatMobileAppId = String.fromEnvironment('WECHAT_MOBILE_APP_ID');
-    const wechatUniversalLink = String.fromEnvironment('WECHAT_UNIVERSAL_LINK');
     final environment = environmentValue.toLowerCase() == 'production'
         ? AppEnvironment.production
         : AppEnvironment.development;
@@ -46,20 +42,14 @@ class AppConfig {
       ),
       enableDevelopmentLogin:
           environment == AppEnvironment.development && developmentLogin,
-      wechatMobileAppId: wechatMobileAppId.trim(),
-      wechatUniversalLink: wechatUniversalLink.trim(),
     );
   }
 
   final AppEnvironment environment;
   final String apiBaseUrl;
   final bool enableDevelopmentLogin;
-  final String wechatMobileAppId;
-  final String wechatUniversalLink;
 
   bool get isProduction => environment == AppEnvironment.production;
-  bool get hasWechatMobileConfig =>
-      wechatMobileAppId.isNotEmpty && wechatUniversalLink.isNotEmpty;
 
   static String _normalizeBaseUrl(String value) {
     final trimmed = value.trim();

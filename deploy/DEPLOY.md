@@ -55,7 +55,7 @@ OSS_ACCESS_KEY_SECRET=RAM用户AccessKeySecret
 OSS_PUBLIC_BASE_URL=https://Bucket的HTTPS访问域名
 ```
 
-不要把 `.env.production` 提交到 Git，不要在聊天、日志或截图中展示密钥。小程序凭据与微信开放平台“移动应用”凭据不是同一套；后两项未配置时服务仍可上线，但 Flutter 微信登录会明确返回 503。
+不要把 `.env.production` 提交到 Git，不要在聊天、日志或截图中展示密钥。小程序凭据与微信开放平台“移动应用”凭据不是同一套；当前 Flutter 使用手机号与 Apple 登录，后两项仅为旧版移动端兼容，可保持为空。
 
 填好后启动：
 

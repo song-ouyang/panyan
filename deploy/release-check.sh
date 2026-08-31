@@ -30,10 +30,6 @@ fi
 if [[ ! -f flutter_app/android/key.properties ]]; then
   echo "提示：Android 未配置上架 keystore，本次 APK 仅用于未签名构建验证。"
 fi
-if rg -q 'wanpan-wechat-unconfigured' flutter_app/ios/Flutter/Auth.xcconfig && [[ ! -f flutter_app/ios/Flutter/Auth.local.xcconfig ]]; then
-  echo "提示：iOS 微信移动应用 AppID 尚未配置，本次 Runner.app 仅用于无签名构建验证。"
-fi
-
 echo "[5/7] 校验两种生产 Compose（使用临时假值，不读取或输出真实密钥）……"
 compose_env=(
   API_IMAGE_TAG=release-check

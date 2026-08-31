@@ -1,4 +1,5 @@
 import '../../../core/network/api_client.dart';
+import '../../../core/network/api_exception.dart';
 import '../../../core/models/user_models.dart';
 import '../domain/auth_session.dart';
 
@@ -7,14 +8,32 @@ class AuthRepository {
 
   final ApiClient _apiClient;
 
+  Future<void> sendSmsCode({required String phone}) async {
+    final response = await _apiClient.postJson(
+      '/auth/sms/send',
+      data: {'phone': phone},
+    );
+    if (response['sent'] != true) {
+      throw const ApiException(
+        code: 'SMS_SEND_INCOMPLETE',
+        message: '验证码发送没有完成，请重试。',
+      );
+    }
+  }
+
+  Future<AuthSession> signInWithSms({
+    required String phone,
+    required String code,
+  }) async => AuthSession.fromJson(
+    await _apiClient.postJson(
+      '/auth/sms/login',
+      data: {'phone': phone, 'code': code},
+    ),
+  );
+
   Future<AuthSession> signInWithWechatCode(String code) async =>
       AuthSession.fromJson(
         await _apiClient.postJson('/auth/wechat', data: {'code': code}),
-      );
-
-  Future<AuthSession> signInWithMobileWechatCode(String code) async =>
-      AuthSession.fromJson(
-        await _apiClient.postJson('/auth/wechat-mobile', data: {'code': code}),
       );
 
   Future<AuthSession> signInWithApple({

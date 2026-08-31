@@ -1,23 +1,40 @@
 import { createHash } from 'node:crypto';
 import Fastify from 'fastify';
+import rateLimit from '@fastify/rate-limit';
 import sensible from '@fastify/sensible';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { ZodError } from 'zod';
 
-const mocks = vi.hoisted(() => ({
-  query: vi.fn(),
-  jwtVerify: vi.fn(),
-  config: {
-    NODE_ENV: 'development',
-    WECHAT_APP_ID: '',
-    WECHAT_APP_SECRET: '',
-    WECHAT_MOBILE_APP_ID: 'wx-mobile-test',
-    WECHAT_MOBILE_APP_SECRET: 'mobile-secret',
-    APPLE_CLIENT_ID: 'com.wanpan.wanpanDiary'
+const mocks = vi.hoisted(() => {
+  class SmsProviderError extends Error {
+    constructor(message: string, readonly statusCode = 503) {
+      super(message);
+    }
   }
-}));
+  return {
+    query: vi.fn(),
+    jwtVerify: vi.fn(),
+    sendSmsCode: vi.fn(),
+    verifySmsCode: vi.fn(),
+    SmsProviderError,
+    config: {
+      NODE_ENV: 'development',
+      WECHAT_APP_ID: '',
+      WECHAT_APP_SECRET: '',
+      WECHAT_MOBILE_APP_ID: 'wx-mobile-test',
+      WECHAT_MOBILE_APP_SECRET: 'mobile-secret',
+      APPLE_CLIENT_ID: 'com.wanpan.wanpanDiary'
+    }
+  };
+});
 
 vi.mock('../src/db.js', () => ({ query: mocks.query }));
 vi.mock('../src/config.js', () => ({ config: mocks.config }));
+vi.mock('../src/services/sms_provider.js', () => ({
+  SmsProviderError: mocks.SmsProviderError,
+  sendSmsCode: mocks.sendSmsCode,
+  verifySmsCode: mocks.verifySmsCode
+}));
 vi.mock('jose', () => ({
   createRemoteJWKSet: vi.fn(() => 'apple-jwks'),
   jwtVerify: mocks.jwtVerify
@@ -36,7 +53,17 @@ const user = {
 async function createApp() {
   const app = Fastify();
   await app.register(sensible);
+  await app.register(rateLimit, { max: 120, timeWindow: '1 minute' });
   app.decorateReply('jwtSign', async () => 'signed-session-token');
+  app.setErrorHandler((error, _request, reply) => {
+    if (error instanceof ZodError) {
+      return reply.status(400).send({
+        code: 'VALIDATION_ERROR',
+        message: error.issues[0]?.message,
+      });
+    }
+    return reply.send(error);
+  });
   await app.register(authRoutes, { prefix: '/api/auth' });
   return app;
 }
@@ -45,6 +72,10 @@ beforeEach(() => {
   mocks.query.mockReset();
   mocks.query.mockResolvedValue({ rows: [user], rowCount: 1 });
   mocks.jwtVerify.mockReset();
+  mocks.sendSmsCode.mockReset();
+  mocks.verifySmsCode.mockReset();
+  mocks.sendSmsCode.mockResolvedValue(undefined);
+  mocks.verifySmsCode.mockResolvedValue({ isReview: false });
   mocks.config.NODE_ENV = 'development';
   mocks.config.WECHAT_APP_ID = '';
   mocks.config.WECHAT_APP_SECRET = '';
@@ -55,6 +86,158 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('authentication routes', () => {
+  it('sends a phone verification code without creating a user', async () => {
+    const app = await createApp();
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/auth/sms/send',
+      payload: { phone: '13800138000' }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ sent: true });
+    expect(mocks.sendSmsCode).toHaveBeenCalledWith('13800138000');
+    expect(mocks.query).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('creates a completed App Review session after fixed-code verification', async () => {
+    mocks.verifySmsCode.mockResolvedValue({ isReview: true });
+    const app = await createApp();
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/auth/sms/login',
+      payload: { phone: '19000000001', code: '135790' }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(mocks.verifySmsCode).toHaveBeenCalledWith('19000000001', '135790');
+    expect(mocks.query.mock.calls[0]![1]).toEqual([
+      'phone:+8619000000001',
+      'App 审核员',
+      null,
+      true,
+      []
+    ]);
+    await app.close();
+  });
+
+  it('rejects malformed SMS login input before calling the provider', async () => {
+    const app = await createApp();
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/auth/sms/login',
+      payload: { phone: '123', code: '12' }
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(mocks.verifySmsCode).not.toHaveBeenCalled();
+    expect(mocks.query).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('does not create a session when SMS verification fails', async () => {
+    mocks.verifySmsCode.mockRejectedValue(
+      new mocks.SmsProviderError('验证码错误或已过期。', 401)
+    );
+    const app = await createApp();
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/auth/sms/login',
+      payload: { phone: '13800138000', code: '000000' }
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(mocks.query).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('returns service unavailable when the SMS provider cannot send', async () => {
+    mocks.sendSmsCode.mockRejectedValue(
+      new mocks.SmsProviderError('短信服务暂不可用，请稍后重试。')
+    );
+    const app = await createApp();
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/auth/sms/send',
+      payload: { phone: '13800138000' }
+    });
+
+    expect(response.statusCode).toBe(503);
+    expect(mocks.query).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('limits repeated verification attempts for the same phone', async () => {
+    mocks.verifySmsCode.mockRejectedValue(
+      new mocks.SmsProviderError('验证码错误或已过期。', 401)
+    );
+    const app = await createApp();
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/auth/sms/login',
+        remoteAddress: `10.0.0.${attempt + 1}`,
+        payload: { phone: '13800138000', code: '000000' }
+      });
+      expect(response.statusCode).toBe(401);
+    }
+    const blocked = await app.inject({
+      method: 'POST',
+      url: '/api/auth/sms/login',
+      remoteAddress: '10.0.0.99',
+      payload: { phone: '13800138000', code: '000000' }
+    });
+
+    expect(blocked.statusCode).toBe(429);
+    expect(mocks.verifySmsCode).toHaveBeenCalledTimes(8);
+    expect(mocks.query).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('normalizes whitespace before applying the per-phone send limit', async () => {
+    const app = await createApp();
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/auth/sms/send',
+        payload: { phone: ' 13800138000 ' }
+      });
+      expect(response.statusCode).toBe(200);
+    }
+    const blocked = await app.inject({
+      method: 'POST',
+      url: '/api/auth/sms/send',
+      payload: { phone: '13800138000' }
+    });
+
+    expect(blocked.statusCode).toBe(429);
+    expect(mocks.sendSmsCode).toHaveBeenCalledTimes(5);
+    await app.close();
+  });
+
+  it('limits SMS sends by IP even when every phone number is different', async () => {
+    const app = await createApp();
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/auth/sms/send',
+        payload: { phone: `1390000000${attempt}` }
+      });
+      expect(response.statusCode).toBe(200);
+    }
+    const blocked = await app.inject({
+      method: 'POST',
+      url: '/api/auth/sms/send',
+      payload: { phone: '13900000010' }
+    });
+
+    expect(blocked.statusCode).toBe(429);
+    expect(blocked.headers['retry-after']).toBeDefined();
+    expect(mocks.sendSmsCode).toHaveBeenCalledTimes(10);
+    await app.close();
+  });
+
   it('allows an explicit development mini-program login only outside production', async () => {
     const app = await createApp();
     const response = await app.inject({
