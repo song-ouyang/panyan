@@ -23,7 +23,9 @@ Future<void> main() async {
   );
   api.onUnauthorized = session.handleUnauthorized;
   final authRepository = AuthRepository(api);
-  final nativeAuth = NativeAuthService();
+  final nativeAuth = NativeAuthService(
+    appleLoginEnabled: config.enableAppleLogin,
+  );
   final router = createWanpanRouter(
     api: api,
     session: session,

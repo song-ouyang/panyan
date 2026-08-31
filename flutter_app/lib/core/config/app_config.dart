@@ -7,6 +7,7 @@ class AppConfig {
     required this.environment,
     required this.apiBaseUrl,
     required this.enableDevelopmentLogin,
+    this.enableAppleLogin = false,
   });
 
   static const String productionApiBaseUrl = String.fromEnvironment(
@@ -22,6 +23,10 @@ class AppConfig {
     const overrideUrl = String.fromEnvironment('API_BASE_URL');
     const developmentLogin = bool.fromEnvironment(
       'ENABLE_DEV_LOGIN',
+      defaultValue: false,
+    );
+    const appleLogin = bool.fromEnvironment(
+      'ENABLE_APPLE_LOGIN',
       defaultValue: false,
     );
     final environment = environmentValue.toLowerCase() == 'production'
@@ -42,12 +47,14 @@ class AppConfig {
       ),
       enableDevelopmentLogin:
           environment == AppEnvironment.development && developmentLogin,
+      enableAppleLogin: appleLogin,
     );
   }
 
   final AppEnvironment environment;
   final String apiBaseUrl;
   final bool enableDevelopmentLogin;
+  final bool enableAppleLogin;
 
   bool get isProduction => environment == AppEnvironment.production;
 

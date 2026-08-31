@@ -19,12 +19,18 @@ class AuthFlowException implements Exception {
 }
 
 class NativeAuthService {
-  NativeAuthService();
+  NativeAuthService({this.appleLoginEnabled = false});
 
-  bool get canAttemptApple => Platform.isIOS || Platform.isMacOS;
+  final bool appleLoginEnabled;
+
+  bool get canAttemptApple =>
+      appleLoginEnabled && (Platform.isIOS || Platform.isMacOS);
 
   Future<AuthSession> signInWithApple(AuthRepository repository) async {
-    if (!canAttemptApple) {
+    if (!appleLoginEnabled) {
+      throw const AuthFlowException('Apple 登录暂未开放。');
+    }
+    if (!Platform.isIOS && !Platform.isMacOS) {
       throw const AuthFlowException('Apple 登录仅可在 Apple 设备上使用。');
     }
     final available = await SignInWithApple.isAvailable();

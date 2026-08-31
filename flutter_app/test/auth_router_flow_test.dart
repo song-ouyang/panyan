@@ -142,6 +142,8 @@ void main() {
     router.go('/login?from=/profile');
     await tester.pumpAndSettle();
 
+    expect(find.byKey(const Key('apple-login')), findsNothing);
+
     await tester.enterText(find.byKey(const Key('sms-phone')), '13800138000');
     await tester.tap(find.byKey(const Key('sms-send-code')));
     await tester.pump();

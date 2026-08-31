@@ -56,10 +56,10 @@ flutter run \
 
 开发环境默认也不自动登录。需要调试受保护流程时，使用 `--dart-define=ENABLE_DEV_LOGIN=true`，再在登录页点击「开发账号登录」。生产环境强制关闭该入口。
 
-Flutter App 以手机号验证码作为主登录方式；Apple identity token 由后端验签。短信验证码仅由后端调用阿里云发送及校验，密钥不会进入 App。正式发布前仍需完成：
+Flutter App 以手机号验证码作为主登录方式；Apple 登录当前默认隐藏，现有实现保留。短信验证码仅由后端调用阿里云发送及校验，密钥不会进入 App。正式发布前仍需完成：
 
 1. 在阿里云号码认证服务中配置短信签名、验证码模板和生产环境密钥；
-2. 在 Apple Developer 为 Bundle ID 开启 Sign in with Apple capability（如保留 Apple 登录）。
+2. 后续恢复 Apple 登录时，在 Apple Developer 为 Bundle ID 开启对应 capability，并使用 `--dart-define=ENABLE_APPLE_LOGIN=true` 构建。
 
 ### App Store 审核登录
 
@@ -75,6 +75,7 @@ JWT 使用 iOS Keychain / Android 加密存储；旧版 SharedPreferences token 
 - `API_BASE_URL`
 - `PRODUCTION_API_BASE_URL`
 - `ENABLE_DEV_LOGIN=true|false`
+- `ENABLE_APPLE_LOGIN=true|false`（默认 `false`，当前隐藏）
 
 ## 质量检查
 
