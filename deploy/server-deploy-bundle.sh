@@ -30,7 +30,7 @@ if [[ "$current_branch" != "$BRANCH" ]]; then
   exit 1
 fi
 
-REVISION="$(git rev-parse "$REMOTE/$BRANCH")"
+REVISION="$(git rev-parse FETCH_HEAD)"
 SHORT_REVISION="${REVISION:0:12}"
 BUNDLE_TAG="${1:-${WANPAN_BUNDLE_TAG:-server-bundle-$SHORT_REVISION}}"
 BASE_URL="https://github.com/$REPOSITORY/releases/download/$BUNDLE_TAG"

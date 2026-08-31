@@ -58,7 +58,7 @@ fi
 
 echo "拉取 $REMOTE/$BRANCH……"
 git fetch --prune "$REMOTE" "$BRANCH"
-TARGET_REV="$(git rev-parse "$REMOTE/$BRANCH")"
+TARGET_REV="$(git rev-parse FETCH_HEAD)"
 if [[ -n "$EXPECTED_REVISION" && "$TARGET_REV" != "$EXPECTED_REVISION" ]]; then
   echo "错误：预构建镜像对应 Git $EXPECTED_REVISION，但远端 $REMOTE/$BRANCH 已更新为 $TARGET_REV。" >&2
   exit 1
@@ -68,7 +68,7 @@ if [[ "$current_branch" != "$BRANCH" ]]; then
   echo "错误：当前分支是 ${current_branch:-detached HEAD}，请先切换到 $BRANCH。" >&2
   exit 1
 fi
-git merge --ff-only "$REMOTE/$BRANCH"
+git merge --ff-only "$TARGET_REV"
 NEW_REV="$(git rev-parse HEAD)"
 NEW_TAG="${NEW_REV:0:12}"
 
