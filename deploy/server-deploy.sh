@@ -41,6 +41,71 @@ if [[ ! -f "$ENV_FILE" ]]; then
 fi
 chmod 600 "$ENV_FILE"
 
+env_value() {
+  local key="$1"
+  local line
+  line="$(grep -E "^[[:space:]]*${key}=" "$ENV_FILE" | tail -n 1 || true)"
+  line="${line#*=}"
+  line="${line%$'\r'}"
+  if [[ "$line" == \"*\" && "$line" == *\" ]]; then
+    line="${line:1:${#line}-2}"
+  elif [[ "$line" == \'*\' && "$line" == *\' ]]; then
+    line="${line:1:${#line}-2}"
+  fi
+  printf '%s' "$line"
+}
+
+# New installs use a subdirectory inside the named volume. Running initdb at
+# the bare mount root returns EPERM on some CentOS 7 storage/kernel setups.
+# Refuse to silently hide an older, valid root-level database if one exists.
+existing_postgres_id="$("${COMPOSE[@]}" --env-file "$ENV_FILE" -f "$COMPOSE_FILE" ps -aq postgres 2>/dev/null || true)"
+postgres_volume=""
+if [[ -n "$existing_postgres_id" ]]; then
+  postgres_volume="$(
+    docker inspect -f '{{range .Mounts}}{{if eq .Destination "/var/lib/postgresql/data"}}{{.Name}}{{end}}{{end}}' \
+      "$existing_postgres_id" 2>/dev/null || true
+  )"
+fi
+if [[ -z "$postgres_volume" ]]; then
+  postgres_volume="$(
+    docker volume ls -q \
+      --filter 'label=com.docker.compose.project=wanpan-diary' \
+      --filter 'label=com.docker.compose.volume=postgres-data' \
+      | head -n 1
+  )"
+fi
+if [[ -n "$postgres_volume" ]]; then
+  postgres_mount="$(docker volume inspect -f '{{.Mountpoint}}' "$postgres_volume")"
+  configured_pgdata="$(env_value POSTGRES_PGDATA)"
+  configured_pgdata="${configured_pgdata:-/var/lib/postgresql/data}"
+  root_cluster=0
+  nested_cluster=0
+  [[ -s "$postgres_mount/PG_VERSION" ]] && root_cluster=1
+  [[ -s "$postgres_mount/pgdata/PG_VERSION" ]] && nested_cluster=1
+
+  if [[ "$root_cluster" == 1 ]] && [[ "$(tr -d '[:space:]' < "$postgres_mount/PG_VERSION")" != "16" ]]; then
+    echo "错误：卷根目录的 PostgreSQL 主版本不是 16，不能由当前镜像自动启动。" >&2
+    exit 1
+  fi
+  if [[ "$nested_cluster" == 1 ]] && [[ "$(tr -d '[:space:]' < "$postgres_mount/pgdata/PG_VERSION")" != "16" ]]; then
+    echo "错误：pgdata 子目录的 PostgreSQL 主版本不是 16，不能由当前镜像自动启动。" >&2
+    exit 1
+  fi
+
+  if [[ "$root_cluster" == 1 && "$nested_cluster" == 1 ]]; then
+    echo "错误：PostgreSQL 卷同时存在根目录与 pgdata 子目录数据库，已停止部署以避免连接错误数据库。" >&2
+    exit 1
+  fi
+  if [[ "$root_cluster" == 1 && "$configured_pgdata" != "/var/lib/postgresql/data" ]]; then
+    echo "错误：检测到旧版数据库位于卷根目录。请在 $ENV_FILE 设置 POSTGRES_PGDATA=/var/lib/postgresql/data 后重试。" >&2
+    exit 1
+  fi
+  if [[ "$nested_cluster" == 1 && "$configured_pgdata" != "/var/lib/postgresql/data/pgdata" ]]; then
+    echo "错误：数据库位于 pgdata 子目录，但 $ENV_FILE 未指向它。请设置 POSTGRES_PGDATA=/var/lib/postgresql/data/pgdata。" >&2
+    exit 1
+  fi
+fi
+
 if ! git diff --quiet || ! git diff --cached --quiet; then
   echo "错误：服务器存在未提交的 tracked 文件改动，为避免覆盖已停止部署。" >&2
   git status --short >&2
@@ -104,7 +169,11 @@ up_args=(up -d --remove-orphans)
 if [[ "$SKIP_BUILD" == "1" ]]; then
   up_args+=(--no-build)
 fi
-"${COMPOSE[@]}" --env-file "$ENV_FILE" -f "$COMPOSE_FILE" "${up_args[@]}"
+if ! "${COMPOSE[@]}" --env-file "$ENV_FILE" -f "$COMPOSE_FILE" "${up_args[@]}"; then
+  echo "错误：Compose 启动失败。最近日志如下：" >&2
+  "${COMPOSE[@]}" --env-file "$ENV_FILE" -f "$COMPOSE_FILE" logs --no-color --tail=160 api postgres >&2 || true
+  exit 1
+fi
 
 api_id="$("${COMPOSE[@]}" --env-file "$ENV_FILE" -f "$COMPOSE_FILE" ps -q api)"
 deadline=$((SECONDS + WAIT_SECONDS))

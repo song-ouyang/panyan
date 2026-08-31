@@ -5,16 +5,22 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
+      # Keep PGDATA below the named-volume mount root. Some CentOS 7 hosts
+      # reject PostgreSQL's WAL/lock-file operations at the bare mount root.
+      # The fallback stays at the historical root for upgrade safety. Fresh
+      # installs set POSTGRES_PGDATA to the pgdata subdirectory in the env file.
+      PGDATA: ${POSTGRES_PGDATA:-/var/lib/postgresql/data}
       POSTGRES_DB: ${POSTGRES_DB:-wanpan}
       POSTGRES_USER: ${POSTGRES_USER:-wanpan}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?请在 .env.production 中设置 POSTGRES_PASSWORD}
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-wanpan} -d ${POSTGRES_DB:-wanpan}"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
       interval: 5s
       timeout: 5s
       retries: 20
+      start_period: 60s
     logging:
       options:
         max-size: "10m"

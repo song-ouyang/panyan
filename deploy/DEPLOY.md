@@ -36,6 +36,8 @@ API_HOST_PORT=3100
 POSTGRES_DB=wanpan
 POSTGRES_USER=wanpan
 POSTGRES_PASSWORD=至少32位随机值
+# CentOS 7 兼容配置；新部署保持这个子目录
+POSTGRES_PGDATA=/var/lib/postgresql/data/pgdata
 JWT_SECRET=另一段至少32位随机值
 
 WECHAT_APP_ID=微信小程序AppID
@@ -64,6 +66,10 @@ cd /www/wwwroot/wanpan-diary && bash deploy/server-deploy.sh
 ```
 
 该脚本会依次执行：配置检查、已有数据库备份、`git fetch/fast-forward`、构建带 Git 提交号标签的镜像、幂等数据库 migration、启动容器、数据库就绪检查。失败时会输出最近日志，并在存在上一镜像时自动恢复 API。
+
+新部署的生产配置模板把 PostgreSQL 数据放在命名卷的 `pgdata` 子目录，用于规避某些 CentOS 7 主机在卷挂载根目录返回 `Operation not permitted` 的问题。Compose 的无配置回退值仍保留历史根目录，避免旧部署升级时悄悄连到空库。部署脚本还会检查 `PG_VERSION`，数据布局与配置不一致时直接停止。
+
+若首次部署已经出现 `postmaster.pid` 和 `pg_wal/xlogtemp` 的 `Operation not permitted`，可执行 `bash deploy/repair-postgres-pgdata.sh`。脚本只在日志精确匹配该首次初始化故障且容器不健康时运行；它会停止失败容器、将半初始化文件移入同一命名卷内的带时间戳归档目录，不删除生产卷。
 
 ### Docker Hub 无法访问时
 
