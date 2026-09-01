@@ -25,12 +25,12 @@ npm --workspace server run db:seed
 npm run dev:server
 ```
 
-再启动 Flutter：
+再以开发环境启动 Flutter：
 
 ```bash
 cd flutter_app
 flutter pub get
-flutter run
+flutter run --dart-define=APP_ENV=development
 ```
 
 默认本地地址：
@@ -38,23 +38,21 @@ flutter run
 - iOS 模拟器：`http://127.0.0.1:3000/api`
 - Android 模拟器：`http://10.0.2.2:3000/api`
 
-真机需要传入电脑局域网地址：
-
-```bash
-flutter run --dart-define=API_BASE_URL=http://192.168.x.x:3000/api
-```
-
-线上环境：
+真机需要同时启用开发环境并传入电脑局域网地址：
 
 ```bash
 flutter run \
-  --dart-define=APP_ENV=production \
-  --dart-define=PRODUCTION_API_BASE_URL=https://panyan-api.gblh.cloud/api
+  --dart-define=APP_ENV=development \
+  --dart-define=API_BASE_URL=http://192.168.x.x:3000/api
 ```
+
+不传参数时默认使用线上 API `https://panyan-api.gblh.cloud/api`，因此直接从 Xcode Run/Archive 也不会误连 `127.0.0.1`。只有切换其他线上地址时才需要传 `PRODUCTION_API_BASE_URL`。
+
+`tool/store_screenshot_main.dart` 仅供 App Store 截图生成，依赖本机 `3001` 端口的 mock 服务及演示 token，不能用它验证线上接口或登录流程。验证正式 App 时始终使用 `-t lib/main.dart`。
 
 ## 登录说明
 
-开发环境默认也不自动登录。需要调试受保护流程时，使用 `--dart-define=ENABLE_DEV_LOGIN=true`，再在登录页点击「开发账号登录」。生产环境强制关闭该入口。
+开发环境默认也不自动登录。需要调试受保护流程时，同时使用 `--dart-define=APP_ENV=development --dart-define=ENABLE_DEV_LOGIN=true`，再在登录页点击「开发账号登录」。生产环境强制关闭该入口。
 
 Flutter App 以手机号验证码作为主登录方式；Apple 登录当前默认隐藏，现有实现保留。短信验证码仅由后端调用阿里云发送及校验，密钥不会进入 App。正式发布前仍需完成：
 

@@ -18,7 +18,7 @@ class AppConfig {
   static AppConfig fromEnvironment() {
     const environmentValue = String.fromEnvironment(
       'APP_ENV',
-      defaultValue: 'development',
+      defaultValue: 'production',
     );
     const overrideUrl = String.fromEnvironment('API_BASE_URL');
     const developmentLogin = bool.fromEnvironment(
@@ -29,9 +29,12 @@ class AppConfig {
       'ENABLE_APPLE_LOGIN',
       defaultValue: false,
     );
-    final environment = environmentValue.toLowerCase() == 'production'
-        ? AppEnvironment.production
-        : AppEnvironment.development;
+    // A build without dart-defines is a real App build (including an Xcode
+    // Run/Archive), so it must never silently point at localhost. Local API
+    // development remains opt-in with APP_ENV=development.
+    final environment = environmentValue.toLowerCase() == 'development'
+        ? AppEnvironment.development
+        : AppEnvironment.production;
     final platformLocalUrl = Platform.isAndroid
         ? 'http://10.0.2.2:3000/api'
         : 'http://127.0.0.1:3000/api';

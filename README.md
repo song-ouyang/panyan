@@ -34,7 +34,7 @@
 
 ## Flutter 客户端
 
-要求 Flutter 3.47+、Dart 3.13+。先按下方“本地启动”运行 API，再执行：
+要求 Flutter 3.47+、Dart 3.13+。直接运行时默认连接线上 API：
 
 ```bash
 cd flutter_app
@@ -42,22 +42,29 @@ flutter pub get
 flutter run
 ```
 
-开发环境默认 API：
+需要连接本地 API 时必须显式启用开发环境：
+
+```bash
+flutter run --dart-define=APP_ENV=development
+```
+
+开发环境 API：
 
 - iOS 模拟器：`http://127.0.0.1:3000/api`
 - Android 模拟器：`http://10.0.2.2:3000/api`
 
-需要覆盖地址时使用：
-
-```bash
-flutter run --dart-define=API_BASE_URL=http://你的地址:3000/api
-```
-
-连接线上 API：
+本地真机或需要覆盖地址时同时指定开发环境：
 
 ```bash
 flutter run \
-  --dart-define=APP_ENV=production \
+  --dart-define=APP_ENV=development \
+  --dart-define=API_BASE_URL=http://你的地址:3000/api
+```
+
+线上 API 默认是 `https://panyan-api.gblh.cloud/api`；只有切换其他线上地址时才需要覆盖：
+
+```bash
+flutter run \
   --dart-define=PRODUCTION_API_BASE_URL=https://panyan-api.gblh.cloud/api
 ```
 
@@ -66,7 +73,9 @@ flutter run \
 开发登录不默认自动执行。仅需要调试时显式启动：
 
 ```bash
-flutter run --dart-define=ENABLE_DEV_LOGIN=true
+flutter run \
+  --dart-define=APP_ENV=development \
+  --dart-define=ENABLE_DEV_LOGIN=true
 ```
 
 `APP_ENV=production` 下开发登录会被强制关闭。
