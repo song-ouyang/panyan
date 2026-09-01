@@ -17,6 +17,7 @@ import '../features/gyms/route_picker_screen.dart';
 import '../features/gyms/route_screen.dart';
 import '../features/gyms/route_submission_screen.dart';
 import '../features/profile/climbing_calendar_screen.dart';
+import '../features/profile/account_privacy_screen.dart';
 import '../features/profile/friends_screen.dart';
 import '../features/profile/profile_screen.dart';
 import '../features/profile/public_profile_screen.dart';
@@ -100,6 +101,12 @@ GoRouter createWanpanRouter({
         parentNavigatorKey: rootNavigatorKey,
         path: '/profile/calendar',
         builder: (context, state) => ClimbingCalendarScreen(api: api),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: '/profile/privacy',
+        builder: (context, state) =>
+            AccountPrivacyScreen(api: api, session: session),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>

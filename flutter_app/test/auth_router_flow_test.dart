@@ -37,6 +37,8 @@ class _ProfileApiClient extends ApiClient {
   _ProfileApiClient()
     : super(config: _config, accessTokenProvider: () => 'secure-token');
 
+  bool accountDeleted = false;
+
   @override
   Future<Map<String, dynamic>> getJson(
     String path, {
@@ -72,6 +74,15 @@ class _ProfileApiClient extends ApiClient {
       };
     }
     throw StateError('Unexpected GET $path');
+  }
+
+  @override
+  Future<Map<String, dynamic>> deleteJson(String path, {Object? data}) async {
+    if (path == '/users/me') {
+      accountDeleted = true;
+      return {'deleted': true};
+    }
+    throw StateError('Unexpected DELETE $path');
   }
 }
 
@@ -143,6 +154,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('apple-login')), findsNothing);
+    expect(find.byKey(const Key('open-terms')), findsOneWidget);
+    expect(find.byKey(const Key('open-privacy')), findsOneWidget);
 
     await tester.enterText(find.byKey(const Key('sms-phone')), '13800138000');
     await tester.tap(find.byKey(const Key('sms-send-code')));
@@ -292,5 +305,74 @@ void main() {
       router.routeInformationProvider.value.uri.queryParameters['from'],
       '/route-submissions/new?gymId=gym-1',
     );
+  });
+
+  testWidgets('账号与隐私支持双重确认后注销并删除账号', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(430, 932));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    SharedPreferences.setMockInitialValues({});
+    final session = SessionController(
+      preferences: await SharedPreferences.getInstance(),
+      config: _config,
+      tokenStore: MemorySessionTokenStore(),
+    );
+    final api = _ProfileApiClient();
+    final repository = _ProfileAuthRepository(api);
+    await session.initialize(repository);
+    await session.acceptSession(
+      const AuthSession(
+        token: 'secure-token',
+        user: _completeUser,
+        needsProfile: false,
+      ),
+    );
+    final router = createWanpanRouter(
+      api: api,
+      session: session,
+      authRepository: repository,
+      nativeAuth: NativeAuthService(),
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      WanpanApp(api: api, session: session, router: router),
+    );
+    router.go('/profile');
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('account-privacy-tile')),
+      260,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(
+      find.byKey(const Key('account-privacy-tile')).hitTestable(),
+    );
+    await tester.pumpAndSettle();
+
+    expect(router.state.uri.path, '/profile/privacy');
+    expect(find.text('隐私政策'), findsOneWidget);
+    expect(find.text('用户协议'), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('delete-account')),
+      220,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.byKey(const Key('delete-account')).hitTestable());
+    await tester.pumpAndSettle();
+    expect(find.text('注销并删除账号？'), findsOneWidget);
+
+    await tester.tap(find.text('继续'));
+    await tester.pumpAndSettle();
+    expect(find.text('最后确认'), findsOneWidget);
+
+    await tester.tap(find.text('永久删除'));
+    await tester.pumpAndSettle();
+
+    expect(api.accountDeleted, isTrue);
+    expect(session.isAuthenticated, isFalse);
+    expect(router.state.uri.path, '/gyms');
   });
 }

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../app/wanpan_theme.dart';
 import '../../../core/network/api_exception.dart';
@@ -200,6 +201,19 @@ class _LoginScreenState extends State<LoginScreen> {
     () => widget.session.signInWithDevelopmentAccount(widget.repository),
   );
 
+  Future<void> _openLegalPage(String path) async {
+    final opened = await launchUrl(
+      Uri.parse('https://panyan-api.gblh.cloud$path'),
+      mode: LaunchMode.externalApplication,
+    );
+    if (!opened && mounted) {
+      setState(() {
+        _inlineMessage = '暂时无法打开网页，请稍后再试。';
+        _inlineIsError = true;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final reduceMotion = WanpanMotion.reduceMotion(context);
@@ -352,10 +366,61 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         Expanded(
                           child: Padding(
-                            padding: const EdgeInsets.only(top: 12),
-                            child: Text(
-                              '我已阅读并同意《用户协议》与《隐私政策》。',
-                              style: Theme.of(context).textTheme.labelMedium,
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Wrap(
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                Text(
+                                  '我已阅读并同意',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .labelMedium,
+                                ),
+                                TextButton(
+                                  key: const Key('open-terms'),
+                                  onPressed: () => _openLegalPage('/terms'),
+                                  style: TextButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 2,
+                                    ),
+                                    minimumSize: const Size(0, 40),
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                    textStyle: Theme.of(context)
+                                        .textTheme
+                                        .labelMedium,
+                                  ),
+                                  child: const Text('《用户协议》'),
+                                ),
+                                Text(
+                                  '与',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .labelMedium,
+                                ),
+                                TextButton(
+                                  key: const Key('open-privacy'),
+                                  onPressed: () => _openLegalPage('/privacy'),
+                                  style: TextButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 2,
+                                    ),
+                                    minimumSize: const Size(0, 40),
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                    textStyle: Theme.of(context)
+                                        .textTheme
+                                        .labelMedium,
+                                  ),
+                                  child: const Text('《隐私政策》'),
+                                ),
+                                Text(
+                                  '。',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .labelMedium,
+                                ),
+                              ],
                             ),
                           ),
                         ),

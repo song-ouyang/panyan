@@ -23,6 +23,7 @@ import { submissionRoutes } from './routes/submissions.js';
 import { reportRoutes } from './routes/reports.js';
 import { notificationRoutes } from './routes/notifications.js';
 import { visitCardRoutes } from './routes/visit-cards.js';
+import { publicPageRoutes } from './routes/public-pages.js';
 
 export async function buildApp() {
   const app = Fastify({
@@ -51,6 +52,7 @@ export async function buildApp() {
   await app.register(reportRoutes, { prefix: '/api/reports' });
   await app.register(notificationRoutes, { prefix: '/api/notifications' });
   await app.register(visitCardRoutes, { prefix: '/api/visit-cards' });
+  await app.register(publicPageRoutes);
   app.get('/.well-known/apple-app-site-association', async (_request, reply) => {
     if (!config.APPLE_TEAM_ID || !config.APPLE_CLIENT_ID) {
       throw app.httpErrors.serviceUnavailable('Associated Domains 尚未配置');

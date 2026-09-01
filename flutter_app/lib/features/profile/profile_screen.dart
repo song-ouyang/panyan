@@ -195,6 +195,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
             subtitle: '看看谁最近也在上墙',
             onTap: () => context.push('/friends'),
           ),
+          const SizedBox(height: 10),
+          _ActionTile(
+            key: const Key('account-privacy-tile'),
+            icon: Icons.shield_outlined,
+            title: '账号与隐私',
+            subtitle: '隐私政策、用户协议与账号注销',
+            onTap: () => context.push('/profile/privacy'),
+          ),
           const SizedBox(height: 18),
           _ActionTile(
             icon: Icons.logout_rounded,
