@@ -8,6 +8,9 @@ import '../../app/wanpan_theme.dart';
 import '../../core/models/feed_models.dart';
 import '../../core/network/api_client.dart';
 import '../../core/repositories/feed_repository.dart';
+import '../../shared/app_assets.dart';
+import '../../shared/widgets/wanpan_card.dart';
+import '../../shared/widgets/wanpan_mascot.dart';
 import '../../shared/widgets/wanpan_pressable.dart';
 import '../auth/application/session_controller.dart';
 import '../../shared/motion/wanpan_motion.dart';
@@ -119,8 +122,8 @@ class _FeedScreenState extends State<FeedScreen> {
     final published = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-      isDismissible: false,
-      enableDrag: false,
+      isDismissible: true,
+      enableDrag: true,
       builder: (context) => _ComposeSheet(
         api: widget.api,
         initialVisibility: _scope == 'square' ? 'public' : 'friends',
@@ -178,12 +181,18 @@ class _FeedScreenState extends State<FeedScreen> {
             onPressed: _openFriends,
             icon: const Icon(Icons.people_outline_rounded),
           ),
-          IconButton(
-            tooltip: '发布动态',
-            onPressed: _compose,
-            icon: const Icon(Icons.add_circle_outline_rounded),
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: IconButton.filled(
+              tooltip: '发布动态',
+              onPressed: _compose,
+              style: IconButton.styleFrom(
+                backgroundColor: WanpanColors.coral,
+                foregroundColor: Colors.white,
+              ),
+              icon: const Icon(Icons.add_rounded, size: 28),
+            ),
           ),
-          const SizedBox(width: 8),
         ],
       ),
       body: Column(
@@ -200,13 +209,6 @@ class _FeedScreenState extends State<FeedScreen> {
           ),
         ],
       ),
-      floatingActionButton: _items.isEmpty
-          ? null
-          : FloatingActionButton.small(
-              onPressed: _compose,
-              tooltip: '发布动态',
-              child: const Icon(Icons.edit_rounded),
-            ),
     );
   }
 
@@ -254,11 +256,15 @@ class _FeedScreenState extends State<FeedScreen> {
       key: const ValueKey('list'),
       onRefresh: _load,
       child: ListView.separated(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 112),
-        itemCount: _items.length,
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+        itemCount: _items.length + (_scope == 'friends' ? 1 : 0),
         separatorBuilder: (_, _) => const SizedBox(height: 12),
         itemBuilder: (context, index) {
-          final entry = _items[index];
+          if (_scope == 'friends' && index == 0) {
+            return _FriendsActivityBanner(onTap: _openFriends);
+          }
+          final itemIndex = index - (_scope == 'friends' ? 1 : 0);
+          final entry = _items[itemIndex];
           return _PostCard(
             key: ValueKey(entry.post.id),
             entry: entry,
@@ -273,6 +279,63 @@ class _FeedScreenState extends State<FeedScreen> {
       ),
     );
   }
+}
+
+class _FriendsActivityBanner extends StatelessWidget {
+  const _FriendsActivityBanner({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => WanpanCard(
+    onTap: onTap,
+    color: WanpanColors.sunflowerSoft.withValues(alpha: .42),
+    borderColor: WanpanColors.sunflower.withValues(alpha: .4),
+    padding: EdgeInsets.zero,
+    child: SizedBox(
+      height: 88,
+      child: Stack(
+        children: [
+          Positioned(
+            left: -10,
+            bottom: -38,
+            width: 128,
+            height: 126,
+            child: Image.asset(
+              AppAssets.profilePeekCat,
+              cacheWidth: 420,
+              fit: BoxFit.contain,
+              filterQuality: FilterQuality.medium,
+            ),
+          ),
+          Positioned(
+            left: 116,
+            top: 29,
+            child: Text(
+              '看看岩友最近在爬什么',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+          ),
+          const Positioned(
+            right: 16,
+            top: 28,
+            child: Row(
+              children: [
+                Text(
+                  '我的岩友',
+                  style: TextStyle(
+                    color: WanpanColors.coral,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                Icon(Icons.chevron_right_rounded, color: WanpanColors.coral),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 class _FeedEntry {
@@ -395,117 +458,118 @@ class _PostCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final post = entry.post;
     final nickname = post.user?.nickname ?? '岩友';
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onOpen,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return WanpanCard(
+      onTap: onOpen,
+      semanticLabel: '打开$nickname的动态',
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Row(
-                children: [
-                  GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: onOpenUser,
-                    child: _Avatar(url: post.user?.avatarUrl, label: nickname),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: onOpenUser,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            nickname,
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                          if (post.gymName != null || post.grade != null)
-                            Text(
-                              [
-                                post.gymName,
-                                post.routeName,
-                                post.grade,
-                              ].whereType<String>().join(' · '),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.labelMedium,
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: onOpenUser,
+                child: _Avatar(url: post.user?.avatarUrl, label: nickname),
               ),
-              if ((post.caption ?? '').isNotEmpty) ...[
-                const SizedBox(height: 14),
-                Text(
-                  post.caption!,
-                  style: Theme.of(context).textTheme.bodyLarge,
-                ),
-              ],
-              if (post.imageUrls.isNotEmpty) ...[
-                const SizedBox(height: 14),
-                _ImageGrid(urls: post.imageUrls),
-              ] else if (post.videoUrl != null) ...[
-                const SizedBox(height: 14),
-                Container(
-                  height: 176,
-                  decoration: BoxDecoration(
-                    color: WanpanColors.surfaceSoft,
-                    borderRadius: BorderRadius.circular(WanpanRadii.medium),
-                  ),
-                  child: Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.play_circle_fill_rounded,
-                          size: 52,
-                          color: WanpanColors.coral,
-                        ),
-                        const SizedBox(height: 6),
+              const SizedBox(width: 12),
+              Expanded(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: onOpenUser,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        nickname,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      if (post.gymName != null || post.grade != null)
                         Text(
-                          '点击查看完攀视频',
+                          [
+                            post.gymName,
+                            post.routeName,
+                            post.grade,
+                          ].whereType<String>().join(' · '),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: Theme.of(context).textTheme.labelMedium,
                         ),
-                      ],
-                    ),
+                    ],
                   ),
                 ),
-              ],
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  _LikeButton(
-                    liked: entry.liked,
-                    count: entry.likeCount,
-                    onTap: liking ? null : onLike,
-                  ),
-                  const SizedBox(width: 16),
-                  const Icon(
-                    Icons.chat_bubble_outline_rounded,
-                    size: 20,
-                    color: WanpanColors.inkSecondary,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    '${post.commentCount}',
-                    style: Theme.of(context).textTheme.labelLarge,
-                  ),
-                  const Spacer(),
-                  Text(
-                    _relativeTime(post.sentAt),
-                    style: Theme.of(context).textTheme.labelMedium,
-                  ),
-                ],
+              ),
+              IconButton(
+                tooltip: '更多',
+                onPressed: onOpen,
+                icon: const Icon(
+                  Icons.more_horiz_rounded,
+                  color: WanpanColors.muted,
+                ),
               ),
             ],
           ),
-        ),
+          if ((post.caption ?? '').isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Text(post.caption!, style: Theme.of(context).textTheme.bodyLarge),
+          ],
+          if (post.imageUrls.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            _ImageGrid(urls: post.imageUrls),
+          ] else if (post.videoUrl != null) ...[
+            const SizedBox(height: 14),
+            Container(
+              height: 176,
+              decoration: BoxDecoration(
+                color: WanpanColors.surfaceSoft,
+                borderRadius: BorderRadius.circular(WanpanRadii.medium),
+              ),
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.play_circle_fill_rounded,
+                      size: 52,
+                      color: WanpanColors.coral,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      '点击查看完攀视频',
+                      style: Theme.of(context).textTheme.labelMedium,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              _LikeButton(
+                liked: entry.liked,
+                count: entry.likeCount,
+                onTap: liking ? null : onLike,
+              ),
+              const SizedBox(width: 16),
+              const Icon(
+                Icons.chat_bubble_outline_rounded,
+                size: 20,
+                color: WanpanColors.inkSecondary,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                '${post.commentCount}',
+                style: Theme.of(context).textTheme.labelLarge,
+              ),
+              const Spacer(),
+              Text(
+                _relativeTime(post.sentAt),
+                style: Theme.of(context).textTheme.labelMedium,
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -660,32 +724,74 @@ class _ComposeSheetState extends State<_ComposeSheet> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          '分享攀岩动态',
-                          style: Theme.of(context).textTheme.titleLarge,
+                  SizedBox(
+                    height: 82,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            '分享攀岩动态',
+                            style: Theme.of(context).textTheme.headlineMedium,
+                          ),
                         ),
-                      ),
-                      IconButton(
-                        tooltip: '关闭',
-                        onPressed: _submitting
-                            ? null
-                            : () => Navigator.pop(context),
-                        icon: const Icon(Icons.close_rounded),
-                      ),
-                    ],
+                        Positioned(
+                          left: 134,
+                          top: 6,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 9,
+                            ),
+                            decoration: BoxDecoration(
+                              color: WanpanColors.surfaceSoft,
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                            child: Text(
+                              '记录每一次进步，\n也分享每一份快乐！',
+                              style: Theme.of(context).textTheme.labelMedium,
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          right: 32,
+                          top: -24,
+                          width: 104,
+                          height: 92,
+                          child: Image.asset(
+                            AppAssets.profilePeekCat,
+                            cacheWidth: 360,
+                            fit: BoxFit.contain,
+                            filterQuality: FilterQuality.medium,
+                          ),
+                        ),
+                        Positioned(
+                          right: -10,
+                          top: 12,
+                          child: IconButton(
+                            tooltip: '关闭',
+                            onPressed: _submitting
+                                ? null
+                                : () => Navigator.pop(context),
+                            icon: const Icon(Icons.close_rounded),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 6),
                   TextField(
                     controller: _controller,
                     autofocus: true,
-                    minLines: 3,
-                    maxLines: 7,
+                    minLines: 6,
+                    maxLines: 8,
                     maxLength: 300,
                     enabled: !_submitting,
-                    decoration: const InputDecoration(hintText: '今天在墙上发生了什么？'),
+                    decoration: const InputDecoration(
+                      hintText: '今天在墙上发生了什么？',
+                      fillColor: WanpanColors.surface,
+                    ),
                     onChanged: (_) => setState(() {}),
                   ),
                   if (_images.isNotEmpty) ...[
@@ -796,7 +902,11 @@ class _LocalImageGrid extends StatelessWidget {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
-              child: Image.file(File(images[index].path), fit: BoxFit.cover),
+              child: Image.file(
+                File(images[index].path),
+                fit: BoxFit.cover,
+                cacheWidth: 720,
+              ),
             ),
             Positioned(
               top: 4,
@@ -845,6 +955,7 @@ class _ImageGrid extends StatelessWidget {
         child: Image.network(
           urls[index],
           fit: BoxFit.cover,
+          cacheWidth: count == 1 ? 1080 : 480,
           errorBuilder: (_, _, _) => const ColoredBox(
             color: WanpanColors.surfaceSoft,
             child: Icon(Icons.broken_image_outlined, color: WanpanColors.muted),
@@ -864,7 +975,9 @@ class _Avatar extends StatelessWidget {
     return CircleAvatar(
       radius: 22,
       backgroundColor: WanpanColors.coralSoft,
-      backgroundImage: url == null ? null : NetworkImage(url!),
+      backgroundImage: url == null
+          ? null
+          : ResizeImage.resizeIfNeeded(160, 160, NetworkImage(url!)),
       child: url == null
           ? Text(
               label.isEmpty ? '岩' : label.characters.first,
@@ -898,7 +1011,30 @@ class _FeedEmpty extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 54, color: WanpanColors.coral),
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const WanpanMascot(
+                  asset: AppAssets.mascotWelcome,
+                  width: 172,
+                  height: 164,
+                  radius: 36,
+                ),
+                Positioned(
+                  right: -4,
+                  bottom: 4,
+                  child: Container(
+                    width: 44,
+                    height: 44,
+                    decoration: const BoxDecoration(
+                      color: WanpanColors.sunflower,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(icon, size: 23, color: WanpanColors.ink),
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 18),
             Text(
               title,

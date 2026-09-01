@@ -5,7 +5,10 @@ import '../../app/wanpan_theme.dart';
 import '../../core/models/user_models.dart';
 import '../../core/network/api_client.dart';
 import '../auth/application/session_controller.dart';
+import '../../shared/app_assets.dart';
 import '../../shared/motion/wanpan_motion.dart';
+import '../../shared/widgets/wanpan_mascot.dart';
+import '../../shared/widgets/wanpan_pressable.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key, required this.api, required this.session});
@@ -143,7 +146,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       key: ValueKey(profile.user.id),
       onRefresh: _load,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 112),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
         children: [
           _ProfileHeader(profile: profile),
           const SizedBox(height: 18),
@@ -211,47 +214,65 @@ class _ProfileHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = profile.user;
-    return Row(
-      children: [
-        CircleAvatar(
-          radius: 36,
-          backgroundColor: WanpanColors.coralSoft,
-          backgroundImage: user.avatarUrl == null
-              ? null
-              : NetworkImage(user.avatarUrl!),
-          child: user.avatarUrl == null
-              ? Text(
-                  user.nickname.characters.first,
-                  style: const TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.w900,
-                    color: WanpanColors.coralStrong,
+    return Container(
+      padding: const EdgeInsets.fromLTRB(18, 18, 10, 14),
+      decoration: BoxDecoration(
+        color: WanpanColors.skySoft,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: WanpanColors.sky.withValues(alpha: .4)),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 36,
+            backgroundColor: WanpanColors.coralSoft,
+            backgroundImage: user.avatarUrl == null
+                ? null
+                : ResizeImage.resizeIfNeeded(
+                    224,
+                    224,
+                    NetworkImage(user.avatarUrl!),
                   ),
-                )
-              : null,
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                user.nickname,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                user.bio?.isNotEmpty == true ? user.bio! : '每一次上墙，都算成长。',
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-            ],
+            child: user.avatarUrl == null
+                ? Text(
+                    user.nickname.characters.first,
+                    style: const TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w900,
+                      color: WanpanColors.coralStrong,
+                    ),
+                  )
+                : null,
           ),
-        ),
-      ],
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  user.nickname,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  user.bio?.isNotEmpty == true ? user.bio! : '每一次上墙，都算成长。',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ],
+            ),
+          ),
+          const WanpanMascot(
+            asset: AppAssets.mascotWelcome,
+            width: 78,
+            height: 88,
+            radius: 22,
+          ),
+        ],
+      ),
     );
   }
 }
@@ -360,49 +381,47 @@ class _ActionTile extends StatelessWidget {
   final VoidCallback? onTap;
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(WanpanRadii.medium),
-        child: Container(
-          padding: const EdgeInsets.all(15),
-          decoration: BoxDecoration(
-            color: WanpanColors.surface,
-            borderRadius: BorderRadius.circular(WanpanRadii.medium),
-            border: Border.all(color: WanpanColors.border),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: WanpanColors.surfaceSoft,
-                  borderRadius: BorderRadius.circular(13),
-                ),
-                child: Icon(icon, color: WanpanColors.inkSecondary),
+    return WanpanPressable(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(WanpanRadii.medium),
+      pressedScale: .985,
+      child: Container(
+        padding: const EdgeInsets.all(15),
+        decoration: BoxDecoration(
+          color: WanpanColors.surface,
+          borderRadius: BorderRadius.circular(WanpanRadii.medium),
+          border: Border.all(color: WanpanColors.border),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: WanpanColors.surfaceSoft,
+                borderRadius: BorderRadius.circular(13),
               ),
-              const SizedBox(width: 13),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: Theme.of(context).textTheme.titleMedium),
-                    Text(
-                      subtitle,
-                      style: Theme.of(context).textTheme.labelMedium,
-                    ),
-                  ],
-                ),
+              child: Icon(icon, color: WanpanColors.inkSecondary),
+            ),
+            const SizedBox(width: 13),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: Theme.of(context).textTheme.titleMedium),
+                  Text(
+                    subtitle,
+                    style: Theme.of(context).textTheme.labelMedium,
+                  ),
+                ],
               ),
-              if (onTap != null)
-                const Icon(
-                  Icons.chevron_right_rounded,
-                  color: WanpanColors.muted,
-                ),
-            ],
-          ),
+            ),
+            if (onTap != null)
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: WanpanColors.muted,
+              ),
+          ],
         ),
       ),
     );
@@ -419,18 +438,11 @@ class _SignedOut extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 84,
-              height: 84,
-              decoration: const BoxDecoration(
-                color: WanpanColors.coralSoft,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.person_outline_rounded,
-                size: 42,
-                color: WanpanColors.coral,
-              ),
+            const WanpanMascot(
+              asset: AppAssets.mascotWelcome,
+              width: 176,
+              height: 168,
+              radius: 38,
             ),
             const SizedBox(height: 20),
             Text(

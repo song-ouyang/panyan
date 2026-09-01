@@ -16,6 +16,7 @@ import '../../core/network/api_exception.dart';
 import '../../core/repositories/gym_repository.dart';
 import '../../core/repositories/route_submission_repository.dart';
 import '../auth/application/session_controller.dart';
+import '../../shared/app_assets.dart';
 import '../../shared/motion/wanpan_motion.dart';
 import '../../shared/widgets/wanpan_card.dart';
 import '../../shared/widgets/wanpan_pressable.dart';
@@ -577,34 +578,57 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
           ),
           children: [
             WanpanCard(
-              color: WanpanColors.coralSoft,
+              color: WanpanColors.coralSoft.withValues(alpha: .62),
               borderColor: Colors.transparent,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(
-                    Icons.gesture_rounded,
-                    color: WanpanColors.coralStrong,
-                    size: 28,
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '把新线路留给更多岩友',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '先搜索馆内已有线路；没找到时，拍照标点即可直接发布新线路。',
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                      ],
+              padding: EdgeInsets.zero,
+              child: SizedBox(
+                height: 116,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    const Positioned(
+                      left: 18,
+                      top: 24,
+                      child: Icon(
+                        Icons.gesture_rounded,
+                        color: WanpanColors.coral,
+                        size: 30,
+                      ),
                     ),
-                  ),
-                ],
+                    Positioned(
+                      left: 62,
+                      right: 106,
+                      top: 20,
+                      child: Text(
+                        '把新线路留给更多岩友',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ),
+                    Positioned(
+                      left: 62,
+                      right: 92,
+                      top: 50,
+                      child: Text(
+                        '先搜索馆内已有线路；没找到时，拍照标点即可直接发布新线路。',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ),
+                    Positioned(
+                      right: -25,
+                      top: -31,
+                      width: 140,
+                      height: 124,
+                      child: Image.asset(
+                        AppAssets.profilePeekCat,
+                        cacheWidth: 460,
+                        fit: BoxFit.contain,
+                        filterQuality: FilterQuality.medium,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 26),
@@ -1034,8 +1058,8 @@ class _ExistingRoutesPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => WanpanCard(
-    color: WanpanColors.surfaceSoft,
-    borderColor: Colors.transparent,
+    color: WanpanColors.grapeSoft.withValues(alpha: .42),
+    borderColor: WanpanColors.grape.withValues(alpha: .28),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1049,10 +1073,7 @@ class _ExistingRoutesPanel extends StatelessWidget {
                 color: WanpanColors.surface,
                 borderRadius: BorderRadius.circular(13),
               ),
-              child: const Icon(
-                Icons.bolt_rounded,
-                color: WanpanColors.coralStrong,
-              ),
+              child: const Icon(Icons.bolt_rounded, color: WanpanColors.grape),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -1104,9 +1125,25 @@ class _ExistingRoutesPanel extends StatelessWidget {
           _InlineError(message: '已有线路没有加载出来', onRetry: onRetry),
         ] else if (totalCount == 0) ...[
           const SizedBox(height: 12),
-          Text(
-            '馆内还没有已发布线路，可以直接在下方新建。',
-            style: Theme.of(context).textTheme.bodyMedium,
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '馆内还没有已发布线路，\n可以直接在下方新建。',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ),
+              SizedBox(
+                width: 146,
+                height: 92,
+                child: Image.asset(
+                  AppAssets.routeMapCat,
+                  cacheWidth: 520,
+                  fit: BoxFit.contain,
+                  filterQuality: FilterQuality.medium,
+                ),
+              ),
+            ],
           ),
         ] else if (routes.isEmpty) ...[
           const SizedBox(height: 12),
@@ -1285,32 +1322,57 @@ class _PhotoPlaceholder extends StatelessWidget {
   Widget build(BuildContext context) => WanpanCard(
     onTap: onTap,
     semanticLabel: '拍摄或选择线路照片',
-    color: WanpanColors.surfaceSoft,
+    color: WanpanColors.surface.withValues(alpha: .76),
+    borderColor: WanpanColors.coral.withValues(alpha: .28),
     child: SizedBox(
-      height: 210,
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 58,
-              height: 58,
-              decoration: const BoxDecoration(
-                color: WanpanColors.coralSoft,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.add_a_photo_outlined,
-                color: WanpanColors.coralStrong,
-                size: 27,
-              ),
+      height: 248,
+      child: Stack(
+        children: [
+          Positioned(
+            right: -22,
+            bottom: -30,
+            width: 166,
+            height: 214,
+            child: Image.asset(
+              AppAssets.routeReviewCat,
+              cacheWidth: 420,
+              fit: BoxFit.cover,
+              alignment: Alignment.bottomCenter,
+              filterQuality: FilterQuality.medium,
             ),
-            const SizedBox(height: 14),
-            Text('拍摄或选择线路照片', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 5),
-            Text('支持相册与相机', style: Theme.of(context).textTheme.bodyMedium),
-          ],
-        ),
+          ),
+          Align(
+            alignment: const Alignment(-.42, .02),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 58,
+                  height: 58,
+                  decoration: const BoxDecoration(
+                    color: WanpanColors.grapeSoft,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.add_a_photo_outlined,
+                    color: WanpanColors.grape,
+                    size: 27,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  '拍摄或选择线路照片',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  '支持多张，稍后可标记多个线路点',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     ),
   );
@@ -1325,7 +1387,7 @@ class _VideoPlaceholder extends StatelessWidget {
   Widget build(BuildContext context) => WanpanCard(
     onTap: onTap,
     semanticLabel: '添加首条完攀视频',
-    color: WanpanColors.surfaceSoft,
+    color: WanpanColors.surface.withValues(alpha: .78),
     child: Row(
       children: [
         Container(
@@ -1338,7 +1400,7 @@ class _VideoPlaceholder extends StatelessWidget {
           ),
           child: const Icon(
             Icons.video_call_rounded,
-            color: WanpanColors.coralStrong,
+            color: WanpanColors.grape,
             size: 27,
           ),
         ),
@@ -1356,7 +1418,7 @@ class _VideoPlaceholder extends StatelessWidget {
             ],
           ),
         ),
-        const Icon(Icons.add_rounded, color: WanpanColors.coralStrong),
+        const Icon(Icons.add_rounded, color: WanpanColors.grape, size: 30),
       ],
     ),
   );
@@ -1828,14 +1890,40 @@ class _GymPickerSheetState extends State<_GymPickerSheet> {
         .toList(growable: false);
     return SafeArea(
       child: SizedBox(
-        height: MediaQuery.sizeOf(context).height * .72,
+        height: MediaQuery.sizeOf(context).height * .78,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('选择岩馆', style: Theme.of(context).textTheme.titleLarge),
-              const SizedBox(height: 12),
+              SizedBox(
+                height: 58,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Align(
+                      alignment: Alignment.bottomLeft,
+                      child: Text(
+                        '选择岩馆',
+                        style: Theme.of(context).textTheme.headlineMedium,
+                      ),
+                    ),
+                    Positioned(
+                      left: 18,
+                      top: -70,
+                      width: 126,
+                      height: 94,
+                      child: Image.asset(
+                        AppAssets.profilePeekCat,
+                        cacheWidth: 420,
+                        fit: BoxFit.contain,
+                        filterQuality: FilterQuality.medium,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
               TextField(
                 controller: _searchController,
                 autofocus: true,
@@ -1843,6 +1931,16 @@ class _GymPickerSheetState extends State<_GymPickerSheet> {
                 decoration: const InputDecoration(
                   prefixIcon: Icon(Icons.search_rounded),
                   hintText: '搜索岩馆、城市或区域',
+                  fillColor: WanpanColors.surface,
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(
+                      color: WanpanColors.coral,
+                      width: 1.5,
+                    ),
+                    borderRadius: BorderRadius.all(
+                      Radius.circular(WanpanRadii.medium),
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 12),
@@ -1858,7 +1956,31 @@ class _GymPickerSheetState extends State<_GymPickerSheet> {
                           final gym = gyms[index];
                           final selected = gym.id == widget.selectedGymId;
                           return ListTile(
-                            contentPadding: EdgeInsets.zero,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            tileColor: selected
+                                ? WanpanColors.coralSoft.withValues(alpha: .48)
+                                : Colors.transparent,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(
+                                WanpanRadii.medium,
+                              ),
+                            ),
+                            leading: Container(
+                              width: 42,
+                              height: 42,
+                              decoration: BoxDecoration(
+                                color: WanpanColors.surface,
+                                borderRadius: BorderRadius.circular(13),
+                                border: Border.all(color: WanpanColors.border),
+                              ),
+                              child: const Icon(
+                                Icons.location_on_rounded,
+                                color: WanpanColors.sky,
+                              ),
+                            ),
                             title: Text(
                               gym.name,
                               style: Theme.of(context).textTheme.titleMedium,
@@ -1873,15 +1995,77 @@ class _GymPickerSheetState extends State<_GymPickerSheet> {
                               overflow: TextOverflow.ellipsis,
                             ),
                             trailing: selected
-                                ? const Icon(
-                                    Icons.check_circle_rounded,
-                                    color: WanpanColors.coral,
+                                ? Container(
+                                    width: 40,
+                                    height: 40,
+                                    decoration: const BoxDecoration(
+                                      color: WanpanColors.coral,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.check_rounded,
+                                      color: Colors.white,
+                                    ),
                                   )
                                 : const Icon(Icons.chevron_right_rounded),
                             onTap: () => Navigator.pop(context, gym.id),
                           );
                         },
                       ),
+              ),
+              const SizedBox(height: 10),
+              Container(
+                height: 104,
+                clipBehavior: Clip.antiAlias,
+                decoration: BoxDecoration(
+                  color: WanpanColors.sunflowerSoft.withValues(alpha: .38),
+                  borderRadius: BorderRadius.circular(WanpanRadii.medium),
+                  border: Border.all(
+                    color: WanpanColors.sunflower.withValues(alpha: .35),
+                  ),
+                ),
+                child: Stack(
+                  children: [
+                    Positioned(
+                      left: 18,
+                      top: 20,
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.stars_rounded,
+                            color: WanpanColors.sunflower,
+                          ),
+                          const SizedBox(width: 10),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '小贴士',
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                              Text(
+                                '找不到你的岩馆？\n可以直接拍照标点，添加为新岩馆。',
+                                style: Theme.of(context).textTheme.bodyMedium,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    Positioned(
+                      right: -20,
+                      bottom: -24,
+                      width: 130,
+                      height: 100,
+                      child: Image.asset(
+                        AppAssets.profilePeekCat,
+                        cacheWidth: 420,
+                        fit: BoxFit.contain,
+                        filterQuality: FilterQuality.medium,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),

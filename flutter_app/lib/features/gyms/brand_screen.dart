@@ -5,7 +5,9 @@ import '../../app/wanpan_theme.dart';
 import '../../core/models/gym_models.dart';
 import '../../core/network/api_client.dart';
 import '../../core/repositories/gym_repository.dart';
+import '../../shared/app_assets.dart';
 import '../../shared/widgets/wanpan_card.dart';
+import '../../shared/widgets/wanpan_mascot.dart';
 import '../../shared/widgets/wanpan_skeleton.dart';
 import '../../shared/widgets/wanpan_states.dart';
 
@@ -66,7 +68,12 @@ class _BrandScreenState extends State<BrandScreen> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
         children: [
-          _BrandSummary(detail: detail),
+          WanpanCard(
+            color: WanpanColors.skySoft,
+            borderColor: WanpanColors.sky,
+            padding: const EdgeInsets.fromLTRB(20, 20, 12, 16),
+            child: _BrandSummary(detail: detail),
+          ),
           const SizedBox(height: 24),
           Text('选择门店', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 12),
@@ -131,48 +138,56 @@ class _BrandSummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Row(
     children: [
-      Hero(
-        tag: 'brand-${detail.id}',
-        child: Container(
-          width: 76,
-          height: 76,
-          decoration: BoxDecoration(
-            color: WanpanColors.coralSoft,
-            borderRadius: BorderRadius.circular(24),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: detail.logoUrl == null
-              ? const Icon(
-                  Icons.landscape_rounded,
-                  color: WanpanColors.coral,
-                  size: 36,
-                )
-              : Image.network(
-                  detail.logoUrl!,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => const Icon(
-                    Icons.landscape_rounded,
-                    color: WanpanColors.coral,
-                  ),
-                ),
-        ),
-      ),
-      const SizedBox(width: 16),
       Expanded(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Hero(
+              tag: 'brand-${detail.id}',
+              child: Container(
+                width: 66,
+                height: 66,
+                decoration: BoxDecoration(
+                  color: WanpanColors.coralSoft,
+                  borderRadius: BorderRadius.circular(21),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: detail.logoUrl == null
+                    ? const Icon(
+                        Icons.landscape_rounded,
+                        color: WanpanColors.coral,
+                        size: 32,
+                      )
+                    : Image.network(
+                        detail.logoUrl!,
+                        fit: BoxFit.cover,
+                        cacheWidth: 220,
+                        cacheHeight: 220,
+                        errorBuilder: (_, _, _) => const Icon(
+                          Icons.landscape_rounded,
+                          color: WanpanColors.coral,
+                        ),
+                      ),
+              ),
+            ),
+            const SizedBox(height: 14),
             Text(
               detail.name,
               style: Theme.of(context).textTheme.headlineMedium,
             ),
             const SizedBox(height: 5),
             Text(
-              '${detail.stores.length} 家门店',
+              '${detail.stores.length} 家门店 · 一起去发现新线路',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
           ],
         ),
+      ),
+      const WanpanMascot(
+        asset: AppAssets.mascotLoading,
+        width: 116,
+        height: 142,
+        radius: 26,
       ),
     ],
   );

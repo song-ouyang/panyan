@@ -109,8 +109,9 @@ GoRouter createWanpanRouter({
             routes: [
               GoRoute(
                 path: '/gyms',
-                pageBuilder: (context, state) =>
-                    NoTransitionPage(child: GymsScreen(api: api)),
+                pageBuilder: (context, state) => NoTransitionPage(
+                  child: GymsScreen(api: api, session: session),
+                ),
               ),
             ],
           ),

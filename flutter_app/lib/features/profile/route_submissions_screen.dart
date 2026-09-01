@@ -5,6 +5,7 @@ import '../../app/wanpan_theme.dart';
 import '../../core/models/route_submission_models.dart';
 import '../../core/network/api_client.dart';
 import '../../core/repositories/route_submission_repository.dart';
+import '../../shared/app_assets.dart';
 import '../../shared/motion/wanpan_motion.dart';
 import '../../shared/widgets/wanpan_card.dart';
 import '../../shared/widgets/wanpan_states.dart';
@@ -69,12 +70,18 @@ class _RouteSubmissionsScreenState extends State<RouteSubmissionsScreen> {
     appBar: AppBar(
       title: const Text('线路发布记录'),
       actions: [
-        IconButton(
-          tooltip: '发布新线路',
-          onPressed: _createSubmission,
-          icon: const Icon(Icons.add_rounded),
+        Padding(
+          padding: const EdgeInsets.only(right: 12),
+          child: IconButton.filled(
+            tooltip: '发布新线路',
+            onPressed: _createSubmission,
+            style: IconButton.styleFrom(
+              backgroundColor: WanpanColors.coral,
+              foregroundColor: Colors.white,
+            ),
+            icon: const Icon(Icons.add_rounded, size: 28),
+          ),
         ),
-        const SizedBox(width: 6),
       ],
     ),
     body: AnimatedSwitcher(
@@ -117,7 +124,7 @@ class _RouteSubmissionsScreenState extends State<RouteSubmissionsScreen> {
       onRefresh: _load,
       child: ListView.separated(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 40),
-        itemCount: _submissions.length + 1,
+        itemCount: _submissions.length + 2,
         separatorBuilder: (_, index) => SizedBox(height: index == 0 ? 18 : 12),
         itemBuilder: (context, index) {
           if (index == 0) {
@@ -126,6 +133,9 @@ class _RouteSubmissionsScreenState extends State<RouteSubmissionsScreen> {
               approved: approved,
               rejected: rejected,
             );
+          }
+          if (index == _submissions.length + 1) {
+            return const _StatusReminderBanner();
           }
           final submission = _submissions[index - 1];
           return _SubmissionCard(
@@ -153,9 +163,9 @@ class _SubmissionSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => WanpanCard(
-    color: WanpanColors.surfaceSoft,
-    borderColor: Colors.transparent,
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+    color: WanpanColors.surface.withValues(alpha: .72),
+    borderColor: WanpanColors.border,
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 22),
     child: Row(
       children: [
         Expanded(
@@ -183,8 +193,14 @@ class _SummaryValue extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Column(
     children: [
-      Text('$value', style: Theme.of(context).textTheme.titleLarge),
-      const SizedBox(height: 2),
+      Text(
+        '$value',
+        style: Theme.of(context).textTheme.displaySmall?.copyWith(
+          color: label == '历史处理中' ? WanpanColors.coral : WanpanColors.ink,
+          fontSize: 35,
+        ),
+      ),
+      const SizedBox(height: 4),
       Text(label, style: Theme.of(context).textTheme.labelMedium),
     ],
   );
@@ -208,28 +224,30 @@ class _SubmissionCard extends StatelessWidget {
     return WanpanCard(
       onTap: onTap,
       semanticLabel: onTap == null ? null : '查看${submission.name}正式线路',
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(WanpanRadii.medium),
-                child: Image.network(
-                  submission.coverUrl,
-                  width: 88,
-                  height: 104,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => Container(
-                    width: 88,
-                    height: 104,
-                    color: WanpanColors.surfaceSoft,
-                    alignment: Alignment.center,
-                    child: const Icon(
-                      Icons.landscape_outlined,
-                      color: WanpanColors.muted,
+              SizedBox(
+                width: 116,
+                height: 190,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(WanpanRadii.medium),
+                  child: Image.network(
+                    submission.coverUrl,
+                    width: 116,
+                    height: 190,
+                    fit: BoxFit.cover,
+                    cacheWidth: 348,
+                    cacheHeight: 570,
+                    errorBuilder: (_, _, _) => Image.asset(
+                      AppAssets.routeReviewCat,
+                      cacheWidth: 420,
+                      fit: BoxFit.cover,
+                      filterQuality: FilterQuality.medium,
                     ),
                   ),
                 ),
@@ -253,20 +271,32 @@ class _SubmissionCard extends StatelessWidget {
                         _GradePill(grade: submission.grade),
                       ],
                     ),
-                    const SizedBox(height: 7),
+                    const SizedBox(height: 10),
                     Text(
                       location,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 16),
                     _StatusPill(status: status),
                     if (submission.createdAt != null) ...[
-                      const SizedBox(height: 7),
-                      Text(
-                        '${_formatDate(submission.createdAt!)} 发布',
-                        style: Theme.of(context).textTheme.labelMedium,
+                      const SizedBox(height: 20),
+                      const Divider(),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.calendar_month_rounded,
+                            color: WanpanColors.muted,
+                            size: 18,
+                          ),
+                          const SizedBox(width: 7),
+                          Text(
+                            '${_formatDate(submission.createdAt!)} 发布',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                        ],
                       ),
                     ],
                   ],
@@ -318,6 +348,46 @@ class _SubmissionCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _StatusReminderBanner extends StatelessWidget {
+  const _StatusReminderBanner();
+
+  @override
+  Widget build(BuildContext context) => Container(
+    height: 126,
+    clipBehavior: Clip.antiAlias,
+    decoration: BoxDecoration(
+      color: WanpanColors.surface.withValues(alpha: .72),
+      borderRadius: BorderRadius.circular(WanpanRadii.large),
+      border: Border.all(color: WanpanColors.border),
+    ),
+    child: Stack(
+      children: [
+        Positioned(
+          right: -8,
+          bottom: -20,
+          width: 190,
+          height: 126,
+          child: Image.asset(
+            AppAssets.routeMapCat,
+            cacheWidth: 520,
+            fit: BoxFit.contain,
+            filterQuality: FilterQuality.medium,
+          ),
+        ),
+        Positioned(
+          left: 20,
+          top: 38,
+          right: 166,
+          child: Text(
+            '线路状态有变化时会提醒你',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _GradePill extends StatelessWidget {

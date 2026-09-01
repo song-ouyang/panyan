@@ -4,6 +4,7 @@ import '../../app/wanpan_theme.dart';
 import '../../core/models/profile_models.dart';
 import '../../core/network/api_client.dart';
 import '../../core/repositories/profile_repository.dart';
+import '../../shared/app_assets.dart';
 import '../../shared/motion/wanpan_motion.dart';
 
 class ClimbingCalendarScreen extends StatefulWidget {
@@ -62,10 +63,12 @@ class _ClimbingCalendarScreenState extends State<ClimbingCalendarScreen> {
       );
       setState(() {
         _dashboard = dashboard;
-        _selectedDay = todayHasRecord
+        _selectedDay = _isSameMonth(today, _visibleMonth)
+            ? today
+            : todayHasRecord
             ? today
             : datedRecords.isEmpty
-            ? null
+            ? DateTime(_visibleMonth.year, _visibleMonth.month, 1)
             : DateUtils.dateOnly(datedRecords.last.day!);
         _loading = false;
       });
@@ -339,7 +342,7 @@ class _CalendarCard extends StatelessWidget {
               physics: const NeverScrollableScrollPhysics(),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 7,
-                childAspectRatio: 1,
+                childAspectRatio: .82,
                 mainAxisSpacing: 4,
                 crossAxisSpacing: 2,
               ),
@@ -358,7 +361,7 @@ class _CalendarCard extends StatelessWidget {
                   isSelected: DateUtils.isSameDay(day, selectedDay),
                   isToday: DateUtils.isSameDay(day, today),
                   sends: records.fold(0, (sum, item) => sum + item.sends),
-                  onTap: records.isEmpty ? null : () => onSelect(day),
+                  onTap: day.isAfter(today) ? null : () => onSelect(day),
                 );
               },
             ),
@@ -459,19 +462,47 @@ class _SelectedDayCard extends StatelessWidget {
   Widget build(BuildContext context) {
     if (day == null || records.isEmpty) {
       return Container(
-        padding: const EdgeInsets.all(18),
+        height: 178,
+        clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
-          color: WanpanColors.surfaceSoft,
-          borderRadius: BorderRadius.circular(WanpanRadii.medium),
+          color: WanpanColors.surface.withValues(alpha: .78),
+          borderRadius: BorderRadius.circular(WanpanRadii.large),
+          border: Border.all(color: WanpanColors.border),
         ),
-        child: Row(
+        child: Stack(
           children: [
-            const Icon(Icons.auto_awesome_rounded, color: WanpanColors.gold),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                '这个月还没有记录，完成一条线路后这里就会亮起来。',
-                style: Theme.of(context).textTheme.bodyMedium,
+            Positioned(
+              right: -12,
+              bottom: -12,
+              width: 220,
+              height: 160,
+              child: Image.asset(
+                AppAssets.routeMapCat,
+                cacheWidth: 620,
+                fit: BoxFit.contain,
+                filterQuality: FilterQuality.medium,
+              ),
+            ),
+            Positioned(
+              left: 24,
+              top: 42,
+              right: 185,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(
+                    Icons.auto_awesome_rounded,
+                    color: WanpanColors.gold,
+                    size: 22,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      '这个月还没有记录，\n完成一条线路后\n这里就会亮起来。',
+                      style: Theme.of(context).textTheme.bodyLarge,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -675,6 +706,9 @@ bool _isCurrentMonth(DateTime month) {
   final now = DateTime.now();
   return month.year == now.year && month.month == now.month;
 }
+
+bool _isSameMonth(DateTime a, DateTime b) =>
+    a.year == b.year && a.month == b.month;
 
 String _monthKey(DateTime date) =>
     '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}';

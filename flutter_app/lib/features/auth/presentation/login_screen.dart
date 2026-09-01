@@ -216,7 +216,7 @@ class _LoginScreenState extends State<LoginScreen> {
         top: false,
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+            padding: const EdgeInsets.fromLTRB(24, 4, 24, 36),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 460),
               child: TweenAnimationBuilder<double>(
@@ -230,21 +230,18 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Center(
-                      child: ClipOval(
-                        child: Image.asset(
-                          AppAssets.mascotWelcome,
-                          width: 116,
-                          height: 116,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) => const CircleAvatar(
-                            radius: 58,
-                            backgroundColor: WanpanColors.coralSoft,
-                            child: Icon(
-                              Icons.pets_rounded,
-                              size: 48,
-                              color: WanpanColors.coral,
-                            ),
+                    RepaintBoundary(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(30),
+                        child: SizedBox(
+                          height: 326,
+                          width: double.infinity,
+                          child: Image.asset(
+                            AppAssets.loginGardenHero,
+                            cacheWidth: 1200,
+                            fit: BoxFit.cover,
+                            alignment: Alignment.center,
+                            filterQuality: FilterQuality.high,
                           ),
                         ),
                       ),
@@ -253,7 +250,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     Text(
                       '登录后，每一次上墙都有记录',
                       textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.headlineMedium,
+                      style: Theme.of(context).textTheme.headlineMedium
+                          ?.copyWith(fontSize: 26, letterSpacing: -.6),
                     ),
                     const SizedBox(height: 9),
                     Text(
@@ -261,58 +259,84 @@ class _LoginScreenState extends State<LoginScreen> {
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
-                    const SizedBox(height: 28),
-                    TextField(
-                      key: const Key('sms-phone'),
-                      controller: _phoneController,
-                      enabled: !_busy,
-                      keyboardType: TextInputType.phone,
-                      autofillHints: const [AutofillHints.telephoneNumber],
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      maxLength: 11,
-                      decoration: const InputDecoration(
-                        labelText: '手机号',
-                        hintText: '请输入 11 位手机号',
-                        prefixIcon: Icon(Icons.phone_iphone_rounded),
-                        counterText: '',
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      height: 62,
+                      child: TextField(
+                        key: const Key('sms-phone'),
+                        controller: _phoneController,
+                        enabled: !_busy,
+                        keyboardType: TextInputType.phone,
+                        autofillHints: const [AutofillHints.telephoneNumber],
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                        ],
+                        maxLength: 11,
+                        style: Theme.of(context).textTheme.bodyLarge,
+                        decoration: const InputDecoration(
+                          hintText: '手机号',
+                          prefixIcon: Icon(Icons.phone_iphone_rounded),
+                          counterText: '',
+                          fillColor: WanpanColors.surface,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            key: const Key('sms-code'),
-                            controller: _codeController,
-                            enabled: !_busy,
-                            keyboardType: TextInputType.number,
-                            autofillHints: const [AutofillHints.oneTimeCode],
-                            inputFormatters: [
-                              FilteringTextInputFormatter.digitsOnly,
-                            ],
-                            maxLength: 6,
-                            decoration: const InputDecoration(
-                              labelText: '验证码',
-                              hintText: '6 位验证码',
-                              counterText: '',
+                    Container(
+                      height: 62,
+                      decoration: BoxDecoration(
+                        color: WanpanColors.surface,
+                        borderRadius: BorderRadius.circular(WanpanRadii.medium),
+                        border: Border.all(color: WanpanColors.border),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              key: const Key('sms-code'),
+                              controller: _codeController,
+                              enabled: !_busy,
+                              keyboardType: TextInputType.number,
+                              autofillHints: const [AutofillHints.oneTimeCode],
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                              ],
+                              maxLength: 6,
+                              style: Theme.of(context).textTheme.bodyLarge,
+                              decoration: const InputDecoration(
+                                hintText: '验证码',
+                                counterText: '',
+                                filled: false,
+                                border: InputBorder.none,
+                                enabledBorder: InputBorder.none,
+                                focusedBorder: InputBorder.none,
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 10),
-                        TextButton(
-                          key: const Key('sms-send-code'),
-                          onPressed: _busy || _secondsUntilResend > 0
-                              ? null
-                              : _sendSmsCode,
-                          child: Text(
-                            _busyProvider == 'sms-send'
-                                ? '发送中…'
-                                : _secondsUntilResend > 0
-                                ? '${_secondsUntilResend}s 后重发'
-                                : '获取验证码',
+                          TextButton(
+                            key: const Key('sms-send-code'),
+                            onPressed: _busy || _secondsUntilResend > 0
+                                ? null
+                                : _sendSmsCode,
+                            style: TextButton.styleFrom(
+                              foregroundColor: WanpanColors.coral,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                              textStyle: const TextStyle(
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            child: Text(
+                              _busyProvider == 'sms-send'
+                                  ? '发送中…'
+                                  : _secondsUntilResend > 0
+                                  ? '${_secondsUntilResend}s 后重发'
+                                  : '获取验证码',
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Row(
@@ -337,6 +361,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ],
                     ),
+                    const SizedBox(height: 2),
                     WanpanButton(
                       key: const Key('sms-login'),
                       label: '验证码登录',

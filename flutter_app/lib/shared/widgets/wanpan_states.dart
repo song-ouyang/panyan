@@ -27,17 +27,20 @@ class WanpanEmptyState extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         if (imageAsset != null)
-          ClipRRect(
-            borderRadius: BorderRadius.circular(24),
-            child: Image.asset(
-              imageAsset!,
-              width: 152,
-              height: 132,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => const Icon(
-                Icons.landscape_rounded,
-                size: 72,
-                color: WanpanColors.coral,
+          RepaintBoundary(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(30),
+              child: Image.asset(
+                imageAsset!,
+                width: 180,
+                height: 168,
+                fit: BoxFit.cover,
+                filterQuality: FilterQuality.medium,
+                errorBuilder: (_, _, _) => const Icon(
+                  Icons.pets_rounded,
+                  size: 72,
+                  color: WanpanColors.coral,
+                ),
               ),
             ),
           ),

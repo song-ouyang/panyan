@@ -6,6 +6,7 @@ import '../../app/wanpan_theme.dart';
 import '../../core/models/user_models.dart';
 import '../../core/network/api_client.dart';
 import '../../core/repositories/profile_repository.dart';
+import '../../shared/app_assets.dart';
 import '../../shared/motion/wanpan_motion.dart';
 import '../../shared/widgets/wanpan_card.dart';
 import '../../shared/widgets/wanpan_pressable.dart';
@@ -25,6 +26,7 @@ class FriendsScreen extends StatefulWidget {
 class _FriendsScreenState extends State<FriendsScreen> {
   late final ProfileRepository _repository = ProfileRepository(widget.api);
   final _searchController = TextEditingController();
+  final _searchFocusNode = FocusNode();
   final Set<String> _busyUsers = {};
   Timer? _searchDebounce;
   List<UserSummary> _friends = const [];
@@ -46,6 +48,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
   void dispose() {
     _searchDebounce?.cancel();
     _searchController.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
@@ -256,15 +259,22 @@ class _FriendsScreenState extends State<FriendsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('我的岩友')),
+      appBar: AppBar(
+        toolbarHeight: 66,
+        title: const Text(
+          '我的岩友',
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+        ),
+      ),
       body: RefreshIndicator(
         onRefresh: _refresh,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 48),
           children: [
             _SearchField(
               controller: _searchController,
+              focusNode: _searchFocusNode,
               searching: _searching,
               onChanged: _onSearchChanged,
               onSubmitted: (_) => _searchNow(),
@@ -329,7 +339,16 @@ class _FriendsScreenState extends State<FriendsScreen> {
               _SectionTitle(title: '全部岩友', count: _friends.length),
               const SizedBox(height: 10),
               if (_friends.isEmpty)
-                const _FriendsEmpty()
+                _FriendsEmpty(
+                  onSearch: () {
+                    _searchFocusNode.requestFocus();
+                    Scrollable.ensureVisible(
+                      _searchFocusNode.context ?? context,
+                      duration: const Duration(milliseconds: 220),
+                      curve: Curves.easeOutCubic,
+                    );
+                  },
+                )
               else
                 WanpanCard(
                   padding: const EdgeInsets.symmetric(
@@ -365,12 +384,14 @@ class _FriendsScreenState extends State<FriendsScreen> {
 class _SearchField extends StatelessWidget {
   const _SearchField({
     required this.controller,
+    required this.focusNode,
     required this.searching,
     required this.onChanged,
     required this.onSubmitted,
   });
 
   final TextEditingController controller;
+  final FocusNode focusNode;
   final bool searching;
   final ValueChanged<String> onChanged;
   final ValueChanged<String> onSubmitted;
@@ -379,6 +400,7 @@ class _SearchField extends StatelessWidget {
   Widget build(BuildContext context) {
     return TextField(
       controller: controller,
+      focusNode: focusNode,
       textInputAction: TextInputAction.search,
       autocorrect: false,
       onChanged: onChanged,
@@ -690,7 +712,11 @@ class _SectionTitle extends StatelessWidget {
     return Row(
       children: [
         Expanded(
-          child: Text(title, style: Theme.of(context).textTheme.titleMedium),
+          child: Text(
+            title,
+            style: Theme.of(context).textTheme.titleLarge
+                ?.copyWith(fontSize: 20),
+          ),
         ),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
@@ -712,38 +738,109 @@ class _SectionTitle extends StatelessWidget {
 }
 
 class _FriendsEmpty extends StatelessWidget {
-  const _FriendsEmpty();
+  const _FriendsEmpty({required this.onSearch});
+
+  final VoidCallback onSearch;
 
   @override
   Widget build(BuildContext context) {
-    return WanpanCard(
-      color: WanpanColors.coralSoft,
-      borderColor: Colors.transparent,
-      child: Row(
-        children: [
-          const Icon(
-            Icons.waving_hand_rounded,
-            size: 34,
-            color: WanpanColors.coral,
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('还没有岩友', style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 3),
-                Text(
-                  '从上方搜索昵称，一起约下一次上墙。',
-                  style: Theme.of(context).textTheme.bodyMedium,
+    return Column(
+      children: [
+        const SizedBox(height: 26),
+        SizedBox(
+          width: 330,
+          height: 300,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              const Positioned.fill(
+                child: CustomPaint(painter: _FriendTrailPainter()),
+              ),
+              Image.asset(
+                AppAssets.friendsEmptyCat,
+                width: 300,
+                height: 286,
+                fit: BoxFit.contain,
+                cacheWidth: 720,
+                filterQuality: FilterQuality.medium,
+                errorBuilder: (_, _, _) => Image.asset(
+                  AppAssets.mascotWelcome,
+                  width: 300,
+                  height: 286,
+                  fit: BoxFit.contain,
+                  cacheWidth: 720,
+                  filterQuality: FilterQuality.medium,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '还没有岩友',
+          style: Theme.of(context).textTheme.headlineMedium
+              ?.copyWith(fontSize: 30, letterSpacing: -.7),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          '搜索昵称，认识下一位一起上墙的伙伴',
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.bodyLarge
+              ?.copyWith(color: WanpanColors.inkSecondary, fontSize: 15),
+        ),
+        const SizedBox(height: 28),
+        SizedBox(
+          width: 220,
+          child: WanpanButton(label: '搜索岩友', onPressed: onSearch),
+        ),
+      ],
     );
   }
+}
+
+class _FriendTrailPainter extends CustomPainter {
+  const _FriendTrailPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final trail = Paint()
+      ..color = WanpanColors.border.withValues(alpha: .58)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round;
+    final path = Path()
+      ..moveTo(size.width * .14, size.height * .74)
+      ..cubicTo(
+        size.width * .02,
+        size.height * .57,
+        size.width * .24,
+        size.height * .43,
+        size.width * .18,
+        size.height * .27,
+      )
+      ..cubicTo(
+        size.width * .28,
+        size.height * .11,
+        size.width * .43,
+        size.height * .16,
+        size.width * .39,
+        size.height * .30,
+      );
+    canvas.drawPath(path, trail);
+    final dot = Paint();
+    for (final entry in <(Offset, Color)>[
+      (Offset(size.width * .08, size.height * .37), WanpanColors.mint),
+      (Offset(size.width * .86, size.height * .67), WanpanColors.sky),
+      (Offset(size.width * .90, size.height * .84), WanpanColors.coral),
+      (Offset(size.width * .72, size.height * .21), WanpanColors.sunflower),
+    ]) {
+      dot.color = entry.$2.withValues(alpha: .78);
+      canvas.drawCircle(entry.$1, 4, dot);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _InlineError extends StatelessWidget {

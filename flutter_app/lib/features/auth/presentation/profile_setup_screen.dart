@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../app/wanpan_theme.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_exception.dart';
+import '../../../shared/app_assets.dart';
 import '../../../shared/widgets/wanpan_pressable.dart';
 import '../application/session_controller.dart';
 import '../data/auth_repository.dart';
@@ -119,7 +120,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       body: SafeArea(
         top: false,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 24, 24, 36),
+          padding: const EdgeInsets.fromLTRB(24, 30, 24, 42),
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 520),
@@ -129,79 +130,131 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   Text(
                     widget.editing ? '让岩友认出你' : '给你的攀岩记录留个名字',
                     textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.headlineMedium,
+                    style: Theme.of(context).textTheme.displaySmall
+                        ?.copyWith(fontSize: 34, letterSpacing: -1.2),
+                  ),
+                  const SizedBox(height: 12),
+                  Center(
+                    child: Container(
+                      width: 190,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: WanpanColors.coralSoft,
+                        borderRadius: BorderRadius.circular(99),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 22),
                   Center(
                     child: Semantics(
                       button: true,
                       label: '选择头像',
-                      child: InkWell(
+                      child: WanpanPressable(
                         onTap: _saving ? null : _pickAvatar,
-                        customBorder: const CircleBorder(),
-                        child: Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            CircleAvatar(
-                              radius: 48,
-                              backgroundColor: WanpanColors.coralSoft,
-                              backgroundImage: _avatarImage,
-                              child: _avatarImage == null
-                                  ? const Icon(
-                                      Icons.person_rounded,
-                                      size: 44,
-                                      color: WanpanColors.coral,
-                                    )
-                                  : null,
-                            ),
-                            Positioned(
-                              right: -2,
-                              bottom: -2,
-                              child: Container(
-                                width: 34,
-                                height: 34,
-                                decoration: BoxDecoration(
-                                  color: WanpanColors.ink,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: Colors.white,
-                                    width: 3,
+                        borderRadius: BorderRadius.circular(WanpanRadii.pill),
+                        child: SizedBox(
+                          width: 276,
+                          height: 246,
+                          child: Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              Positioned(
+                                left: 69,
+                                top: 46,
+                                child: Container(
+                                  width: 164,
+                                  height: 164,
+                                  decoration: BoxDecoration(
+                                    color: WanpanColors.coralSoft,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: const Color(0x66F3BBA9),
+                                      width: 2,
+                                    ),
+                                    image: _avatarImage == null
+                                        ? null
+                                        : DecorationImage(
+                                            image: ResizeImage.resizeIfNeeded(
+                                              512,
+                                              512,
+                                              _avatarImage!,
+                                            ),
+                                            fit: BoxFit.cover,
+                                          ),
                                   ),
-                                ),
-                                child: const Icon(
-                                  Icons.camera_alt_rounded,
-                                  color: Colors.white,
-                                  size: 17,
+                                  alignment: Alignment.center,
+                                  child: _avatarImage == null
+                                      ? const Icon(
+                                          Icons.person_rounded,
+                                          size: 70,
+                                          color: WanpanColors.coral,
+                                        )
+                                      : null,
                                 ),
                               ),
-                            ),
-                          ],
+                              Positioned.fill(
+                                child: IgnorePointer(
+                                  child: Image.asset(
+                                    AppAssets.profilePeekCat,
+                                    cacheWidth: 780,
+                                    fit: BoxFit.contain,
+                                    filterQuality: FilterQuality.high,
+                                  ),
+                                ),
+                              ),
+                              Positioned(
+                                right: 34,
+                                bottom: 24,
+                                child: Container(
+                                  width: 58,
+                                  height: 58,
+                                  decoration: BoxDecoration(
+                                    color: WanpanColors.coral,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: Colors.white,
+                                      width: 5,
+                                    ),
+                                    boxShadow: const [
+                                      BoxShadow(
+                                        color: Color(0x22000000),
+                                        offset: Offset(0, 5),
+                                        blurRadius: 9,
+                                      ),
+                                    ],
+                                  ),
+                                  child: const Icon(
+                                    Icons.camera_alt_rounded,
+                                    color: Colors.white,
+                                    size: 28,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 28),
-                  TextField(
-                    key: const Key('profile-nickname'),
+                  const SizedBox(height: 18),
+                  _ProfileField(
+                    label: '昵称',
+                    hint: '请输入你的昵称',
                     controller: _nickname,
                     enabled: !_saving,
                     maxLength: 32,
+                    minHeight: 132,
                     textInputAction: TextInputAction.next,
-                    decoration: const InputDecoration(
-                      labelText: '昵称',
-                      hintText: '例如：爱爬橙线的小欧',
-                    ),
                   ),
-                  const SizedBox(height: 12),
-                  TextField(
+                  const SizedBox(height: 18),
+                  _ProfileField(
+                    label: '个人简介（可选）',
+                    hint: '介绍一下你自己吧，喜欢的岩场、风格或小目标～',
                     controller: _bio,
                     enabled: !_saving,
                     maxLength: 120,
-                    maxLines: 3,
-                    decoration: const InputDecoration(
-                      labelText: '个人简介（可选）',
-                      hintText: '你喜欢什么类型的线路？',
-                    ),
+                    minHeight: 164,
+                    maxLines: 4,
                   ),
                   if (_error != null) ...[
                     const SizedBox(height: 4),
@@ -214,7 +267,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                       ),
                     ),
                   ],
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 22),
                   WanpanButton(
                     key: const Key('save-profile'),
                     label: widget.editing ? '保存修改' : '开始记录',
@@ -227,6 +280,76 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           ),
         ),
       ),
+    ),
+  );
+}
+
+class _ProfileField extends StatelessWidget {
+  const _ProfileField({
+    required this.label,
+    required this.hint,
+    required this.controller,
+    required this.enabled,
+    required this.maxLength,
+    required this.minHeight,
+    this.maxLines = 1,
+    this.textInputAction,
+  });
+
+  final String label;
+  final String hint;
+  final TextEditingController controller;
+  final bool enabled;
+  final int maxLength;
+  final double minHeight;
+  final int maxLines;
+  final TextInputAction? textInputAction;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    height: minHeight,
+    padding: const EdgeInsets.fromLTRB(18, 17, 18, 8),
+    decoration: BoxDecoration(
+      color: WanpanColors.surface.withValues(alpha: .8),
+      borderRadius: BorderRadius.circular(22),
+      border: Border.all(color: WanpanColors.border),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 4),
+        Expanded(
+          child: TextField(
+            key: label == '昵称' ? const Key('profile-nickname') : null,
+            controller: controller,
+            enabled: enabled,
+            maxLength: maxLength,
+            maxLines: maxLines,
+            textInputAction: textInputAction,
+            style: Theme.of(context).textTheme.bodyLarge,
+            decoration: InputDecoration(
+              hintText: hint,
+              counterText: '',
+              filled: false,
+              contentPadding: const EdgeInsets.symmetric(vertical: 8),
+              border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+            ),
+          ),
+        ),
+        Align(
+          alignment: Alignment.centerRight,
+          child: ValueListenableBuilder<TextEditingValue>(
+            valueListenable: controller,
+            builder: (_, value, _) => Text(
+              '${value.text.characters.length}/$maxLength',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ),
+        ),
+      ],
     ),
   );
 }

@@ -13,6 +13,8 @@ class WanpanCard extends StatelessWidget {
     this.margin = EdgeInsets.zero,
     this.color = WanpanColors.surface,
     this.borderColor = WanpanColors.border,
+    this.radius = WanpanRadii.large,
+    this.hasShadow = true,
   });
 
   final Widget child;
@@ -22,6 +24,8 @@ class WanpanCard extends StatelessWidget {
   final EdgeInsetsGeometry margin;
   final Color color;
   final Color borderColor;
+  final double radius;
+  final bool hasShadow;
 
   @override
   Widget build(BuildContext context) {
@@ -31,14 +35,16 @@ class WanpanCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: color,
         border: Border.all(color: borderColor),
-        borderRadius: BorderRadius.circular(WanpanRadii.large),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0F17191C),
-            offset: Offset(0, 4),
-            blurRadius: 12,
-          ),
-        ],
+        borderRadius: BorderRadius.circular(radius),
+        boxShadow: hasShadow
+            ? const [
+                BoxShadow(
+                  color: Color(0x0D75573A),
+                  offset: Offset(0, 5),
+                  blurRadius: 16,
+                ),
+              ]
+            : null,
       ),
       child: child,
     );
@@ -46,7 +52,7 @@ class WanpanCard extends StatelessWidget {
     return WanpanPressable(
       onTap: onTap,
       semanticLabel: semanticLabel,
-      borderRadius: BorderRadius.circular(WanpanRadii.large),
+      borderRadius: BorderRadius.circular(radius),
       child: card,
     );
   }

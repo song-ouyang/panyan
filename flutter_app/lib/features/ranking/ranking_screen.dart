@@ -6,7 +6,9 @@ import '../../core/json/json_helpers.dart';
 import '../../core/models/ranking_models.dart';
 import '../../core/network/api_client.dart';
 import '../auth/application/session_controller.dart';
+import '../../shared/app_assets.dart';
 import '../../shared/motion/wanpan_motion.dart';
+import '../../shared/widgets/wanpan_mascot.dart';
 import '../../shared/widgets/wanpan_pressable.dart';
 
 class RankingScreen extends StatefulWidget {
@@ -141,7 +143,7 @@ class _RankingScreenState extends State<RankingScreen> {
       key: const ValueKey('people'),
       onRefresh: _load,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 112),
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
         children: [
           _ScoringCard(board: board),
           const SizedBox(height: 14),
@@ -172,7 +174,7 @@ class _RankingScreenState extends State<RankingScreen> {
       key: const ValueKey('routes'),
       onRefresh: _load,
       child: ListView.separated(
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 112),
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
         itemCount: _routes.length,
         separatorBuilder: (_, _) => const SizedBox(height: 10),
         itemBuilder: (_, index) =>
@@ -203,9 +205,10 @@ class _SegmentedControl extends StatelessWidget {
   Widget _segment(BuildContext context, int index, String label) {
     final active = value == index;
     return Expanded(
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
+      child: WanpanPressable(
         onTap: () => onChanged(index),
+        pressedScale: .985,
+        borderRadius: BorderRadius.circular(WanpanRadii.pill),
         child: AnimatedContainer(
           duration: WanpanMotion.duration(context, WanpanMotion.exit),
           curve: WanpanMotion.curve(context),
@@ -446,9 +449,16 @@ class _RankingEmpty extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Icon(
-              Icons.emoji_events_outlined,
-              size: 56,
-              color: WanpanColors.gold,
+              Icons.emoji_events_rounded,
+              size: 34,
+              color: WanpanColors.ink,
+            ),
+            const SizedBox(height: 8),
+            const WanpanMascot(
+              asset: AppAssets.mascotCelebrate,
+              width: 178,
+              height: 168,
+              radius: 36,
             ),
             const SizedBox(height: 16),
             Text(

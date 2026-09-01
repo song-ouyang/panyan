@@ -1,28 +1,38 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 abstract final class WanpanColors {
-  static const canvas = Color(0xFFFFFFFF);
-  static const surface = Color(0xFFFFFFFF);
-  static const surfaceSoft = Color(0xFFF5F6F7);
-  static const surfaceMuted = Color(0xFFECEEF0);
-  static const ink = Color(0xFF17191C);
-  static const inkSecondary = Color(0xFF5F666D);
-  static const muted = Color(0xFF858B91);
-  static const coral = Color(0xFFF2674F);
-  static const coralStrong = Color(0xFFDC513B);
-  static const coralSoft = Color(0xFFFFF1ED);
-  static const gold = Color(0xFFE9B440);
-  static const goldSoft = Color(0xFFFFF7DD);
-  static const success = Color(0xFF3F8C67);
-  static const danger = Color(0xFFC94C3F);
-  static const border = Color(0x1A17191C);
-  static const borderStrong = Color(0x2E17191C);
+  static const canvas = Color(0xFFFFF8E9);
+  static const surface = Color(0xFFFFFDF7);
+  static const surfaceSoft = Color(0xFFFFF5E7);
+  static const surfaceMuted = Color(0xFFF5E8D6);
+  static const ink = Color(0xFF24343C);
+  static const catBlack = Color(0xFF171A1E);
+  static const inkSecondary = Color(0xFF69777E);
+  static const muted = Color(0xFF8B969B);
+  static const coral = Color(0xFFFF6B52);
+  static const coralStrong = Color(0xFFD94F3A);
+  static const coralSoft = Color(0xFFFFE5DC);
+  static const sky = Color(0xFF70C9E8);
+  static const skySoft = Color(0xFFDDF4FA);
+  static const grape = Color(0xFF9A78E8);
+  static const grapeSoft = Color(0xFFEDE5FF);
+  static const sunflower = Color(0xFFFFC943);
+  static const sunflowerSoft = Color(0xFFFFF1BF);
+  static const mint = Color(0xFF9DD5B0);
+  static const mintSoft = Color(0xFFE2F3E7);
+  static const gold = sunflower;
+  static const goldSoft = sunflowerSoft;
+  static const success = Color(0xFF4C9A6A);
+  static const danger = Color(0xFFC84D43);
+  static const border = Color(0xFFE9DCC7);
+  static const borderStrong = Color(0xFFD9C7AF);
 }
 
 abstract final class WanpanRadii {
-  static const small = 12.0;
-  static const medium = 16.0;
-  static const large = 22.0;
+  static const small = 14.0;
+  static const medium = 18.0;
+  static const large = 24.0;
   static const pill = 999.0;
 }
 
@@ -61,6 +71,7 @@ abstract final class WanpanTheme {
       colorScheme: scheme,
       scaffoldBackgroundColor: WanpanColors.canvas,
       splashFactory: NoSplash.splashFactory,
+      highlightColor: Colors.transparent,
       visualDensity: VisualDensity.standard,
     );
 
@@ -81,7 +92,7 @@ abstract final class WanpanTheme {
         ),
       ),
       navigationBarTheme: NavigationBarThemeData(
-        height: 72,
+        height: 76,
         elevation: 0,
         backgroundColor: WanpanColors.surface,
         surfaceTintColor: Colors.transparent,
@@ -150,8 +161,37 @@ abstract final class WanpanTheme {
         modalBarrierColor: Color(0x5217191C),
         showDragHandle: true,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
         ),
+      ),
+      chipTheme: const ChipThemeData(
+        backgroundColor: WanpanColors.surface,
+        selectedColor: WanpanColors.coralSoft,
+        disabledColor: WanpanColors.surfaceMuted,
+        side: BorderSide(color: WanpanColors.border),
+        shape: StadiumBorder(),
+        labelStyle: TextStyle(
+          color: WanpanColors.inkSecondary,
+          fontSize: 13,
+          fontWeight: FontWeight.w800,
+        ),
+        padding: EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+      ),
+      textSelectionTheme: const TextSelectionThemeData(
+        cursorColor: WanpanColors.coral,
+        selectionColor: WanpanColors.coralSoft,
+        selectionHandleColor: WanpanColors.coral,
+      ),
+      progressIndicatorTheme: const ProgressIndicatorThemeData(
+        color: WanpanColors.coral,
+        linearTrackColor: WanpanColors.coralSoft,
+      ),
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.android: FadeForwardsPageTransitionsBuilder(),
+        },
       ),
     );
   }
@@ -159,14 +199,14 @@ abstract final class WanpanTheme {
   static TextTheme _textTheme(TextTheme base) => base.copyWith(
     displaySmall: const TextStyle(
       color: WanpanColors.ink,
-      fontSize: 34,
+      fontSize: 32,
       height: 1.08,
       fontWeight: FontWeight.w900,
       letterSpacing: -1,
     ),
     headlineMedium: const TextStyle(
       color: WanpanColors.ink,
-      fontSize: 25,
+      fontSize: 24,
       height: 1.18,
       fontWeight: FontWeight.w900,
       letterSpacing: -0.5,
@@ -194,7 +234,7 @@ abstract final class WanpanTheme {
       color: WanpanColors.inkSecondary,
       fontSize: 14,
       height: 1.5,
-      fontWeight: FontWeight.w500,
+      fontWeight: FontWeight.w600,
     ),
     labelLarge: const TextStyle(
       color: WanpanColors.ink,

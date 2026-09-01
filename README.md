@@ -30,7 +30,7 @@
 - Docker、PostgreSQL migration 与示例数据
 - Flutter 四 Tab 客户端（岩馆、广场、排行、我的），含品牌门店、线路详情、完攀榜、动态和个人成长
 - Flutter MP4/MOV 视频选择、OSS 5MB 分片上传、实时进度、线路立即发布与成功/里程碑反馈
-- Flutter 白色主题、静止猫咪品牌素材、物理按压反馈、骨架屏、空态和 reduced-motion 适配
+- Flutter 暖奶油主题、黑猫品牌角色、物理按压反馈、贴底导航、骨架屏、空态和 reduced-motion 适配
 
 ## Flutter 客户端
 

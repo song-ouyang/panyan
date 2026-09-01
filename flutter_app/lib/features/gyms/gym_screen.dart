@@ -5,6 +5,7 @@ import '../../app/wanpan_theme.dart';
 import '../../core/models/gym_models.dart';
 import '../../core/network/api_client.dart';
 import '../../core/repositories/gym_repository.dart';
+import '../../shared/app_assets.dart';
 import '../../shared/widgets/wanpan_card.dart';
 import '../../shared/widgets/wanpan_skeleton.dart';
 import '../../shared/widgets/wanpan_states.dart';
@@ -191,44 +192,69 @@ class _GymScreenState extends State<GymScreen> {
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
               child: WanpanCard(
                 onTap: _submitRoute,
-                color: WanpanColors.coralSoft,
-                borderColor: Colors.transparent,
+                color: WanpanColors.grapeSoft,
+                borderColor: WanpanColors.grape.withValues(alpha: .38),
                 semanticLabel: '在${detail.gym.name}发布新线路',
-                child: Row(
-                  children: [
-                    Container(
-                      width: 46,
-                      height: 46,
-                      decoration: BoxDecoration(
-                        color: WanpanColors.surface,
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: const Icon(
-                        Icons.gesture_rounded,
-                        color: WanpanColors.coral,
-                      ),
-                    ),
-                    const SizedBox(width: 13),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '标记并发布新线路',
-                            style: Theme.of(context).textTheme.titleMedium,
+                padding: EdgeInsets.zero,
+                child: SizedBox(
+                  height: 124,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Positioned(
+                        left: 18,
+                        top: 28,
+                        child: Container(
+                          width: 52,
+                          height: 52,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: .8),
+                            borderRadius: BorderRadius.circular(17),
                           ),
-                          Text(
-                            '岩馆已选好，拍照标点后立即发布',
-                            style: Theme.of(context).textTheme.labelMedium,
+                          child: const Icon(
+                            Icons.gesture_rounded,
+                            color: WanpanColors.grape,
                           ),
-                        ],
+                        ),
                       ),
-                    ),
-                    const Icon(
-                      Icons.chevron_right_rounded,
-                      color: WanpanColors.coral,
-                    ),
-                  ],
+                      Positioned(
+                        left: 84,
+                        top: 31,
+                        child: Text(
+                          '标记并发布新线路',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                      ),
+                      Positioned(
+                        left: 84,
+                        top: 61,
+                        child: Text(
+                          '岩馆已选好，拍照标点后立即发布',
+                          style: Theme.of(context).textTheme.labelMedium,
+                        ),
+                      ),
+                      Positioned(
+                        right: 8,
+                        bottom: -16,
+                        width: 146,
+                        height: 104,
+                        child: Image.asset(
+                          AppAssets.routeMapCat,
+                          cacheWidth: 520,
+                          fit: BoxFit.contain,
+                          filterQuality: FilterQuality.medium,
+                        ),
+                      ),
+                      const Positioned(
+                        right: 10,
+                        top: 47,
+                        child: Icon(
+                          Icons.chevron_right_rounded,
+                          color: WanpanColors.grape,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -282,29 +308,13 @@ class _GymHeader extends StatelessWidget {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (gym.coverUrl != null) ...[
-          ClipRRect(
-            borderRadius: BorderRadius.circular(24),
-            child: AspectRatio(
-              aspectRatio: 16 / 8,
-              child: Image.network(
-                gym.coverUrl!,
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => const ColoredBox(
-                  color: WanpanColors.surfaceSoft,
-                  child: Icon(Icons.landscape_rounded, size: 52),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 18),
-        ],
         Row(
           children: [
             Expanded(
               child: Text(
                 gym.name,
-                style: Theme.of(context).textTheme.headlineMedium,
+                style: Theme.of(context).textTheme.displaySmall
+                    ?.copyWith(fontSize: 31),
               ),
             ),
             if (gym.verified)
@@ -354,7 +364,7 @@ class _Filters extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(20, 14, 20, 6),
         child: Row(
           children: [
-            Text('本轮线路', style: Theme.of(context).textTheme.titleLarge),
+            Text('本轮线路', style: Theme.of(context).textTheme.headlineMedium),
             const Spacer(),
             if (routeSets.isNotEmpty)
               PopupMenuButton<String?>(
@@ -373,8 +383,9 @@ class _Filters extends StatelessWidget {
                     vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    color: WanpanColors.surfaceSoft,
+                    color: WanpanColors.surface,
                     borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: WanpanColors.border),
                   ),
                   child: Row(
                     children: [
@@ -404,6 +415,11 @@ class _Filters extends StatelessWidget {
           decoration: InputDecoration(
             prefixIcon: const Icon(Icons.search_rounded),
             hintText: '输入线路名、颜色或墙区',
+            fillColor: WanpanColors.surface,
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(WanpanRadii.medium),
+              borderSide: const BorderSide(color: WanpanColors.sky, width: 1.5),
+            ),
             suffixIcon: searchQuery.trim().isEmpty
                 ? null
                 : IconButton(
@@ -478,47 +494,159 @@ class _RouteCard extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => WanpanCard(
-    onTap: onTap,
-    semanticLabel: '打开${route.name}',
-    child: Row(
-      children: [
-        Container(
-          width: 58,
-          height: 58,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: WanpanColors.coral,
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: const [
-              BoxShadow(color: WanpanColors.coralStrong, offset: Offset(0, 4)),
-            ],
-          ),
-          child: Text(
-            route.grade,
-            style: Theme.of(context).textTheme.titleMedium
-                ?.copyWith(color: Colors.white),
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(route.name, style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 4),
-              Text(
-                [
-                  if (route.wallZone != null) route.wallZone!,
-                  '${route.sendCount} 人完攀',
-                ].join(' · '),
-                style: Theme.of(context).textTheme.bodyMedium,
+  Widget build(BuildContext context) {
+    final routeColor = _routeColor(route.grade);
+    return WanpanCard(
+      onTap: onTap,
+      semanticLabel: '打开${route.name}',
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: SizedBox(
+        height: 76,
+        child: Row(
+          children: [
+            CustomPaint(
+              painter: _HoldPainter(
+                front: routeColor.front,
+                depth: routeColor.depth,
               ),
-            ],
-          ),
+              child: SizedBox(
+                width: 72,
+                height: 72,
+                child: Center(
+                  child: Text(
+                    route.grade,
+                    style: Theme.of(context).textTheme.titleLarge
+                        ?.copyWith(color: routeColor.ink, fontSize: 24),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    route.name,
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    [
+                      if (route.wallZone != null) route.wallZone!,
+                      '${route.sendCount} 人完攀',
+                    ].join(' · '),
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              width: 26,
+              height: 18,
+              decoration: BoxDecoration(
+                color: routeColor.front,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(16),
+                  topRight: Radius.circular(10),
+                  bottomLeft: Radius.circular(8),
+                  bottomRight: Radius.circular(15),
+                ),
+                border: Border.all(color: routeColor.depth, width: 1.5),
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Icon(Icons.chevron_right_rounded, color: WanpanColors.coral),
+          ],
         ),
-        const Icon(Icons.chevron_right_rounded, color: WanpanColors.coral),
-      ],
+      ),
+    );
+  }
+}
+
+class _HoldPainter extends CustomPainter {
+  const _HoldPainter({required this.front, required this.depth});
+
+  final Color front;
+  final Color depth;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final shadow = Path()
+      ..moveTo(size.width * .18, size.height * .23)
+      ..quadraticBezierTo(
+        size.width * .49,
+        0,
+        size.width * .77,
+        size.height * .18,
+      )
+      ..quadraticBezierTo(
+        size.width,
+        size.height * .44,
+        size.width * .84,
+        size.height * .79,
+      )
+      ..quadraticBezierTo(
+        size.width * .45,
+        size.height,
+        size.width * .12,
+        size.height * .72,
+      )
+      ..quadraticBezierTo(
+        0,
+        size.height * .44,
+        size.width * .18,
+        size.height * .23,
+      )
+      ..close();
+    canvas.drawPath(shadow.shift(const Offset(0, 5)), Paint()..color = depth);
+    canvas.drawPath(shadow, Paint()..color = front);
+    canvas.drawCircle(
+      Offset(size.width * .71, size.height * .22),
+      5,
+      Paint()..color = depth,
+    );
+    canvas.drawCircle(
+      Offset(size.width * .71, size.height * .22),
+      2.3,
+      Paint()..color = WanpanColors.surface,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_HoldPainter oldDelegate) =>
+      oldDelegate.front != front || oldDelegate.depth != depth;
+}
+
+({Color front, Color depth, Color ink}) _routeColor(String grade) {
+  final digits = RegExp(r'\d+').firstMatch(grade)?.group(0);
+  final level = int.tryParse(digits ?? '') ?? 0;
+  return switch (level % 5) {
+    0 => (
+      front: WanpanColors.sky,
+      depth: const Color(0xFF3FA8CC),
+      ink: WanpanColors.ink,
     ),
-  );
+    1 => (
+      front: WanpanColors.mint,
+      depth: const Color(0xFF6CB889),
+      ink: WanpanColors.ink,
+    ),
+    2 => (
+      front: WanpanColors.sunflower,
+      depth: const Color(0xFFDFA721),
+      ink: WanpanColors.ink,
+    ),
+    3 => (
+      front: WanpanColors.coral,
+      depth: WanpanColors.coralStrong,
+      ink: Colors.white,
+    ),
+    _ => (
+      front: WanpanColors.grape,
+      depth: const Color(0xFF7655C5),
+      ink: Colors.white,
+    ),
+  };
 }
