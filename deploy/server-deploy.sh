@@ -199,7 +199,11 @@ OLD_TAG="$(cat .deploy/current-image-tag 2>/dev/null || true)"
 postgres_id="$("${COMPOSE[@]}" --env-file "$ENV_FILE" -f "$COMPOSE_FILE" ps -q postgres 2>/dev/null || true)"
 if [[ -n "$postgres_id" ]] && [[ "$(docker inspect -f '{{.State.Running}}' "$postgres_id" 2>/dev/null || true)" == "true" ]]; then
   echo "部署前备份数据库……"
-  WANPAN_ENV_FILE="$ENV_FILE" bash deploy/backup.sh "$COMPOSE_FILE"
+  # This deploy script bootstraps itself through `bash -s < "$0"`. Keep the
+  # backup process from inheriting that script stream: `docker compose exec -T`
+  # otherwise consumes the remaining deploy commands as stdin and the deploy
+  # exits successfully immediately after the backup.
+  WANPAN_ENV_FILE="$ENV_FILE" bash deploy/backup.sh "$COMPOSE_FILE" </dev/null
 fi
 
 echo "拉取 $REMOTE/$BRANCH……"
