@@ -53,7 +53,17 @@ mv "$next_env" "$ENV_FILE"
 
 cd "$ROOT_DIR"
 bash deploy/check-production-env.sh "$ENV_FILE"
-docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d --no-deps --force-recreate api
+image_tag="${API_IMAGE_TAG:-$(cat .deploy/current-image-tag 2>/dev/null || true)}"
+if [[ -z "$image_tag" ]]; then
+  echo "错误：找不到当前 API 镜像版本，请先完成一次生产部署。" >&2
+  exit 1
+fi
+if ! docker image inspect "wanpan-diary-api:$image_tag" >/dev/null 2>&1; then
+  echo "错误：本机不存在审核配置要重启的 API 镜像 wanpan-diary-api:$image_tag。" >&2
+  exit 1
+fi
+API_IMAGE_TAG="$image_tag" docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" \
+  up -d --no-build --no-deps --force-recreate api
 
 for _ in $(seq 1 30); do
   if curl -fsS --max-time 5 http://127.0.0.1:3100/ready >/dev/null; then
