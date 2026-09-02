@@ -9,7 +9,13 @@ export const sendRoutes: FastifyPluginAsync = async (app) => {
     const visible = await query(
       `SELECT s.id
        FROM sends s
-       WHERE s.id=$1 AND (
+       WHERE s.id=$1 AND NOT EXISTS (
+         SELECT 1 FROM friendships blocked
+         WHERE blocked.status='blocked' AND (
+           (blocked.requester_id=$2 AND blocked.addressee_id=s.user_id) OR
+           (blocked.addressee_id=$2 AND blocked.requester_id=s.user_id)
+         )
+       ) AND (
          s.user_id=$2 OR (
            s.moderation_status='approved' AND (
              s.visibility='public' OR (
@@ -89,7 +95,14 @@ export const sendRoutes: FastifyPluginAsync = async (app) => {
        FROM sends s JOIN users u ON u.id=s.user_id LEFT JOIN routes r ON r.id=s.route_id LEFT JOIN gyms g ON g.id=r.gym_id
        LEFT JOIN post_likes l ON l.send_id=s.id
        LEFT JOIN comments c ON c.send_id=s.id AND c.moderation_status='approved'
-       WHERE s.moderation_status='approved' AND ($2::timestamptz IS NULL OR s.sent_at<$2) AND (
+       WHERE s.moderation_status='approved' AND ($2::timestamptz IS NULL OR s.sent_at<$2)
+       AND NOT EXISTS (
+         SELECT 1 FROM friendships blocked
+         WHERE blocked.status='blocked' AND (
+           (blocked.requester_id=$1 AND blocked.addressee_id=s.user_id) OR
+           (blocked.addressee_id=$1 AND blocked.requester_id=s.user_id)
+         )
+       ) AND (
          ($4::text='square' AND s.visibility='public') OR
          ($4::text='friends' AND s.visibility IN ('public','friends') AND (
            s.user_id=$1 OR EXISTS (
@@ -117,7 +130,13 @@ export const sendRoutes: FastifyPluginAsync = async (app) => {
               coalesce(bool_or(l.user_id=$2),false) liked
        FROM sends s JOIN users u ON u.id=s.user_id LEFT JOIN routes r ON r.id=s.route_id LEFT JOIN gyms g ON g.id=r.gym_id
        LEFT JOIN post_likes l ON l.send_id=s.id
-       WHERE s.id=$1 AND (
+       WHERE s.id=$1 AND NOT EXISTS (
+         SELECT 1 FROM friendships blocked
+         WHERE blocked.status='blocked' AND (
+           (blocked.requester_id=$2 AND blocked.addressee_id=s.user_id) OR
+           (blocked.addressee_id=$2 AND blocked.requester_id=s.user_id)
+         )
+       ) AND (
          s.user_id=$2 OR (
            s.moderation_status='approved' AND (
              s.visibility='public' OR (
@@ -137,7 +156,16 @@ export const sendRoutes: FastifyPluginAsync = async (app) => {
     if (!result.rowCount) throw app.httpErrors.notFound('动态不存在');
     const comments = await query(
       `SELECT c.id,c.content,c.created_at,u.id user_id,u.nickname,u.avatar_url
-       FROM comments c JOIN users u ON u.id=c.user_id WHERE c.send_id=$1 AND c.moderation_status='approved' ORDER BY c.created_at`, [id]
+       FROM comments c JOIN users u ON u.id=c.user_id
+       WHERE c.send_id=$1 AND c.moderation_status='approved'
+       AND NOT EXISTS (
+         SELECT 1 FROM friendships blocked
+         WHERE blocked.status='blocked' AND (
+           (blocked.requester_id=$2 AND blocked.addressee_id=c.user_id) OR
+           (blocked.addressee_id=$2 AND blocked.requester_id=c.user_id)
+         )
+       )
+       ORDER BY c.created_at`, [id, request.user.sub]
     );
     return { ...result.rows[0], comments: comments.rows };
   });

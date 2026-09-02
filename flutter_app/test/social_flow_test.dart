@@ -134,6 +134,7 @@ class _SocialApiClient extends ApiClient {
         'content': (data as Map<String, dynamic>)['content'],
       };
     }
+    if (path == '/reports') return {'reported': true};
     throw StateError('Unexpected POST $path');
   }
 }
@@ -212,6 +213,39 @@ void main() {
       isTrue,
     );
     expect(find.text('评论已提交'), findsOneWidget);
+  });
+
+  testWidgets('动态详情可见地提供举报入口并提交原因', (tester) async {
+    final api = _SocialApiClient();
+    final session = await _signedInSession();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: WanpanTheme.light(),
+        home: PostScreen(api: api, session: session, postId: 'post-1'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('动态安全操作'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('举报动态'));
+    await tester.pumpAndSettle();
+    expect(find.text('选择最符合的原因，我们会尽快核实处理。对方不会知道是你提交的。'), findsOneWidget);
+
+    await tester.tap(find.text('垃圾广告'));
+    await tester.pumpAndSettle();
+
+    expect(
+      api.calls.any(
+        (call) =>
+            call.contains('POST /reports') &&
+            call.contains('targetType: send') &&
+            call.contains('reason: spam'),
+      ),
+      isTrue,
+    );
+    expect(find.text('举报已提交，我们会尽快处理'), findsOneWidget);
   });
 
   testWidgets('岩友申请可接受，也可搜索并发送新申请', (tester) async {

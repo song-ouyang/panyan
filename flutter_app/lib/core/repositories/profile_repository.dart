@@ -82,6 +82,25 @@ class ProfileRepository {
     await _apiClient.deleteJson('/users/$userId/friend');
   }
 
+  Future<void> blockUser(String userId) async {
+    await _apiClient.postJson('/users/$userId/block');
+  }
+
+  Future<void> unblockUser(String userId) async {
+    await _apiClient.deleteJson('/users/$userId/block');
+  }
+
+  Future<void> report({
+    required String targetType,
+    required String targetId,
+    required String reason,
+  }) async {
+    await _apiClient.postJson(
+      '/reports',
+      data: {'targetType': targetType, 'targetId': targetId, 'reason': reason},
+    );
+  }
+
   Future<void> deleteAccount() async {
     await _apiClient.deleteJson('/users/me');
   }

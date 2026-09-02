@@ -7,7 +7,10 @@ import '../../core/network/api_client.dart';
 import '../../core/repositories/profile_repository.dart';
 import '../../shared/motion/wanpan_motion.dart';
 import '../../shared/widgets/wanpan_card.dart';
+import '../../shared/widgets/wanpan_content_safety.dart';
 import '../../shared/widgets/wanpan_pressable.dart';
+
+enum _ProfileSafetyAction { report, block, unblock }
 
 class PublicProfileScreen extends StatefulWidget {
   const PublicProfileScreen({
@@ -130,6 +133,60 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
     ),
   );
 
+  Future<void> _handleSafetyAction(_ProfileSafetyAction action) async {
+    if (_submitting || _profile == null) return;
+    switch (action) {
+      case _ProfileSafetyAction.report:
+        final reason = await showWanpanReportReasonSheet(
+          context,
+          subject: '用户',
+        );
+        if (reason == null || !mounted) return;
+        setState(() => _submitting = true);
+        try {
+          await _repository.report(
+            targetType: 'user',
+            targetId: widget.userId,
+            reason: reason,
+          );
+          if (mounted) _notice('举报已提交，我们会尽快处理');
+        } catch (_) {
+          if (mounted) _notice('举报没有提交成功，请稍后重试');
+        } finally {
+          if (mounted) setState(() => _submitting = false);
+        }
+      case _ProfileSafetyAction.block:
+        final confirmed = await showWanpanBlockConfirmation(
+          context,
+          nickname: _profile!.user.nickname,
+        );
+        if (!confirmed || !mounted) return;
+        setState(() => _submitting = true);
+        try {
+          await _repository.blockUser(widget.userId);
+          if (!mounted) return;
+          setState(() => _friendship = 'blocked_by_me');
+          _notice('已拉黑 ${_profile!.user.nickname}');
+        } catch (_) {
+          if (mounted) _notice('拉黑没有保存，请稍后重试');
+        } finally {
+          if (mounted) setState(() => _submitting = false);
+        }
+      case _ProfileSafetyAction.unblock:
+        setState(() => _submitting = true);
+        try {
+          await _repository.unblockUser(widget.userId);
+          if (!mounted) return;
+          setState(() => _friendship = 'none');
+          _notice('已取消拉黑');
+        } catch (_) {
+          if (mounted) _notice('操作没有保存，请稍后重试');
+        } finally {
+          if (mounted) setState(() => _submitting = false);
+        }
+    }
+  }
+
   void _notice(String message) => ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
     ..showSnackBar(SnackBar(content: Text(message)));
@@ -137,7 +194,52 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('岩友主页')),
+      appBar: AppBar(
+        title: const Text('岩友主页'),
+        actions: [
+          if (_profile != null && _friendship != 'self')
+            PopupMenuButton<_ProfileSafetyAction>(
+              tooltip: '用户安全操作',
+              enabled: !_submitting,
+              onSelected: _handleSafetyAction,
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: _ProfileSafetyAction.report,
+                  child: ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(Icons.flag_outlined),
+                    title: Text('举报用户'),
+                  ),
+                ),
+                if (_friendship == 'blocked_by_me')
+                  const PopupMenuItem(
+                    value: _ProfileSafetyAction.unblock,
+                    child: ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(Icons.person_add_alt_1_rounded),
+                      title: Text('取消拉黑'),
+                    ),
+                  )
+                else if (_friendship != 'blocked_me' &&
+                    _friendship != 'blocked')
+                  const PopupMenuItem(
+                    value: _ProfileSafetyAction.block,
+                    child: ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(
+                        Icons.block_rounded,
+                        color: WanpanColors.danger,
+                      ),
+                      title: Text(
+                        '拉黑该用户',
+                        style: TextStyle(color: WanpanColors.danger),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+        ],
+      ),
       body: AnimatedSwitcher(
         duration: WanpanMotion.duration(context, WanpanMotion.exit),
         child: _body(),
@@ -277,12 +379,16 @@ class _FriendshipButton extends StatelessWidget {
       'sent' => '等待对方确认',
       'received' => '接受岩友申请',
       'accepted' => '已是岩友',
-      'blocked' => '暂时无法添加',
+      'blocked_by_me' => '已拉黑',
+      'blocked_me' || 'blocked' => '暂时无法添加',
       _ => '加为岩友',
     };
     final style = switch (friendship) {
       'accepted' => WanpanButtonStyle.secondary,
-      'sent' || 'blocked' => WanpanButtonStyle.quiet,
+      'sent' ||
+      'blocked' ||
+      'blocked_by_me' ||
+      'blocked_me' => WanpanButtonStyle.quiet,
       _ => WanpanButtonStyle.primary,
     };
     return WanpanButton(
@@ -295,7 +401,12 @@ class _FriendshipButton extends StatelessWidget {
         'received' => Icons.person_add_alt_1_rounded,
         _ => Icons.person_add_alt_1_rounded,
       }),
-      onPressed: friendship == 'sent' || friendship == 'blocked' || loading
+      onPressed:
+          friendship == 'sent' ||
+              friendship == 'blocked' ||
+              friendship == 'blocked_by_me' ||
+              friendship == 'blocked_me' ||
+              loading
           ? null
           : onPressed,
     );

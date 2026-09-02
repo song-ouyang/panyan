@@ -62,4 +62,19 @@ class FeedRepository {
   Future<void> deletePost(String postId) async {
     await _apiClient.deleteJson('/sends/$postId');
   }
+
+  Future<void> report({
+    required String targetType,
+    required String targetId,
+    required String reason,
+  }) async {
+    await _apiClient.postJson(
+      '/reports',
+      data: {'targetType': targetType, 'targetId': targetId, 'reason': reason},
+    );
+  }
+
+  Future<void> blockUser(String userId) async {
+    await _apiClient.postJson('/users/$userId/block');
+  }
 }

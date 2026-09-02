@@ -10,10 +10,19 @@ export const userRoutes: FastifyPluginAsync = async (app) => {
       `SELECT u.id,u.nickname,u.avatar_url,u.bio,
        CASE WHEN f.status='accepted' THEN 'accepted' WHEN f.status='pending' AND f.requester_id=$1 THEN 'sent'
             WHEN f.status='pending' AND f.addressee_id=$1 THEN 'received'
-            WHEN f.status='blocked' THEN 'blocked' ELSE 'none' END friendship
+            WHEN f.status='blocked' AND f.requester_id=$1 THEN 'blocked_by_me'
+            WHEN f.status='blocked' THEN 'blocked_me' ELSE 'none' END friendship
        FROM users u LEFT JOIN friendships f ON
        ((f.requester_id=$1 AND f.addressee_id=u.id) OR (f.addressee_id=$1 AND f.requester_id=u.id))
-       WHERE u.id<>$1 AND u.nickname ILIKE '%'||$2||'%' ORDER BY u.nickname LIMIT 30`, [request.user.sub, q.trim()]
+       WHERE u.id<>$1 AND u.nickname ILIKE '%'||$2||'%'
+       AND NOT EXISTS (
+         SELECT 1 FROM friendships blocked
+         WHERE blocked.status='blocked' AND (
+           (blocked.requester_id=$1 AND blocked.addressee_id=u.id) OR
+           (blocked.addressee_id=$1 AND blocked.requester_id=u.id)
+         )
+       )
+       ORDER BY u.nickname LIMIT 30`, [request.user.sub, q.trim()]
     );
     return { items: result.rows };
   });
@@ -154,12 +163,44 @@ export const userRoutes: FastifyPluginAsync = async (app) => {
        GROUP BY 1,g.id,r.grade ORDER BY 1 DESC,g.name,substring(r.grade from 2)::int`, [id]
     );
     const friendship = await query(
-      `SELECT CASE WHEN status='accepted' THEN 'accepted' WHEN status='blocked' THEN 'blocked'
+      `SELECT CASE WHEN status='accepted' THEN 'accepted'
+                   WHEN status='blocked' AND requester_id=$1 THEN 'blocked_by_me'
+                   WHEN status='blocked' THEN 'blocked_me'
                    WHEN requester_id=$1 THEN 'sent' ELSE 'received' END friendship
        FROM friendships WHERE (requester_id=$1 AND addressee_id=$2) OR (requester_id=$2 AND addressee_id=$1)`, [request.user.sub,id]
     );
     return { ...user.rows[0], stats: stats.rows[0], monthly: monthly.rows,
       friendship: id === request.user.sub ? 'self' : (friendship.rows[0]?.friendship ?? 'none') };
+  });
+  app.post('/:id/block', { preHandler: app.authenticate }, async (request) => {
+    const { id } = idParams.parse(request.params);
+    if (id === request.user.sub) throw app.httpErrors.badRequest('不能拉黑自己');
+    return transaction(async (client) => {
+      const target = await client.query('SELECT id FROM users WHERE id=$1', [id]);
+      if (!target.rowCount) throw app.httpErrors.notFound('岩友不存在');
+      await client.query(
+        `DELETE FROM friendships
+         WHERE (requester_id=$1 AND addressee_id=$2) OR
+               (requester_id=$2 AND addressee_id=$1)`,
+        [request.user.sub, id]
+      );
+      await client.query(
+        `INSERT INTO friendships(requester_id,addressee_id,status)
+         VALUES($1,$2,'blocked')`,
+        [request.user.sub, id]
+      );
+      return { blocked: true };
+    });
+  });
+  app.delete('/:id/block', { preHandler: app.authenticate }, async (request) => {
+    const { id } = idParams.parse(request.params);
+    const result = await query(
+      `DELETE FROM friendships
+       WHERE requester_id=$1 AND addressee_id=$2 AND status='blocked'
+       RETURNING requester_id`,
+      [request.user.sub, id]
+    );
+    return { blocked: result.rowCount === 0 };
   });
   app.post('/:id/friend-request', { preHandler: app.authenticate }, async (request) => {
     const { id } = idParams.parse(request.params);

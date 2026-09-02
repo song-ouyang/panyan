@@ -3,10 +3,17 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/wanpan_theme.dart';
 import '../../core/models/feed_models.dart';
+import '../../core/models/user_models.dart';
 import '../../core/network/api_client.dart';
+import '../../core/repositories/feed_repository.dart';
 import '../auth/application/session_controller.dart';
 import '../../shared/motion/wanpan_motion.dart';
+import '../../shared/widgets/wanpan_content_safety.dart';
 import '../../shared/widgets/wanpan_video_player.dart';
+
+enum _PostSafetyAction { report, block }
+
+enum _CommentSafetyAction { report, block }
 
 class PostScreen extends StatefulWidget {
   const PostScreen({
@@ -26,9 +33,11 @@ class PostScreen extends StatefulWidget {
 
 class _PostScreenState extends State<PostScreen> {
   final _commentController = TextEditingController();
+  late final FeedRepository _repository = FeedRepository(widget.api);
   FeedPost? _post;
   bool _loading = true;
   bool _commenting = false;
+  bool _safetySubmitting = false;
   bool _liked = false;
   int _likeCount = 0;
   String? _error;
@@ -115,6 +124,70 @@ class _PostScreenState extends State<PostScreen> {
     }
   }
 
+  bool get _canActOnPost {
+    final authorId = _post?.user?.id;
+    return widget.session.isAuthenticated &&
+        authorId != null &&
+        authorId != widget.session.user?.id;
+  }
+
+  Future<void> _handlePostSafetyAction(_PostSafetyAction action) async {
+    if (_safetySubmitting || !_canActOnPost) return;
+    switch (action) {
+      case _PostSafetyAction.report:
+        await _report(
+          targetType: 'send',
+          targetId: widget.postId,
+          subject: '动态',
+        );
+      case _PostSafetyAction.block:
+        final author = _post?.user;
+        if (author == null) return;
+        await _blockUser(author);
+    }
+  }
+
+  Future<void> _report({
+    required String targetType,
+    required String targetId,
+    required String subject,
+  }) async {
+    final reason = await showWanpanReportReasonSheet(context, subject: subject);
+    if (reason == null || !mounted) return;
+    setState(() => _safetySubmitting = true);
+    try {
+      await _repository.report(
+        targetType: targetType,
+        targetId: targetId,
+        reason: reason,
+      );
+      if (mounted) _notice('举报已提交，我们会尽快处理');
+    } catch (_) {
+      if (mounted) _notice('举报没有提交成功，请稍后重试');
+    } finally {
+      if (mounted) setState(() => _safetySubmitting = false);
+    }
+  }
+
+  Future<void> _blockUser(UserSummary user) async {
+    if (user.id == widget.session.user?.id) return;
+    final confirmed = await showWanpanBlockConfirmation(
+      context,
+      nickname: user.nickname,
+    );
+    if (!confirmed || !mounted) return;
+    setState(() => _safetySubmitting = true);
+    try {
+      await _repository.blockUser(user.id);
+      if (mounted) context.pop(true);
+    } catch (_) {
+      if (mounted) {
+        setState(() => _safetySubmitting = false);
+        _notice('拉黑没有保存，请稍后重试');
+      }
+    }
+  }
+
   void _notice(String message) => ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
     ..showSnackBar(SnackBar(content: Text(message)));
@@ -122,7 +195,41 @@ class _PostScreenState extends State<PostScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('动态详情')),
+      appBar: AppBar(
+        title: const Text('动态详情'),
+        actions: [
+          if (_canActOnPost)
+            PopupMenuButton<_PostSafetyAction>(
+              tooltip: '动态安全操作',
+              enabled: !_safetySubmitting,
+              onSelected: _handlePostSafetyAction,
+              itemBuilder: (context) => const [
+                PopupMenuItem(
+                  value: _PostSafetyAction.report,
+                  child: ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(Icons.flag_outlined),
+                    title: Text('举报动态'),
+                  ),
+                ),
+                PopupMenuItem(
+                  value: _PostSafetyAction.block,
+                  child: ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(
+                      Icons.block_rounded,
+                      color: WanpanColors.danger,
+                    ),
+                    title: Text(
+                      '拉黑该用户',
+                      style: TextStyle(color: WanpanColors.danger),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+        ],
+      ),
       body: AnimatedSwitcher(
         duration: WanpanMotion.duration(context, WanpanMotion.exit),
         child: _buildBody(),
@@ -298,7 +405,21 @@ class _PostScreenState extends State<PostScreen> {
               ),
             )
           else
-            ...post.comments.map((comment) => _CommentTile(comment: comment)),
+            ...post.comments.map(
+              (comment) => _CommentTile(
+                comment: comment,
+                onReport: comment.user.id == widget.session.user?.id
+                    ? null
+                    : () => _report(
+                        targetType: 'comment',
+                        targetId: comment.id,
+                        subject: '评论',
+                      ),
+                onBlock: comment.user.id == widget.session.user?.id
+                    ? null
+                    : () => _blockUser(comment.user),
+              ),
+            ),
         ],
       ),
     );
@@ -349,8 +470,12 @@ class _PostScreenState extends State<PostScreen> {
 }
 
 class _CommentTile extends StatelessWidget {
-  const _CommentTile({required this.comment});
+  const _CommentTile({required this.comment, this.onReport, this.onBlock});
+
   final FeedComment comment;
+  final VoidCallback? onReport;
+  final VoidCallback? onBlock;
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -385,6 +510,35 @@ class _CommentTile extends StatelessWidget {
               ],
             ),
           ),
+          if (onReport != null || onBlock != null)
+            PopupMenuButton<_CommentSafetyAction>(
+              tooltip: '评论安全操作',
+              icon: const Icon(
+                Icons.more_horiz_rounded,
+                color: WanpanColors.muted,
+              ),
+              onSelected: (action) {
+                switch (action) {
+                  case _CommentSafetyAction.report:
+                    onReport?.call();
+                  case _CommentSafetyAction.block:
+                    onBlock?.call();
+                }
+              },
+              itemBuilder: (context) => const [
+                PopupMenuItem(
+                  value: _CommentSafetyAction.report,
+                  child: Text('举报评论'),
+                ),
+                PopupMenuItem(
+                  value: _CommentSafetyAction.block,
+                  child: Text(
+                    '拉黑该用户',
+                    style: TextStyle(color: WanpanColors.danger),
+                  ),
+                ),
+              ],
+            ),
         ],
       ),
     );

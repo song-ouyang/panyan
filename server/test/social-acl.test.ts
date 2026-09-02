@@ -279,6 +279,37 @@ describe('public rankings', () => {
 });
 
 describe('friendship idempotency', () => {
+  it('replaces an existing relationship with a directional block', async () => {
+    mocks.clientQuery
+      .mockResolvedValueOnce(result([{ id: otherId }]))
+      .mockResolvedValueOnce(result())
+      .mockResolvedValueOnce(result());
+    const app = await createApp(userRoutes, '/api/users');
+
+    const response = await app.inject({ method: 'POST', url: `/api/users/${otherId}/block` });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ blocked: true });
+    expect(mocks.clientQuery).toHaveBeenCalledTimes(3);
+    expect(mocks.clientQuery.mock.calls[1]![0]).toContain('DELETE FROM friendships');
+    expect(mocks.clientQuery.mock.calls[2]![0]).toContain("VALUES($1,$2,'blocked')");
+    expect(mocks.clientQuery.mock.calls[2]![1]).toEqual([viewerId, otherId]);
+    await app.close();
+  });
+
+  it('only removes a block created by the current user', async () => {
+    mocks.query.mockResolvedValueOnce(result([{ requester_id: viewerId }]));
+    const app = await createApp(userRoutes, '/api/users');
+
+    const response = await app.inject({ method: 'DELETE', url: `/api/users/${otherId}/block` });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ blocked: false });
+    expect(mocks.query.mock.calls[0]![0]).toContain("requester_id=$1 AND addressee_id=$2 AND status='blocked'");
+    expect(mocks.query.mock.calls[0]![1]).toEqual([viewerId, otherId]);
+    await app.close();
+  });
+
   it('returns 404 without inserting when the friend target does not exist', async () => {
     mocks.clientQuery.mockResolvedValueOnce(result());
     const app = await createApp(userRoutes, '/api/users');

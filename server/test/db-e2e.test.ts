@@ -457,6 +457,41 @@ suite('real PostgreSQL API flow', () => {
     );
     expect(reportState.rows[0]).toMatchObject({ count: 1, reason: 'false_info', detail: '更新举报原因' });
 
+    const blocked = await app.inject({
+      method: 'POST',
+      url: `/api/users/${owner.user.id}/block`,
+      headers: authHeader(stranger)
+    });
+    expect(blocked.statusCode).toBe(200);
+    expect(blocked.json()).toEqual({ blocked: true });
+    const blockedProfile = await app.inject({
+      method: 'GET',
+      url: `/api/users/${owner.user.id}/public`,
+      headers: authHeader(stranger)
+    });
+    expect(blockedProfile.statusCode).toBe(200);
+    expect(blockedProfile.json()).toMatchObject({ friendship: 'blocked_by_me' });
+    const feedAfterBlock = await app.inject({
+      method: 'GET',
+      url: '/api/sends/feed?scope=square',
+      headers: authHeader(stranger)
+    });
+    expect(feedAfterBlock.statusCode).toBe(200);
+    expect(feedAfterBlock.json().items.map((item: { id: string }) => item.id)).not.toContain(publicMomentId);
+    const detailAfterBlock = await app.inject({
+      method: 'GET',
+      url: `/api/sends/${publicMomentId}`,
+      headers: authHeader(stranger)
+    });
+    expect(detailAfterBlock.statusCode).toBe(404);
+    const unblocked = await app.inject({
+      method: 'DELETE',
+      url: `/api/users/${owner.user.id}/block`,
+      headers: authHeader(stranger)
+    });
+    expect(unblocked.statusCode).toBe(200);
+    expect(unblocked.json()).toEqual({ blocked: false });
+
     if (config.UPLOAD_MODE === 'local') {
       const boundary = `----wanpan-e2e-${suffix}`;
       const payload = Buffer.from(
