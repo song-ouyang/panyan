@@ -1,17 +1,25 @@
 const { request } = require('../../utils/api');
+const {
+  brandStoresPath,
+  groupStoresByCity,
+  normalizeCity
+} = require('../../utils/gym-directory');
 
 Page({
   data: {
     brand: null,
     stores: [],
+    storeGroups: [],
+    showCityGroups: false,
     initialLoading: true,
     refreshing: false,
     error: '',
     skeletons: [1, 2, 3]
   },
 
-  onLoad({ id }) {
+  onLoad({ id, city }) {
     this.id = id;
+    this.city = normalizeCity(city);
     this._disposed = false;
     this.loadSequence = 0;
     this._shownOnce = false;
@@ -45,13 +53,15 @@ Page({
     this.setData(loadingPatch);
 
     try {
-      const brand = await request(`/gyms/brands/${this.id}/stores`);
+      const brand = await request(brandStoresPath(this.id, this.city));
       if (this._disposed || sequence !== this.loadSequence) return;
 
       const stores = Array.isArray(brand.stores) ? brand.stores : [];
       this.setData({
         brand,
         stores,
+        storeGroups: groupStoresByCity(stores),
+        showCityGroups: !this.city,
         initialLoading: false,
         refreshing: false,
         error: ''

@@ -1,74 +1,237 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/wanpan_theme.dart';
-import '../../core/json/json_helpers.dart';
 import '../../core/models/ranking_models.dart';
 import '../../core/network/api_client.dart';
+import '../../core/repositories/ranking_repository.dart';
 import '../auth/application/session_controller.dart';
 import '../../shared/app_assets.dart';
 import '../../shared/motion/wanpan_motion.dart';
+import '../../shared/widgets/wanpan_lottie_stage.dart';
 import '../../shared/widgets/wanpan_mascot.dart';
 import '../../shared/widgets/wanpan_pressable.dart';
+import '../../shared/widgets/wanpan_skeleton.dart';
 
 class RankingScreen extends StatefulWidget {
-  const RankingScreen({super.key, required this.api, required this.session});
+  const RankingScreen({
+    super.key,
+    required this.api,
+    required this.session,
+    this.initialSegment = 0,
+  });
   final ApiClient api;
   final SessionController session;
+  final int initialSegment;
 
   @override
   State<RankingScreen> createState() => _RankingScreenState();
 }
 
 class _RankingScreenState extends State<RankingScreen> {
-  int _segment = 0;
+  late final RankingRepository _repository;
+  late int _segment;
   bool _loading = true;
   String? _error;
   RankingBoard? _board;
   List<RankedRoute> _routes = const [];
+  List<RankingRegion> _regions = const [];
+  RankingRegion? _selectedRegion;
+  bool _regionsLoading = true;
+  bool _regionsFailed = false;
+  final Set<String> _shownEmptyAnimations = <String>{};
+  String? _visibleEmptyAnimationKey;
+  bool _visibleEmptyShouldPlay = false;
+  int _loadRequestId = 0;
+  bool _motionPreloadStarted = false;
+  String? _observedSessionToken;
 
   @override
   void initState() {
     super.initState();
+    _repository = RankingRepository(widget.api);
+    _segment = _normalizedSegment(widget.initialSegment);
+    _observedSessionToken = widget.session.token;
+    widget.session.addListener(_handleSessionChanged);
+    unawaited(_loadRegions());
     _load();
   }
 
+  @override
+  void didUpdateWidget(covariant RankingScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    var shouldReload = false;
+    if (oldWidget.session != widget.session) {
+      oldWidget.session.removeListener(_handleSessionChanged);
+      _observedSessionToken = widget.session.token;
+      widget.session.addListener(_handleSessionChanged);
+      shouldReload = true;
+    }
+    final requestedSegment = _normalizedSegment(widget.initialSegment);
+    if (oldWidget.initialSegment != widget.initialSegment &&
+        _segment != requestedSegment) {
+      _segment = requestedSegment;
+      shouldReload = true;
+    }
+    if (shouldReload) unawaited(_load());
+  }
+
+  @override
+  void dispose() {
+    _loadRequestId++;
+    widget.session.removeListener(_handleSessionChanged);
+    super.dispose();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_motionPreloadStarted) return;
+    _motionPreloadStarted = true;
+    unawaited(
+      preloadWanpanLottie(context, AppAssets.rankingEncouragementAnimation),
+    );
+  }
+
   Future<void> _load() async {
+    final segment = _segment;
+    final region = _selectedRegion;
+    final requestId = ++_loadRequestId;
     setState(() {
       _loading = true;
       _error = null;
+      _setVisibleEmptyAnimation(null);
     });
     try {
-      if (_segment == 0) {
-        if (!widget.session.isAuthenticated) {
-          if (mounted) setState(() => _loading = false);
+      if (segment == 0) {
+        final board = await _repository.getRanking(
+          scope: region == null ? RankingScope.national : RankingScope.city,
+          province: region?.province,
+          city: region?.city,
+        );
+        if (!mounted || requestId != _loadRequestId || _segment != segment) {
           return;
         }
-        _board = RankingBoard.fromJson(
-          await widget.api.getJson(
-            '/rankings',
-            queryParameters: {'scope': 'national'},
-          ),
-        );
+        setState(() {
+          _board = board;
+          _loading = false;
+          _setVisibleEmptyAnimation(
+            board.items.isEmpty
+                ? 'people-empty-${region?.key ?? 'national'}'
+                : null,
+          );
+        });
       } else {
-        final data = await widget.api.getJson('/rankings/routes');
-        _routes = jsonModelList(data['items'], RankedRoute.fromJson);
+        final routes = await _repository.getRankedRoutes(
+          province: region?.province,
+          city: region?.city,
+        );
+        if (!mounted || requestId != _loadRequestId || _segment != segment) {
+          return;
+        }
+        setState(() {
+          _routes = routes;
+          _loading = false;
+          _setVisibleEmptyAnimation(
+            routes.isEmpty ? 'routes-empty-${region?.key ?? 'national'}' : null,
+          );
+        });
       }
-      if (mounted) setState(() => _loading = false);
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted || requestId != _loadRequestId || _segment != segment) {
+        return;
+      }
       setState(() {
         _loading = false;
         _error = '榜单正在整理中';
+        _setVisibleEmptyAnimation(null);
       });
     }
+  }
+
+  Future<void> _loadRegions() async {
+    if (mounted) {
+      setState(() {
+        _regionsLoading = true;
+        _regionsFailed = false;
+      });
+    }
+    try {
+      final regions = await _repository.getRegions();
+      if (!mounted) return;
+      final unique =
+          <String, RankingRegion>{
+            for (final region in regions) region.key: region,
+          }.values.toList()..sort((a, b) {
+            final cityOrder = a.city.compareTo(b.city);
+            return cityOrder != 0
+                ? cityOrder
+                : a.province.compareTo(b.province);
+          });
+      final selectionStillExists =
+          _selectedRegion == null || unique.contains(_selectedRegion);
+      setState(() {
+        _regions = unique;
+        _regionsLoading = false;
+        _regionsFailed = false;
+        if (!selectionStillExists) _selectedRegion = null;
+      });
+      if (!selectionStillExists) unawaited(_load());
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _regionsLoading = false;
+        _regionsFailed = true;
+      });
+    }
+  }
+
+  void _handleSessionChanged() {
+    final currentToken = widget.session.token;
+    if (currentToken == _observedSessionToken) return;
+    _observedSessionToken = currentToken;
+    unawaited(_load());
   }
 
   void _changeSegment(int value) {
     if (_segment == value) return;
     setState(() => _segment = value);
-    _load();
+    unawaited(_load());
   }
+
+  void _changeRegion(RankingRegion? region) {
+    if (_selectedRegion == region) return;
+    setState(() => _selectedRegion = region);
+    unawaited(_load());
+  }
+
+  void _openRegionPicker() {
+    if (_regionsFailed) {
+      unawaited(_loadRegions());
+      return;
+    }
+    if (_regionsLoading) return;
+    showModalBottomSheet<void>(
+      context: context,
+      useSafeArea: true,
+      isScrollControlled: true,
+      backgroundColor: WanpanColors.surface,
+      showDragHandle: true,
+      builder: (_) => _RegionPickerSheet(
+        regions: _regions,
+        selected: _selectedRegion,
+        onSelected: _changeRegion,
+      ),
+    );
+  }
+
+  String get _regionLabel => _selectedRegion?.city ?? '全国';
+
+  String get _regionKey => _selectedRegion?.key ?? 'national';
+
+  static int _normalizedSegment(int value) => value == 1 ? 1 : 0;
 
   @override
   Widget build(BuildContext context) {
@@ -80,7 +243,17 @@ class _RankingScreenState extends State<RankingScreen> {
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
             child: _SegmentedControl(
               value: _segment,
+              peopleLabel: _selectedRegion == null ? '全国榜' : '$_regionLabel榜',
               onChanged: _changeSegment,
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+            child: _RegionFilter(
+              selected: _selectedRegion,
+              loading: _regionsLoading,
+              failed: _regionsFailed,
+              onPressed: _openRegionPicker,
             ),
           ),
           Expanded(
@@ -96,10 +269,7 @@ class _RankingScreenState extends State<RankingScreen> {
 
   Widget _content() {
     if (_loading) {
-      return const Center(
-        key: ValueKey('loading'),
-        child: CircularProgressIndicator(strokeWidth: 3),
-      );
+      return const WanpanListSkeleton(key: ValueKey('loading'), itemCount: 4);
     }
     if (_error != null) {
       return Center(
@@ -119,13 +289,6 @@ class _RankingScreenState extends State<RankingScreen> {
         ),
       );
     }
-    if (_segment == 0 && !widget.session.isAuthenticated) {
-      return const _RankingEmpty(
-        key: ValueKey('signed-out'),
-        title: '登录后加入全国榜',
-        description: '每次完攀、首攀和收到点赞都会增加积分。',
-      );
-    }
     if (_segment == 0) return _people();
     return _popularRoutes();
   }
@@ -133,19 +296,32 @@ class _RankingScreenState extends State<RankingScreen> {
   Widget _people() {
     final board = _board;
     if (board == null || board.items.isEmpty) {
-      return const _RankingEmpty(
-        key: ValueKey('people-empty'),
-        title: '本月榜单刚刚开始',
-        description: '完成一条线路，就能出现在这里。',
+      final emptyKey = 'people-empty-$_regionKey';
+      return _RankingEmpty(
+        key: ValueKey(emptyKey),
+        title: _selectedRegion == null ? '本月榜单刚刚开始' : '$_regionLabel榜正在等第一位岩友',
+        description: _selectedRegion == null
+            ? '完成一条线路，就能出现在这里。'
+            : '在$_regionLabel完成一条线路，就能出现在这里。',
+        actionLabel: widget.session.isAuthenticated ? '找线路打卡' : '登录后加入',
+        playAnimation: _playsVisibleEmptyAnimation(emptyKey),
+        onAction: widget.session.isAuthenticated
+            ? () => context.push('/routes/pick')
+            : () => context.go('/login?from=/ranking'),
       );
     }
     return RefreshIndicator(
       key: const ValueKey('people'),
       onRefresh: _load,
       child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
         children: [
-          _ScoringCard(board: board),
+          _ScoringCard(
+            board: board,
+            regionLabel: _regionLabel,
+            isAuthenticated: widget.session.isAuthenticated,
+          ),
           const SizedBox(height: 14),
           ...board.items.map(
             (entry) => Padding(
@@ -164,29 +340,308 @@ class _RankingScreenState extends State<RankingScreen> {
 
   Widget _popularRoutes() {
     if (_routes.isEmpty) {
-      return const _RankingEmpty(
-        key: ValueKey('routes-empty'),
-        title: '还没有热门线路',
-        description: '路线有完攀和点赞后会进入榜单。',
+      final emptyKey = 'routes-empty-$_regionKey';
+      return _RankingEmpty(
+        key: ValueKey(emptyKey),
+        title: _selectedRegion == null ? '还没有热门线路' : '$_regionLabel还没有热门线路',
+        description: '线路有真实完攀和点赞后，会进入$_regionLabel榜单。',
+        actionLabel: _selectedRegion == null ? '去看看线路' : '换个城市看看',
+        playAnimation: _playsVisibleEmptyAnimation(emptyKey),
+        onAction: _selectedRegion == null
+            ? () => context.push('/routes/pick')
+            : _openRegionPicker,
       );
     }
     return RefreshIndicator(
       key: const ValueKey('routes'),
       onRefresh: _load,
-      child: ListView.separated(
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
-        itemCount: _routes.length,
-        separatorBuilder: (_, _) => const SizedBox(height: 10),
-        itemBuilder: (_, index) =>
-            _RouteTile(rank: index + 1, route: _routes[index]),
+        children: [
+          _RouteRankingIntro(regionLabel: _regionLabel),
+          const SizedBox(height: 12),
+          for (var index = 0; index < _routes.length; index++) ...[
+            if (index > 0) const SizedBox(height: 10),
+            _RouteTile(
+              rank: index + 1,
+              route: _routes[index],
+              onTap: () => context.push('/routes/${_routes[index].routeId}'),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  bool _playsVisibleEmptyAnimation(String key) =>
+      _visibleEmptyAnimationKey == key && _visibleEmptyShouldPlay;
+
+  void _setVisibleEmptyAnimation(String? key) {
+    if (key == null) {
+      _visibleEmptyAnimationKey = null;
+      _visibleEmptyShouldPlay = false;
+      return;
+    }
+    if (_visibleEmptyAnimationKey == key) return;
+    _visibleEmptyAnimationKey = key;
+    _visibleEmptyShouldPlay = _shownEmptyAnimations.add(key);
+  }
+}
+
+class _RegionFilter extends StatelessWidget {
+  const _RegionFilter({
+    required this.selected,
+    required this.loading,
+    required this.failed,
+    required this.onPressed,
+  });
+
+  final RankingRegion? selected;
+  final bool loading;
+  final bool failed;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = loading
+        ? '地区加载中'
+        : failed
+        ? '地区加载失败 · 重试'
+        : selected?.city ?? '全国';
+    return WanpanPressable(
+      key: const Key('ranking-region-button'),
+      onTap: loading ? null : onPressed,
+      semanticLabel: failed ? '地区加载失败，重新加载' : '筛选榜单区域，当前$label',
+      borderRadius: BorderRadius.circular(WanpanRadii.medium),
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 48),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: WanpanColors.skySoft,
+          borderRadius: BorderRadius.circular(WanpanRadii.medium),
+          border: Border.all(color: WanpanColors.sky.withValues(alpha: .72)),
+        ),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.location_on_rounded,
+              size: 20,
+              color: WanpanColors.ink,
+            ),
+            const SizedBox(width: 8),
+            Text('榜单区域', style: Theme.of(context).textTheme.labelLarge),
+            const Spacer(),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: failed ? WanpanColors.danger : WanpanColors.ink,
+                ),
+              ),
+            ),
+            const SizedBox(width: 4),
+            if (loading)
+              const SizedBox.square(
+                dimension: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            else
+              Icon(
+                failed ? Icons.refresh_rounded : Icons.expand_more_rounded,
+                color: failed ? WanpanColors.danger : WanpanColors.ink,
+              ),
+          ],
+        ),
       ),
     );
   }
 }
 
+class _RegionPickerSheet extends StatefulWidget {
+  const _RegionPickerSheet({
+    required this.regions,
+    required this.selected,
+    required this.onSelected,
+  });
+
+  final List<RankingRegion> regions;
+  final RankingRegion? selected;
+  final ValueChanged<RankingRegion?> onSelected;
+
+  @override
+  State<_RegionPickerSheet> createState() => _RegionPickerSheetState();
+}
+
+class _RegionPickerSheetState extends State<_RegionPickerSheet> {
+  final _searchController = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  List<RankingRegion> get _visibleRegions {
+    final query = _query.trim().toLowerCase();
+    if (query.isEmpty) return widget.regions;
+    return widget.regions
+        .where(
+          (region) =>
+              region.city.toLowerCase().contains(query) ||
+              region.province.toLowerCase().contains(query),
+        )
+        .toList(growable: false);
+  }
+
+  void _select(RankingRegion? region) {
+    widget.onSelected(region);
+    Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final regions = _visibleRegions;
+    return AnimatedPadding(
+      duration: WanpanMotion.duration(context, WanpanMotion.exit),
+      curve: WanpanMotion.curve(context),
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: FractionallySizedBox(
+        heightFactor: .78,
+        child: ListView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+          children: [
+            Text('选择榜单区域', style: Theme.of(context).textTheme.headlineSmall),
+            const SizedBox(height: 6),
+            Text(
+              '看看不同城市正在流行哪些线路。',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              key: const Key('ranking-region-search'),
+              controller: _searchController,
+              onChanged: (value) => setState(() => _query = value),
+              textInputAction: TextInputAction.search,
+              decoration: const InputDecoration(
+                hintText: '搜索城市或省份',
+                prefixIcon: Icon(Icons.search_rounded),
+              ),
+            ),
+            const SizedBox(height: 12),
+            _RegionOption(
+              key: const Key('ranking-region-national'),
+              label: '全国',
+              description: '查看所有城市的榜单',
+              selected: widget.selected == null,
+              onTap: () => _select(null),
+            ),
+            for (final region in regions)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: _RegionOption(
+                  key: Key('ranking-region-${region.key}'),
+                  label: region.city,
+                  description: region.province == '待核验'
+                      ? '查看该城市榜单'
+                      : region.province,
+                  selected: widget.selected == region,
+                  onTap: () => _select(region),
+                ),
+              ),
+            if (regions.isEmpty && _query.trim().isNotEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 32),
+                child: Text('没有找到这个地区，换个关键词试试。', textAlign: TextAlign.center),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RegionOption extends StatelessWidget {
+  const _RegionOption({
+    required this.label,
+    required this.description,
+    required this.selected,
+    required this.onTap,
+    super.key,
+  });
+
+  final String label;
+  final String description;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    selected: selected,
+    child: WanpanPressable(
+      onTap: onTap,
+      semanticLabel: '$label，$description${selected ? '，已选择' : ''}',
+      borderRadius: BorderRadius.circular(WanpanRadii.medium),
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 58),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: selected ? WanpanColors.skySoft : WanpanColors.surface,
+          borderRadius: BorderRadius.circular(WanpanRadii.medium),
+          border: Border.all(
+            color: selected ? WanpanColors.sky : WanpanColors.border,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              label == '全国'
+                  ? Icons.public_rounded
+                  : Icons.location_city_rounded,
+              color: selected ? WanpanColors.sky : WanpanColors.muted,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(label, style: Theme.of(context).textTheme.titleMedium),
+                  Text(
+                    description,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelMedium,
+                  ),
+                ],
+              ),
+            ),
+            if (selected)
+              const Icon(Icons.check_circle_rounded, color: WanpanColors.sky)
+            else
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: WanpanColors.muted,
+              ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
 class _SegmentedControl extends StatelessWidget {
-  const _SegmentedControl({required this.value, required this.onChanged});
+  const _SegmentedControl({
+    required this.value,
+    required this.peopleLabel,
+    required this.onChanged,
+  });
   final int value;
+  final String peopleLabel;
   final ValueChanged<int> onChanged;
   @override
   Widget build(BuildContext context) {
@@ -197,7 +652,10 @@ class _SegmentedControl extends StatelessWidget {
         borderRadius: BorderRadius.circular(WanpanRadii.pill),
       ),
       child: Row(
-        children: [_segment(context, 0, '全国榜'), _segment(context, 1, '热门线路')],
+        children: [
+          _segment(context, 0, peopleLabel),
+          _segment(context, 1, '热门线路'),
+        ],
       ),
     );
   }
@@ -205,25 +663,35 @@ class _SegmentedControl extends StatelessWidget {
   Widget _segment(BuildContext context, int index, String label) {
     final active = value == index;
     return Expanded(
-      child: WanpanPressable(
+      child: Semantics(
+        key: Key('ranking-segment-$index'),
+        container: true,
+        button: true,
+        selected: active,
+        label: label,
         onTap: () => onChanged(index),
-        pressedScale: .985,
-        borderRadius: BorderRadius.circular(WanpanRadii.pill),
-        child: AnimatedContainer(
-          duration: WanpanMotion.duration(context, WanpanMotion.exit),
-          curve: WanpanMotion.curve(context),
-          padding: const EdgeInsets.symmetric(vertical: 11),
-          decoration: BoxDecoration(
-            color: active ? WanpanColors.surface : Colors.transparent,
+        child: ExcludeSemantics(
+          child: WanpanPressable(
+            onTap: () => onChanged(index),
+            pressedScale: .985,
             borderRadius: BorderRadius.circular(WanpanRadii.pill),
-            border: active ? Border.all(color: WanpanColors.border) : null,
-          ),
-          child: Text(
-            label,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: active ? WanpanColors.ink : WanpanColors.muted,
-              fontWeight: FontWeight.w800,
+            child: AnimatedContainer(
+              duration: WanpanMotion.duration(context, WanpanMotion.exit),
+              curve: WanpanMotion.curve(context),
+              padding: const EdgeInsets.symmetric(vertical: 11),
+              decoration: BoxDecoration(
+                color: active ? WanpanColors.surface : Colors.transparent,
+                borderRadius: BorderRadius.circular(WanpanRadii.pill),
+                border: active ? Border.all(color: WanpanColors.border) : null,
+              ),
+              child: Text(
+                label,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: active ? WanpanColors.ink : WanpanColors.muted,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
             ),
           ),
         ),
@@ -233,8 +701,14 @@ class _SegmentedControl extends StatelessWidget {
 }
 
 class _ScoringCard extends StatelessWidget {
-  const _ScoringCard({required this.board});
+  const _ScoringCard({
+    required this.board,
+    required this.regionLabel,
+    required this.isAuthenticated,
+  });
   final RankingBoard board;
+  final String regionLabel;
+  final bool isAuthenticated;
   @override
   Widget build(BuildContext context) {
     final me = board.myRank;
@@ -257,7 +731,11 @@ class _ScoringCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  me == null ? '完成线路，加入本月榜' : '我的排名 #${me.rank}',
+                  me == null
+                      ? isAuthenticated
+                            ? '完成线路，加入$regionLabel榜'
+                            : '登录后加入$regionLabel榜'
+                      : '我的$regionLabel排名 #${me.rank}',
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 const SizedBox(height: 3),
@@ -367,66 +845,177 @@ class _RankTile extends StatelessWidget {
   }
 }
 
+class _RouteRankingIntro extends StatelessWidget {
+  const _RouteRankingIntro({required this.regionLabel});
+
+  final String regionLabel;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      color: WanpanColors.goldSoft,
+      borderRadius: BorderRadius.circular(WanpanRadii.medium),
+      border: Border.all(color: WanpanColors.border),
+    ),
+    child: Row(
+      children: [
+        Container(
+          width: 42,
+          height: 42,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: WanpanColors.surface,
+            borderRadius: BorderRadius.circular(13),
+          ),
+          child: const Icon(
+            Icons.emoji_events_rounded,
+            color: WanpanColors.gold,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '$regionLabel热门线路',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                '按完攀人数和点赞排序，点开可看线路详情',
+                style: Theme.of(context).textTheme.labelMedium,
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
 class _RouteTile extends StatelessWidget {
-  const _RouteTile({required this.rank, required this.route});
+  const _RouteTile({
+    required this.rank,
+    required this.route,
+    required this.onTap,
+  });
   final int rank;
   final RankedRoute route;
+  final VoidCallback onTap;
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
+    final city = route.city?.trim();
+    final usesLargeText = MediaQuery.textScalerOf(context).scale(1) >= 1.6;
+    final metadata = <String>[
+      if (city != null && city.isNotEmpty && !route.gymName.contains(city))
+        city,
+      route.gymName,
+      ?route.wallZone,
+    ].join(' · ');
+    final grade = Container(
+      width: 48,
+      height: 48,
+      alignment: Alignment.center,
+      padding: const EdgeInsets.symmetric(horizontal: 6),
+      decoration: BoxDecoration(
+        color: WanpanColors.coralSoft,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(
+          route.grade,
+          style: Theme.of(context).textTheme.titleMedium
+              ?.copyWith(color: WanpanColors.coralStrong),
+        ),
+      ),
+    );
+    final description = Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '$rank. ${route.routeName}',
+            maxLines: usesLargeText ? 2 : 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          Text(
+            metadata,
+            maxLines: usesLargeText ? 2 : 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelMedium,
+          ),
+        ],
+      ),
+    );
+    final statistics = usesLargeText
+        ? Text(
+            '${route.completionCount} 人完攀  ·  ${route.totalLikes} 赞',
+            textAlign: TextAlign.end,
+            style: Theme.of(context).textTheme.labelMedium,
+          )
+        : Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '${route.completionCount} 人完攀',
+                style: Theme.of(context).textTheme.labelLarge,
+              ),
+              Text(
+                '${route.totalLikes} 赞',
+                style: Theme.of(context).textTheme.labelMedium,
+              ),
+            ],
+          );
+    const chevron = Icon(
+      Icons.chevron_right_rounded,
+      size: 20,
+      color: WanpanColors.muted,
+    );
+    return WanpanPressable(
+      key: Key('ranked-route-${route.routeId}'),
+      onTap: onTap,
+      semanticLabel:
+          '第$rank名，${route.routeName}，${route.grade}，${route.completionCount}人完攀，查看线路详情',
+      borderRadius: BorderRadius.circular(WanpanRadii.medium),
+      child: Container(
         padding: const EdgeInsets.all(15),
-        child: Row(
-          children: [
-            Container(
-              width: 48,
-              height: 48,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: WanpanColors.coralSoft,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Text(
-                route.grade,
-                style: Theme.of(context).textTheme.titleMedium
-                    ?.copyWith(color: WanpanColors.coralStrong),
-              ),
-            ),
-            const SizedBox(width: 13),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+        decoration: BoxDecoration(
+          color: WanpanColors.surface,
+          borderRadius: BorderRadius.circular(WanpanRadii.medium),
+          border: Border.all(color: WanpanColors.border),
+        ),
+        child: usesLargeText
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    '$rank. ${route.routeName}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleMedium,
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      grade,
+                      const SizedBox(width: 13),
+                      description,
+                      const SizedBox(width: 4),
+                      chevron,
+                    ],
                   ),
-                  Text(
-                    '${route.gymName}${route.wallZone == null ? '' : ' · ${route.wallZone}'}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.labelMedium,
-                  ),
+                  const SizedBox(height: 8),
+                  Align(alignment: Alignment.centerRight, child: statistics),
+                ],
+              )
+            : Row(
+                children: [
+                  grade,
+                  const SizedBox(width: 13),
+                  description,
+                  statistics,
+                  const SizedBox(width: 4),
+                  chevron,
                 ],
               ),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  '${route.completionCount} 人完攀',
-                  style: Theme.of(context).textTheme.labelLarge,
-                ),
-                Text(
-                  '${route.totalLikes} 赞',
-                  style: Theme.of(context).textTheme.labelMedium,
-                ),
-              ],
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -437,42 +1026,78 @@ class _RankingEmpty extends StatelessWidget {
     super.key,
     required this.title,
     required this.description,
+    required this.actionLabel,
+    required this.playAnimation,
+    required this.onAction,
   });
   final String title;
   final String description;
+  final String actionLabel;
+  final bool playAnimation;
+  final VoidCallback onAction;
+
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.emoji_events_rounded,
-              size: 34,
-              color: WanpanColors.ink,
-            ),
-            const SizedBox(height: 8),
-            const WanpanMascot(
-              asset: AppAssets.mascotCelebrate,
-              width: 178,
-              height: 168,
-              radius: 36,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              description,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-          ],
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 28),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: constraints.maxHeight - 44),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              WanpanLottieStage(
+                asset: AppAssets.rankingEncouragementAnimation,
+                semanticLabel: '黑猫邀请你完成线路并加入排行榜',
+                width: 236,
+                height: 210,
+                play: playAnimation,
+                fallback: const WanpanMascot(
+                  asset: AppAssets.mascotCelebrate,
+                  width: 176,
+                  height: 166,
+                  radius: 38,
+                ),
+              ),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.headlineMedium,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                description,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyLarge
+                    ?.copyWith(color: WanpanColors.inkSecondary),
+              ),
+              const SizedBox(height: 22),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 320),
+                child: WanpanButton(
+                  label: actionLabel,
+                  icon: const Icon(Icons.route_rounded),
+                  onPressed: onAction,
+                ),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.star_rounded,
+                    size: 17,
+                    color: WanpanColors.sunflower,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    '每一次真实完攀，都会点亮这里',
+                    style: Theme.of(context).textTheme.labelMedium,
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

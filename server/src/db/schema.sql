@@ -50,6 +50,10 @@ CREATE TABLE IF NOT EXISTS gyms (
   cover_url text,
   description text,
   verified boolean NOT NULL DEFAULT false,
+  source_name text,
+  source_url text,
+  source_external_id text,
+  canonical_venue_id varchar(120),
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
@@ -82,6 +86,10 @@ CREATE TABLE IF NOT EXISTS gym_admins (
 ALTER TABLE gyms ADD COLUMN IF NOT EXISTS district varchar(40);
 ALTER TABLE gyms ADD COLUMN IF NOT EXISTS province varchar(40) NOT NULL DEFAULT '广东省';
 ALTER TABLE gyms ADD COLUMN IF NOT EXISTS brand_id uuid REFERENCES gym_brands(id) ON DELETE SET NULL;
+ALTER TABLE gyms ADD COLUMN IF NOT EXISTS source_name text;
+ALTER TABLE gyms ADD COLUMN IF NOT EXISTS source_url text;
+ALTER TABLE gyms ADD COLUMN IF NOT EXISTS source_external_id text;
+ALTER TABLE gyms ADD COLUMN IF NOT EXISTS canonical_venue_id varchar(120);
 
 CREATE TABLE IF NOT EXISTS route_sets (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -229,9 +237,24 @@ EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 CREATE INDEX IF NOT EXISTS idx_routes_gym_set ON routes(gym_id, route_set_id);
 CREATE INDEX IF NOT EXISTS idx_gyms_city_district_brand ON gyms(city,district,brand_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_gyms_source_external_identity
+  ON gyms(source_name,source_external_id)
+  WHERE source_name IS NOT NULL AND source_external_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_gyms_canonical_venue_identity
+  ON gyms(canonical_venue_id)
+  WHERE canonical_venue_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_gym_visit_cards_gym_status ON gym_visit_cards(gym_id,status,created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_sends_user_time ON sends(user_id, sent_at DESC);
 CREATE INDEX IF NOT EXISTS idx_sends_route ON sends(route_id);
+CREATE INDEX IF NOT EXISTS idx_sends_public_feed_cursor
+  ON sends(sent_at DESC,id DESC)
+  WHERE moderation_status='approved' AND visibility='public';
+CREATE INDEX IF NOT EXISTS idx_sends_approved_visibility_cursor
+  ON sends(visibility,sent_at DESC,id DESC)
+  WHERE moderation_status='approved';
+CREATE INDEX IF NOT EXISTS idx_comments_approved_send_time
+  ON comments(send_id,created_at)
+  WHERE moderation_status='approved';
 CREATE INDEX IF NOT EXISTS idx_meetups_gym_time ON meetups(gym_id, starts_at);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_friendships_pair ON friendships(LEAST(requester_id,addressee_id),GREATEST(requester_id,addressee_id));
 CREATE INDEX IF NOT EXISTS idx_route_submissions_status ON route_submissions(status,created_at);

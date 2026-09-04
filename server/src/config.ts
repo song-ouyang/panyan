@@ -44,7 +44,10 @@ const schema = z.object({
   OSS_PUBLIC_BASE_URL: z.string().default(''),
   PUBLIC_BASE_URL: z.string().url().default('http://localhost:3000'),
   UPLOAD_DIR: z.string().default('./uploads'),
-  MODERATION_MODE: z.enum(['off', 'manual']).default('off')
+  MODERATION_MODE: z.enum(['off', 'manual']).default('off'),
+  ALLOW_PRODUCTION_GYM_IMPORT: z.enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true')
 }).superRefine((value, context) => {
   const hasDatabaseUrl = value.DATABASE_URL.length > 0;
   const hasPostgresFields = Boolean(value.PGHOST && value.PGDATABASE && value.PGUSER && value.PGPASSWORD);

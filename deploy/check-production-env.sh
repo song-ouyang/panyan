@@ -60,6 +60,11 @@ elif [[ "$upload_mode" != "local" ]]; then
   fail "UPLOAD_MODE 只能是 local 或 oss"
 fi
 
+allow_gym_import="$(env_value ALLOW_PRODUCTION_GYM_IMPORT)"
+if [[ -n "$allow_gym_import" && "$allow_gym_import" != "false" ]]; then
+  fail "ALLOW_PRODUCTION_GYM_IMPORT 不能长期写入生产配置；只能在备份后为单次目录导入命令临时传入 true"
+fi
+
 apple_client="$(env_value APPLE_CLIENT_ID)"
 apple_team="$(env_value APPLE_TEAM_ID)"
 if [[ -z "$apple_client" || -z "$apple_team" || "$apple_client" =~ 请|填写 || "$apple_team" =~ 请|填写 ]]; then
@@ -97,12 +102,11 @@ if (( aliyun_count == ${#aliyun_keys[@]} )); then
 elif (( aliyun_count > 0 )); then
   fail "阿里云短信配置不完整，ALIYUN_ACCESS_KEY_ID/SECRET、SIGN_NAME、TEMPLATE_CODE 必须全部填写"
 else
-  warn "未配置阿里云号码认证服务，普通手机号验证码登录将不可用"
+  fail "未配置阿里云号码认证服务，正式用户的手机号验证码登录不可用"
 fi
 
-if (( review_ready == 0 && aliyun_ready == 0 )); then
-  fail "手机号登录没有任何可用通道：至少配置审核账号或完整阿里云短信"
-fi
+# 审核固定账号只用于 App Review，不能代替面向真实用户的
+# 短信通道。生产预检因此始终要求 Aliyun 四项配置完整。
 
 mode="$(stat -c '%a' "$ENV_FILE" 2>/dev/null || stat -f '%Lp' "$ENV_FILE")"
 if [[ "$mode" != "600" ]]; then

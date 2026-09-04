@@ -1,0 +1,6 @@
+interface:
+  display_name: "完攀动效实验室"
+  short_description: "启动、配置、生成并验证完攀日记 Flutter 动效实验室"
+  default_prompt: "使用 $wanpan-motion-lab 启动完攀动效实验室，并预览当前动效。"
+policy:
+  allow_implicit_invocation: true

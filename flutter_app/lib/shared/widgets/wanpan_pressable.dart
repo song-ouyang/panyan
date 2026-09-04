@@ -12,6 +12,7 @@ class WanpanPressable extends StatefulWidget {
     this.semanticLabel,
     this.borderRadius = const BorderRadius.all(Radius.circular(16)),
     this.pressedScale = .97,
+    this.pressedOffset = 1.5,
     this.enableHaptics = false,
   });
 
@@ -20,23 +21,58 @@ class WanpanPressable extends StatefulWidget {
   final String? semanticLabel;
   final BorderRadius borderRadius;
   final double pressedScale;
+  final double pressedOffset;
   final bool enableHaptics;
 
   @override
   State<WanpanPressable> createState() => _WanpanPressableState();
 }
 
-class _WanpanPressableState extends State<WanpanPressable> {
+class _WanpanPressableState extends State<WanpanPressable>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pressController = AnimationController(
+    vsync: this,
+    duration: WanpanMotion.touchDown,
+    reverseDuration: WanpanMotion.tactileRelease,
+  );
   bool _pressed = false;
 
   void _setPressed(bool value) {
     if (_pressed == value || widget.onTap == null) return;
     setState(() => _pressed = value);
+    if (value) {
+      _pressController.animateTo(
+        1,
+        duration: WanpanMotion.touchDown,
+        curve: WanpanMotion.easeOut,
+      );
+    } else {
+      _pressController.animateBack(
+        0,
+        duration: WanpanMotion.tactileRelease,
+        curve: WanpanMotion.playfulRelease,
+      );
+    }
   }
 
   void _tap() {
     if (widget.enableHaptics) HapticFeedback.selectionClick();
     widget.onTap?.call();
+  }
+
+  @override
+  void didUpdateWidget(covariant WanpanPressable oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.onTap == null && _pressed) {
+      _pressed = false;
+      _pressController.value = 0;
+    }
+  }
+
+  @override
+  void dispose() {
+    _pressController.dispose();
+    super.dispose();
   }
 
   @override
@@ -56,14 +92,22 @@ class _WanpanPressableState extends State<WanpanPressable> {
           onTapCancel: enabled ? () => _setPressed(false) : null,
           onTap: enabled ? _tap : null,
           child: AnimatedOpacity(
-            opacity: enabled ? (_pressed ? .84 : 1) : .46,
+            opacity: enabled ? 1 : .46,
             duration: WanpanMotion.duration(context, WanpanMotion.press),
             curve: WanpanMotion.curve(context),
-            child: AnimatedScale(
-              scale: reduceMotion || !_pressed ? 1 : widget.pressedScale,
-              duration: WanpanMotion.duration(context, WanpanMotion.press),
-              curve: WanpanMotion.curve(context),
+            child: AnimatedBuilder(
+              animation: _pressController,
               child: widget.child,
+              builder: (context, child) {
+                final progress = reduceMotion ? 0.0 : _pressController.value;
+                return Transform.translate(
+                  offset: Offset(0, widget.pressedOffset * progress),
+                  child: Transform.scale(
+                    scale: 1 - (1 - widget.pressedScale) * progress,
+                    child: child,
+                  ),
+                );
+              },
             ),
           ),
         ),
@@ -103,6 +147,12 @@ class _WanpanButtonState extends State<WanpanButton> {
 
   bool get _enabled => widget.onPressed != null && !widget.loading;
 
+  void _activate() {
+    if (!_enabled) return;
+    HapticFeedback.selectionClick();
+    widget.onPressed?.call();
+  }
+
   void _setPressed(bool value) {
     if (!_enabled || value == _pressed) return;
     setState(() => _pressed = value);
@@ -113,8 +163,14 @@ class _WanpanButtonState extends State<WanpanButton> {
     final palette = _ButtonPalette.forStyle(widget.style);
     final physical = widget.style == WanpanButtonStyle.primary;
     final reduceMotion = WanpanMotion.reduceMotion(context);
-    final depth = physical ? 5.0 : 0.0;
-    final travel = physical && _pressed && !reduceMotion ? 3.0 : 0.0;
+    final depth = physical ? 6.0 : 0.0;
+    final travel = physical && _pressed && !reduceMotion ? 4.0 : 0.0;
+    final motionDuration = _pressed
+        ? WanpanMotion.touchDown
+        : WanpanMotion.tactileRelease;
+    final motionCurve = _pressed
+        ? WanpanMotion.easeOut
+        : WanpanMotion.playfulRelease;
 
     final label = Text(
       widget.label,
@@ -125,9 +181,9 @@ class _WanpanButtonState extends State<WanpanButton> {
     );
 
     final content = AnimatedContainer(
-      duration: WanpanMotion.duration(context, WanpanMotion.press),
-      curve: WanpanMotion.curve(context),
-      constraints: const BoxConstraints(minHeight: 52),
+      duration: WanpanMotion.duration(context, motionDuration),
+      curve: WanpanMotion.curve(context, motionCurve),
+      constraints: const BoxConstraints(minHeight: 54),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       decoration: BoxDecoration(
         color: palette.background,
@@ -137,7 +193,7 @@ class _WanpanButtonState extends State<WanpanButton> {
             ? [
                 BoxShadow(
                   color: palette.depth,
-                  offset: Offset(0, _pressed ? 2 : depth),
+                  offset: Offset(0, _pressed ? 1 : depth),
                   blurRadius: 0,
                 ),
               ]
@@ -167,31 +223,41 @@ class _WanpanButtonState extends State<WanpanButton> {
       ),
     );
 
+    final tactileContent = AnimatedScale(
+      scale: reduceMotion || !_pressed ? 1 : .985,
+      duration: WanpanMotion.duration(context, motionDuration),
+      curve: WanpanMotion.curve(context, motionCurve),
+      child: content,
+    );
+
     return Semantics(
       button: true,
       enabled: _enabled,
-      label: widget.semanticLabel ?? widget.label,
-      child: MouseRegion(
-        cursor: _enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTapDown: _enabled ? (_) => _setPressed(true) : null,
-          onTapUp: _enabled ? (_) => _setPressed(false) : null,
-          onTapCancel: _enabled ? () => _setPressed(false) : null,
-          onTap: _enabled
-              ? () {
-                  HapticFeedback.selectionClick();
-                  widget.onPressed?.call();
-                }
-              : null,
-          child: AnimatedOpacity(
-            opacity: _enabled ? 1 : .46,
-            duration: WanpanMotion.duration(context, WanpanMotion.press),
-            child: Padding(
-              padding: EdgeInsets.only(bottom: depth),
-              child: widget.expand
-                  ? SizedBox(width: double.infinity, child: content)
-                  : content,
+      liveRegion: widget.loading,
+      label: widget.loading
+          ? '${widget.semanticLabel ?? widget.label}，正在处理'
+          : widget.semanticLabel ?? widget.label,
+      onTap: _enabled ? _activate : null,
+      child: ExcludeSemantics(
+        child: MouseRegion(
+          cursor: _enabled
+              ? SystemMouseCursors.click
+              : SystemMouseCursors.basic,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTapDown: _enabled ? (_) => _setPressed(true) : null,
+            onTapUp: _enabled ? (_) => _setPressed(false) : null,
+            onTapCancel: _enabled ? () => _setPressed(false) : null,
+            onTap: _enabled ? _activate : null,
+            child: AnimatedOpacity(
+              opacity: _enabled ? 1 : .46,
+              duration: WanpanMotion.duration(context, WanpanMotion.press),
+              child: Padding(
+                padding: EdgeInsets.only(bottom: depth),
+                child: widget.expand
+                    ? SizedBox(width: double.infinity, child: tactileContent)
+                    : tactileContent,
+              ),
             ),
           ),
         ),
@@ -211,7 +277,7 @@ class _ButtonPalette {
   factory _ButtonPalette.forStyle(WanpanButtonStyle style) => switch (style) {
     WanpanButtonStyle.primary => const _ButtonPalette(
       background: WanpanColors.coral,
-      foreground: Colors.white,
+      foreground: WanpanColors.ink,
       border: WanpanColors.coral,
       depth: WanpanColors.coralStrong,
     ),

@@ -1,5 +1,10 @@
 const { request } = require('../../utils/api');
 const pageCache = require('../../utils/page-cache');
+const {
+  brandPageUrl,
+  presentDirectoryItems,
+  selectedCity
+} = require('../../utils/gym-directory');
 
 const CITIES_CACHE_KEY = 'gyms:cities';
 const MEETUPS_CACHE_KEY = 'gyms:meetups-preview';
@@ -97,7 +102,7 @@ Page({
       const meetupCache = pageCache.read(MEETUPS_CACHE_KEY, MEETUPS_TTL);
       const cachedPatch = {};
 
-      if (directoryCache) cachedPatch.items = directoryCache.value;
+      if (directoryCache) cachedPatch.items = presentDirectoryItems(directoryCache.value);
       if (meetupCache) cachedPatch.meetups = meetupCache.value;
       if (cities !== this.data.cities) {
         cachedPatch.cities = cities;
@@ -118,9 +123,9 @@ Page({
       if (!force && directoryFresh && meetupsFresh) return;
 
       const directoryTask = !force && directoryFresh
-        ? Promise.resolve(directoryCache.value)
+        ? Promise.resolve(presentDirectoryItems(directoryCache.value))
         : pageCache.loadOnce(cacheKey, () => request(`/gyms/directory?${params.join('&')}`))
-          .then(data => pageCache.write(cacheKey, Array.isArray(data.items) ? data.items : []));
+          .then(data => pageCache.write(cacheKey, presentDirectoryItems(data.items)));
       const meetupTask = !force && meetupsFresh
         ? Promise.resolve(meetupCache.value)
         : pageCache.loadOnce(MEETUPS_CACHE_KEY, () => request('/meetups'))
@@ -164,7 +169,10 @@ Page({
   },
 
   open(e) {
-    wx.navigateTo({ url: `/pages/brand/index?id=${e.currentTarget.dataset.id}` });
+    const city = selectedCity(this.data.cities, this.data.cityIndex);
+    wx.navigateTo({
+      url: brandPageUrl(e.currentTarget.dataset.id, city)
+    });
   },
 
   goMeetups() {

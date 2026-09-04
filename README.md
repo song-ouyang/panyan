@@ -68,7 +68,7 @@ flutter run \
   --dart-define=PRODUCTION_API_BASE_URL=https://panyan-api.gblh.cloud/api
 ```
 
-应用允许游客浏览岩馆；进入打卡、动态、投稿、好友、排行和「我的」时会跳转登录，登录后自动回到原操作。JWT 保存在 iOS Keychain / Android 加密存储中，401 会立即清理失效会话。
+应用允许游客浏览岩馆、广场公开动态和公开排行；朋友圈、个人资料、好友、打卡、投稿、发布、点赞与评论需要登录，登录后自动回到原操作。JWT 保存在 iOS Keychain / Android 加密存储中，401 会立即清理失效会话。
 
 开发登录不默认自动执行。仅需要调试时显式启动：
 
@@ -111,6 +111,17 @@ cd /www/wwwroot/wanpan-diary && bash deploy/server-deploy.sh
 该脚本会在拉取 `origin/main` 前备份已有数据库，并在构建、migration 后同时验证 API 进程和 PostgreSQL 就绪状态。
 
 生产配置使用仓库根目录的 `.env.production`（从 `.env.production.example` 复制），不要使用开发环境的 `server/.env`。数据库由生产 Compose 创建并保存到命名卷，API 启动前会自动执行幂等 migration；Nginx 反向代理本机 `3100`，PostgreSQL 不对公网开放。
+
+公开岩馆目录只通过独立 seed 命令导入，普通 API 启动和部署不会自动导入。生产环境默认硬拒绝 seed；确需导入时必须先备份，再为这一次命令显式开启开关（镜像已内置经过校验的目录文件）：
+
+```bash
+bash deploy/backup.sh docker-compose.server.yml
+docker compose --env-file .env.production -f docker-compose.server.yml run --rm \
+  -e ALLOW_PRODUCTION_GYM_IMPORT=true \
+  api sh -c 'node server/dist/db/migrate.js && node server/dist/db/seed.js'
+```
+
+不要把 `ALLOW_PRODUCTION_GYM_IMPORT=true` 长期写入生产配置；开发环境仍直接使用 `npm --workspace server run db:seed`。
 
 ### Flutter 原生登录人工配置
 

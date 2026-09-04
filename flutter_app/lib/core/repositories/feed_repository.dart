@@ -8,14 +8,14 @@ class FeedRepository {
   final ApiClient _apiClient;
 
   Future<FeedPage> getFeed({
-    DateTime? cursor,
+    String? cursor,
     int limit = 20,
     String scope = 'square',
   }) async => FeedPage.fromJson(
     await _apiClient.getJson(
       '/sends/feed',
       queryParameters: {
-        if (cursor != null) 'cursor': cursor.toUtc().toIso8601String(),
+        'cursor': ?cursor,
         'limit': limit.clamp(1, 50),
         'scope': scope,
       },

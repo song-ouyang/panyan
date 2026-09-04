@@ -241,19 +241,14 @@ void main() {
     expect(find.text('小欧'), findsOneWidget);
     expect(find.text('本月攀爬进度'), findsOneWidget);
 
-    await tester.scrollUntilVisible(
-      find.byKey(const Key('profile-calendar-tile')),
-      220,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.ensureVisible(find.byKey(const Key('profile-calendar-tile')));
+    await tester.ensureVisible(find.byKey(const Key('profile-growth-card')));
     await tester.pumpAndSettle();
     expect(
-      find.byKey(const Key('profile-calendar-tile')).hitTestable(),
+      find.byKey(const Key('profile-growth-card')).hitTestable(),
       findsOneWidget,
     );
     await tester.tap(
-      find.byKey(const Key('profile-calendar-tile')).hitTestable(),
+      find.byKey(const Key('profile-growth-card')).hitTestable(),
     );
     await tester.pumpAndSettle();
 
@@ -263,17 +258,17 @@ void main() {
 
     router.pop();
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(
-      find.text('退出登录'),
-      260,
-      scrollable: find.byType(Scrollable).first,
+    await tester.tap(
+      find.byKey(const Key('profile-settings-button')).hitTestable(),
     );
+    await tester.pumpAndSettle();
+
+    expect(router.state.uri.path, '/settings');
     await tester.tap(find.text('退出登录'));
     await tester.pumpAndSettle();
 
     expect(session.isAuthenticated, isFalse);
-    expect(router.routeInformationProvider.value.uri.path, '/login');
-    expect(find.text('登录后，每一次上墙都有记录'), findsOneWidget);
+    expect(router.routeInformationProvider.value.uri.path, '/gyms');
   });
 
   testWidgets('游客打开馆内投稿入口时完整保留 gymId', (tester) async {
@@ -341,11 +336,12 @@ void main() {
     router.go('/profile');
     await tester.pumpAndSettle();
 
-    await tester.scrollUntilVisible(
-      find.byKey(const Key('account-privacy-tile')),
-      260,
-      scrollable: find.byType(Scrollable).first,
+    await tester.tap(
+      find.byKey(const Key('profile-settings-button')).hitTestable(),
     );
+    await tester.pumpAndSettle();
+    expect(router.state.uri.path, '/settings');
+
     await tester.tap(
       find.byKey(const Key('account-privacy-tile')).hitTestable(),
     );

@@ -82,7 +82,7 @@ class _PostScreenState extends State<PostScreen> {
   }
 
   Future<void> _toggleLike() async {
-    if (!widget.session.isAuthenticated) return _notice('登录后才能点赞');
+    if (!_requireAuthentication()) return;
     final previous = _liked;
     setState(() {
       _liked = !previous;
@@ -105,8 +105,8 @@ class _PostScreenState extends State<PostScreen> {
   }
 
   Future<void> _comment() async {
+    if (!_requireAuthentication()) return;
     final content = _commentController.text.trim();
-    if (!widget.session.isAuthenticated) return _notice('登录后才能评论');
     if (content.isEmpty || _commenting) return;
     setState(() => _commenting = true);
     try {
@@ -122,6 +122,15 @@ class _PostScreenState extends State<PostScreen> {
     } finally {
       if (mounted) setState(() => _commenting = false);
     }
+  }
+
+  bool _requireAuthentication() {
+    if (widget.session.isAuthenticated) return true;
+    final returnTo = Uri(pathSegments: ['', 'posts', widget.postId]).toString();
+    context.push(
+      Uri(path: '/login', queryParameters: {'from': returnTo}).toString(),
+    );
+    return false;
   }
 
   bool get _canActOnPost {

@@ -5,6 +5,7 @@ import '../core/network/api_client.dart';
 import '../features/auth/application/session_controller.dart';
 import '../features/auth/data/auth_repository.dart';
 import '../features/auth/data/native_auth_service.dart';
+import '../features/auth/domain/auth_return_path.dart';
 import '../features/auth/presentation/login_screen.dart';
 import '../features/auth/presentation/profile_setup_screen.dart';
 import '../features/feed/feed_screen.dart';
@@ -16,12 +17,15 @@ import '../features/gyms/gyms_screen.dart';
 import '../features/gyms/route_picker_screen.dart';
 import '../features/gyms/route_screen.dart';
 import '../features/gyms/route_submission_screen.dart';
+import '../features/onboarding/application/onboarding_controller.dart';
+import '../features/onboarding/presentation/onboarding_screen.dart';
 import '../features/profile/climbing_calendar_screen.dart';
 import '../features/profile/account_privacy_screen.dart';
 import '../features/profile/friends_screen.dart';
 import '../features/profile/profile_screen.dart';
 import '../features/profile/public_profile_screen.dart';
 import '../features/profile/route_submissions_screen.dart';
+import '../features/profile/settings_screen.dart';
 import '../features/ranking/ranking_screen.dart';
 import '../features/shell/wanpan_shell.dart';
 import '../features/splash/splash_screen.dart';
@@ -31,16 +35,23 @@ GoRouter createWanpanRouter({
   required SessionController session,
   required AuthRepository authRepository,
   required NativeAuthService nativeAuth,
+  OnboardingController? onboarding,
 }) {
   final rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
+  final onboardingState =
+      onboarding ?? OnboardingController.ephemeral(completed: true);
+  final onboardingEnabled = onboarding != null;
 
   return GoRouter(
     navigatorKey: rootNavigatorKey,
     initialLocation: '/splash',
     refreshListenable: session,
     redirect: (context, state) {
-      if (session.isInitializing) return null;
       final path = state.uri.path;
+      if (path == '/onboarding' && onboardingState.hasCompleted) {
+        return '/gyms';
+      }
+      if (session.isInitializing) return null;
       final protected = _isProtectedPath(path);
       if (!session.isAuthenticated && protected) {
         return Uri(
@@ -58,7 +69,7 @@ GoRouter createWanpanRouter({
         ).toString();
       }
       if (session.isAuthenticated && path == '/login') {
-        final from = _safeReturnTo(state.uri.queryParameters['from']);
+        final from = safeAuthReturnTo(state.uri.queryParameters['from']);
         return session.profileNeedsCompletion
             ? Uri(
                 path: '/profile/setup',
@@ -73,7 +84,21 @@ GoRouter createWanpanRouter({
         path: '/splash',
         builder: (context, state) => SplashScreen(
           session: session,
-          onContinue: () => context.go('/gyms'),
+          onContinue: () => context.go(
+            onboardingEnabled && !onboardingState.hasCompleted
+                ? '/onboarding'
+                : '/gyms',
+          ),
+        ),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: '/onboarding',
+        builder: (context, state) => OnboardingScreen(
+          controller: onboardingState,
+          onExit: () => context.go('/splash'),
+          onSkipped: () => context.go('/gyms'),
+          onFinished: context.go,
         ),
       ),
       GoRoute(
@@ -83,7 +108,7 @@ GoRouter createWanpanRouter({
           session: session,
           repository: authRepository,
           nativeAuth: nativeAuth,
-          returnTo: _safeReturnTo(state.uri.queryParameters['from']),
+          returnTo: safeAuthReturnTo(state.uri.queryParameters['from']),
         ),
       ),
       GoRoute(
@@ -93,7 +118,7 @@ GoRouter createWanpanRouter({
           api: api,
           session: session,
           repository: authRepository,
-          returnTo: _safeReturnTo(state.uri.queryParameters['from']),
+          returnTo: safeAuthReturnTo(state.uri.queryParameters['from']),
           editing: state.uri.queryParameters['editing'] == 'true',
         ),
       ),
@@ -107,6 +132,11 @@ GoRouter createWanpanRouter({
         path: '/profile/privacy',
         builder: (context, state) =>
             AccountPrivacyScreen(api: api, session: session),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: '/settings',
+        builder: (context, state) => SettingsScreen(session: session),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>
@@ -137,7 +167,13 @@ GoRouter createWanpanRouter({
               GoRoute(
                 path: '/ranking',
                 pageBuilder: (context, state) => NoTransitionPage(
-                  child: RankingScreen(api: api, session: session),
+                  child: RankingScreen(
+                    api: api,
+                    session: session,
+                    initialSegment: state.uri.queryParameters['tab'] == 'routes'
+                        ? 1
+                        : 0,
+                  ),
                 ),
               ),
             ],
@@ -157,8 +193,11 @@ GoRouter createWanpanRouter({
       GoRoute(
         parentNavigatorKey: rootNavigatorKey,
         path: '/brands/:brandId',
-        builder: (context, state) =>
-            BrandScreen(api: api, brandId: state.pathParameters['brandId']!),
+        builder: (context, state) => BrandScreen(
+          api: api,
+          brandId: state.pathParameters['brandId']!,
+          city: state.uri.queryParameters['city'],
+        ),
       ),
       GoRoute(
         parentNavigatorKey: rootNavigatorKey,
@@ -244,19 +283,12 @@ GoRouter createWanpanRouter({
 }
 
 bool _isProtectedPath(String path) {
-  if (path == '/feed' || path == '/ranking' || path == '/profile') return true;
+  if (path == '/settings') return true;
+  if (path == '/profile') return true;
   if (path == '/profile/setup' || path.startsWith('/profile/')) return true;
   if (path == '/friends' || path.startsWith('/users/')) return true;
-  if (path.startsWith('/posts/')) return true;
   if (path == '/route-submissions' || path.startsWith('/route-submissions/')) {
     return true;
   }
   return path.startsWith('/routes/') && path.endsWith('/checkin');
-}
-
-String _safeReturnTo(String? value) {
-  if (value == null || !value.startsWith('/') || value.startsWith('/login')) {
-    return '/gyms';
-  }
-  return value;
 }

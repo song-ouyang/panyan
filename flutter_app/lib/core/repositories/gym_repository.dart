@@ -27,9 +27,12 @@ class GymRepository {
     return jsonModelList(json['items'], Gym.fromJson);
   }
 
-  Future<GymBrandDetail> getBrandStores(String brandId) async =>
+  Future<GymBrandDetail> getBrandStores(String brandId, {String? city}) async =>
       GymBrandDetail.fromJson(
-        await _apiClient.getJson('/gyms/brands/$brandId/stores'),
+        await _apiClient.getJson(
+          '/gyms/brands/$brandId/stores',
+          queryParameters: _withoutNulls({'city': city}),
+        ),
       );
 
   Future<GymDetail> getGym(String gymId) async =>

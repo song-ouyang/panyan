@@ -15,10 +15,17 @@ class RankingRepository {
   Future<List<RankedRoute>> getRankedRoutes({
     String? gymId,
     String? routeSetId,
+    String? province,
+    String? city,
   }) async {
     final json = await _apiClient.getJson(
       '/rankings/routes',
-      queryParameters: _withoutNulls({'gymId': gymId, 'setId': routeSetId}),
+      queryParameters: _withoutNulls({
+        'gymId': gymId,
+        'setId': routeSetId,
+        'province': province,
+        'city': city,
+      }),
     );
     return jsonModelList(json['items'], RankedRoute.fromJson);
   }

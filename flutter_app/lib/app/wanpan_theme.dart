@@ -50,7 +50,7 @@ abstract final class WanpanTheme {
   static ThemeData light() {
     const scheme = ColorScheme.light(
       primary: WanpanColors.coral,
-      onPrimary: Colors.white,
+      onPrimary: WanpanColors.ink,
       primaryContainer: WanpanColors.coralSoft,
       onPrimaryContainer: WanpanColors.coralStrong,
       secondary: WanpanColors.gold,

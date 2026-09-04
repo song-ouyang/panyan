@@ -3,13 +3,9 @@ import { query } from '../db.js';
 import { idParams } from '../schemas.js';
 
 export const routeRoutes: FastifyPluginAsync = async (app) => {
-  app.get('/:id', async (request) => {
+  app.get('/:id', { preHandler: app.authenticateOptional }, async (request) => {
     const { id } = idParams.parse(request.params);
-    let viewerId: string | null = null;
-    if (request.headers.authorization) {
-      await app.authenticate(request);
-      viewerId = request.user.sub;
-    }
+    const viewerId = request.user?.sub ?? null;
     const result = await query(
       `SELECT r.*,g.name gym_name,g.address gym_address,rs.name route_set_name,
        count(DISTINCT s.id)::int send_count
@@ -31,7 +27,14 @@ export const routeRoutes: FastifyPluginAsync = async (app) => {
        JOIN routes r ON r.id=s.route_id
        JOIN gyms g ON g.id=r.gym_id
        LEFT JOIN post_likes l ON l.send_id=s.id
-       WHERE s.route_id=$1 AND s.video_url IS NOT NULL AND (
+       WHERE s.route_id=$1 AND s.video_url IS NOT NULL
+       AND ($2::uuid IS NULL OR NOT EXISTS (
+         SELECT 1 FROM friendships blocked
+         WHERE blocked.status='blocked' AND (
+           (blocked.requester_id=$2::uuid AND blocked.addressee_id=s.user_id) OR
+           (blocked.addressee_id=$2::uuid AND blocked.requester_id=s.user_id)
+         )
+       )) AND (
          s.user_id=$2::uuid OR (
            s.moderation_status='approved' AND (
              s.visibility='public' OR (
@@ -55,15 +58,23 @@ export const routeRoutes: FastifyPluginAsync = async (app) => {
     return { ...result.rows[0], featuredSend: featured.rows[0] ?? null };
   });
 
-  app.get('/:id/leaderboard', { preHandler: app.authenticate }, async (request) => {
+  app.get('/:id/leaderboard', { preHandler: app.authenticateOptional }, async (request) => {
     const { id } = idParams.parse(request.params);
+    const viewerId = request.user?.sub ?? null;
     const result = await query(
       `SELECT row_number() OVER (ORDER BY count(DISTINCT l.user_id) DESC,s.sent_at ASC)::int rank,
        s.id,s.video_url,s.caption,s.attempts,s.sent_at,u.id user_id,u.nickname,u.avatar_url,
-       count(DISTINCT l.user_id)::int like_count,coalesce(bool_or(l.user_id=$2),false) liked
+       count(DISTINCT l.user_id)::int like_count,coalesce(bool_or(l.user_id=$2::uuid),false) liked
        FROM sends s JOIN users u ON u.id=s.user_id LEFT JOIN post_likes l ON l.send_id=s.id
        WHERE s.route_id=$1 AND s.visibility='public' AND s.moderation_status='approved' AND s.video_url IS NOT NULL
-       GROUP BY s.id,u.id ORDER BY like_count DESC,s.sent_at ASC`, [id,request.user.sub]
+       AND ($2::uuid IS NULL OR NOT EXISTS (
+         SELECT 1 FROM friendships blocked
+         WHERE blocked.status='blocked' AND (
+           (blocked.requester_id=$2::uuid AND blocked.addressee_id=s.user_id) OR
+           (blocked.addressee_id=$2::uuid AND blocked.requester_id=s.user_id)
+         )
+       ))
+       GROUP BY s.id,u.id ORDER BY like_count DESC,s.sent_at ASC`, [id,viewerId]
     );
     return { items: result.rows, completionCount: result.rows.length };
   });

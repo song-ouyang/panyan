@@ -48,6 +48,8 @@ flutter run \
 
 不传参数时默认使用线上 API `https://panyan-api.gblh.cloud/api`，因此直接从 Xcode Run/Archive 也不会误连 `127.0.0.1`。只有切换其他线上地址时才需要传 `PRODUCTION_API_BASE_URL`。
 
+Release/Archive 构建会强制使用 production，强制关闭开发登录，并忽略通用的 `API_BASE_URL`。正式包只读取 `PRODUCTION_API_BASE_URL`，且该地址必须是非本机的 HTTPS URL；否则应用会在启动配置阶段直接拒绝运行，避免误发开发包。
+
 `tool/store_screenshot_main.dart` 仅供 App Store 截图生成，依赖本机 `3001` 端口的 mock 服务及演示 token，不能用它验证线上接口或登录流程。验证正式 App 时始终使用 `-t lib/main.dart`。
 
 ## 登录说明
@@ -58,6 +60,8 @@ Flutter App 以手机号验证码作为主登录方式；Apple 登录当前默�
 
 1. 在阿里云号码认证服务中配置短信签名、验证码模板和生产环境密钥；
 2. 后续恢复 Apple 登录时，在 Apple Developer 为 Bundle ID 开启对应 capability，并使用 `--dart-define=ENABLE_APPLE_LOGIN=true` 构建。
+
+生产配置预检会将缺失上述阿里云短信配置视为阻断错误；App Store 审核固定账号只是审核通道，不能代替真实用户的短信登录。
 
 ### App Store 审核登录
 
@@ -74,6 +78,9 @@ JWT 使用 iOS Keychain / Android 加密存储；旧版 SharedPreferences token 
 - `PRODUCTION_API_BASE_URL`
 - `ENABLE_DEV_LOGIN=true|false`
 - `ENABLE_APPLE_LOGIN=true|false`（默认 `false`，当前隐藏）
+- `TENCENT_MAP_KEY`（可选；腾讯位置服务 URI API 开发者 Key，配置后可识别并调起腾讯地图）
+
+岩馆详情会列出高德、腾讯、百度及系统地图，并明确提示未安装或暂不可用的选项；没有可用的系统地图时会提供网页地图兜底。高德、百度和系统地图无需额外配置；腾讯地图的官方 URI 协议要求开发者 Key，因此正式构建需追加 `--dart-define=TENCENT_MAP_KEY=你的Key` 才能识别并调起腾讯地图。
 
 ## 质量检查
 

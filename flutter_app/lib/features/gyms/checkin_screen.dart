@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -6,11 +7,17 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../app/wanpan_theme.dart';
 import '../../core/models/checkin_models.dart';
+import '../../core/models/profile_models.dart';
 import '../../core/network/api_client.dart';
 import '../../core/repositories/checkin_repository.dart';
+import '../../core/repositories/profile_repository.dart';
 import '../auth/application/session_controller.dart';
 import '../../shared/app_assets.dart';
+import '../../shared/motion/milestone_grade_sequence.dart';
 import '../../shared/widgets/wanpan_card.dart';
+import '../../shared/widgets/wanpan_lottie_stage.dart';
+import '../../shared/widgets/wanpan_mascot.dart';
+import '../../shared/widgets/wanpan_milestone_stage.dart';
 import '../../shared/widgets/wanpan_pressable.dart';
 
 class CheckinScreen extends StatefulWidget {
@@ -35,6 +42,9 @@ class CheckinScreen extends StatefulWidget {
 
 class _CheckinScreenState extends State<CheckinScreen> {
   late final CheckinRepository _repository = CheckinRepository(widget.api);
+  late final ProfileRepository _profileRepository = ProfileRepository(
+    widget.api,
+  );
   final _picker = ImagePicker();
   final _captionController = TextEditingController();
   XFile? _video;
@@ -44,6 +54,38 @@ class _CheckinScreenState extends State<CheckinScreen> {
   double _progress = 0;
   String _stage = '';
   CheckinResult? _result;
+  MonthDashboard? _currentMonthDashboard;
+  bool _motionPreloadStarted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.session.isAuthenticated) {
+      unawaited(_prefetchCurrentMonthDashboard());
+    }
+  }
+
+  Future<void> _prefetchCurrentMonthDashboard() async {
+    final now = DateTime.now();
+    final month =
+        '${now.year.toString().padLeft(4, '0')}-'
+        '${now.month.toString().padLeft(2, '0')}';
+    try {
+      final dashboard = await _profileRepository.getMonthDashboard(month);
+      if (mounted) setState(() => _currentMonthDashboard = dashboard);
+    } catch (_) {
+      // Milestone feedback is never blocked by optional profile history.
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_motionPreloadStarted) return;
+    _motionPreloadStarted = true;
+    unawaited(preloadWanpanLottie(context, AppAssets.sendSuccessAnimation));
+    unawaited(preloadWanpanLottie(context, AppAssets.gradeMilestoneAnimation));
+  }
 
   @override
   void dispose() {
@@ -163,7 +205,6 @@ class _CheckinScreenState extends State<CheckinScreen> {
         caption: caption.isEmpty ? null : caption,
         visibility: visibility,
       );
-      await HapticFeedback.heavyImpact();
       if (mounted) setState(() => _result = result);
     } catch (error) {
       if (mounted) _toast('提交失败：$error');
@@ -188,7 +229,16 @@ class _CheckinScreenState extends State<CheckinScreen> {
         if (!didPop && _submitting) _toast('正在提交，请稍候');
       },
       child: _result != null
-          ? _SuccessView(result: _result!)
+          ? _SuccessView(
+              result: _result!,
+              routeName: widget.routeName,
+              grade: widget.grade,
+              attempts: _attempts,
+              milestoneSequence: MilestoneGradeSequenceResolver.resolve(
+                currentMonth: _currentMonthDashboard,
+                latestGrade: _result!.milestone?.grade,
+              ),
+            )
           : Scaffold(
               appBar: AppBar(title: const Text('视频打卡')),
               body: ListView(
@@ -272,24 +322,29 @@ class _CheckinScreenState extends State<CheckinScreen> {
                   const SizedBox(height: 6),
                   WanpanCard(
                     padding: EdgeInsets.zero,
-                    child: SwitchListTile.adaptive(
-                      value: _syncToSquare,
-                      onChanged: _submitting
-                          ? null
-                          : (value) => setState(() => _syncToSquare = value),
-                      secondary: Icon(
-                        _syncToSquare
-                            ? Icons.public_rounded
-                            : Icons.people_alt_rounded,
-                        color: WanpanColors.coral,
-                      ),
-                      title: const Text('同步到广场'),
-                      subtitle: Text(
-                        _syncToSquare ? '所有岩友都可以看到这次完攀' : '关闭后，仅你的岩友可在朋友圈看到',
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 5,
+                    child: Material(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(WanpanRadii.large),
+                      clipBehavior: Clip.antiAlias,
+                      child: SwitchListTile.adaptive(
+                        value: _syncToSquare,
+                        onChanged: _submitting
+                            ? null
+                            : (value) => setState(() => _syncToSquare = value),
+                        secondary: Icon(
+                          _syncToSquare
+                              ? Icons.public_rounded
+                              : Icons.people_alt_rounded,
+                          color: WanpanColors.coral,
+                        ),
+                        title: const Text('同步到广场'),
+                        subtitle: Text(
+                          _syncToSquare ? '所有岩友都可以看到这次完攀' : '关闭后，仅你的岩友可在朋友圈看到',
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 5,
+                        ),
                       ),
                     ),
                   ),
@@ -421,74 +476,264 @@ class _AttemptStepper extends StatelessWidget {
 }
 
 class _SuccessView extends StatefulWidget {
-  const _SuccessView({required this.result});
+  const _SuccessView({
+    required this.result,
+    required this.routeName,
+    required this.grade,
+    required this.attempts,
+    required this.milestoneSequence,
+  });
 
   final CheckinResult result;
+  final String? routeName;
+  final String? grade;
+  final int attempts;
+  final MilestoneGradeSequence milestoneSequence;
 
   @override
   State<_SuccessView> createState() => _SuccessViewState();
 }
 
 class _SuccessViewState extends State<_SuccessView> {
-  bool _visible = false;
+  bool _feedbackScheduled = false;
+  Timer? _hapticTimer;
+
+  void _handleAnimationPresented(bool animated) {
+    if (_feedbackScheduled) return;
+    _feedbackScheduled = true;
+    final milestone = widget.result.milestone;
+    final hapticDelay = animated
+        ? Duration(milliseconds: milestone == null ? 180 : 330)
+        : Duration.zero;
+    if (hapticDelay == Duration.zero) {
+      unawaited(_playSuccessHaptic(milestone: milestone != null));
+    } else {
+      _hapticTimer = Timer(
+        hapticDelay,
+        () => unawaited(_playSuccessHaptic(milestone: milestone != null)),
+      );
+    }
+  }
+
+  Future<void> _playSuccessHaptic({required bool milestone}) async {
+    try {
+      if (milestone) {
+        await HapticFeedback.heavyImpact();
+      } else {
+        await HapticFeedback.mediumImpact();
+      }
+    } catch (_) {
+      // The saved record remains successful when haptics are unavailable.
+    }
+  }
 
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) setState(() => _visible = true);
-    });
+  void dispose() {
+    _hapticTimer?.cancel();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final pending = widget.result.moderationStatus == 'pending';
     final milestone = widget.result.milestone;
+    final headline = milestone == null
+        ? '完攀记录已保存！'
+        : '新的最高难度 ${milestone.grade}！';
+    final grade = milestone?.grade ?? widget.grade ?? 'V?';
+    final points = pending
+        ? '${widget.result.pendingPoints} 分待结算'
+        : '+${widget.result.pointsEarned} 积分';
     return Scaffold(
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            children: [
-              const Spacer(),
-              AnimatedScale(
-                scale: _visible ? 1 : .88,
-                duration: const Duration(milliseconds: 280),
-                curve: Curves.easeOutBack,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(30),
-                  child: Image.asset(
-                    AppAssets.mascotCelebrate,
-                    width: 210,
-                    height: 188,
-                    fit: BoxFit.cover,
-                  ),
+        child: CustomScrollView(
+          slivers: [
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(24, 12, 24, 28),
+              sliver: SliverFillRemaining(
+                hasScrollBody: false,
+                child: Column(
+                  children: [
+                    const Spacer(),
+                    SizedBox(
+                      width: 232,
+                      height: 214,
+                      child: milestone == null
+                          ? WanpanLottieStage(
+                              asset: AppAssets.sendSuccessAnimation,
+                              semanticLabel: '黑猫庆祝完攀成功',
+                              width: 232,
+                              height: 214,
+                              onPresented: _handleAnimationPresented,
+                              fallback: const WanpanMascot(
+                                asset: AppAssets.mascotCelebrate,
+                                width: 208,
+                                height: 188,
+                                radius: 38,
+                              ),
+                            )
+                          : WanpanMilestoneStage(
+                              grades: widget.milestoneSequence.grades,
+                              semanticLabel: '黑猫庆祝刷新最高难度 $grade',
+                              width: 232,
+                              height: 214,
+                              onPresented: _handleAnimationPresented,
+                              fallback: const WanpanMascot(
+                                asset: AppAssets.mascotCelebrate,
+                                width: 208,
+                                height: 188,
+                                radius: 38,
+                              ),
+                            ),
+                    ),
+                    Text(
+                      headline,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                        color: milestone == null
+                            ? WanpanColors.ink
+                            : WanpanColors.coralStrong,
+                      ),
+                    ),
+                    const SizedBox(height: 9),
+                    Text(
+                      pending ? '视频正在审核，通过后会进入线路榜单。' : '这次上墙，已经好好记下来了。',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyLarge
+                          ?.copyWith(color: WanpanColors.inkSecondary),
+                    ),
+                    const SizedBox(height: 22),
+                    WanpanCard(
+                      padding: const EdgeInsets.all(18),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 64,
+                            height: 64,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: WanpanColors.coral,
+                              borderRadius: BorderRadius.circular(22),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: WanpanColors.coralStrong,
+                                  offset: Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Text(
+                              grade,
+                              style: Theme.of(context).textTheme.titleLarge
+                                  ?.copyWith(color: Colors.white),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  widget.routeName ?? '这条线路',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: Theme.of(context).textTheme.titleLarge,
+                                ),
+                                const SizedBox(height: 7),
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: [
+                                    _SuccessFact(
+                                      icon: Icons.replay_rounded,
+                                      label: '尝试 ${widget.attempts} 次',
+                                    ),
+                                    _SuccessFact(
+                                      icon: Icons.stars_rounded,
+                                      label: points,
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 15),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: pending
+                            ? WanpanColors.sunflowerSoft
+                            : WanpanColors.mintSoft,
+                        borderRadius: BorderRadius.circular(WanpanRadii.pill),
+                        border: Border.all(color: WanpanColors.border),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            pending
+                                ? Icons.schedule_rounded
+                                : Icons.check_circle_rounded,
+                            size: 20,
+                            color: pending
+                                ? WanpanColors.coralStrong
+                                : WanpanColors.success,
+                          ),
+                          const SizedBox(width: 7),
+                          Text(
+                            pending ? '视频审核中' : '完攀记录已保存',
+                            style: Theme.of(context).textTheme.labelLarge
+                                ?.copyWith(
+                                  color: pending
+                                      ? WanpanColors.coralStrong
+                                      : WanpanColors.success,
+                                ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Spacer(),
+                    WanpanButton(
+                      label: '返回线路',
+                      icon: const Icon(Icons.arrow_back_rounded),
+                      onPressed: () => Navigator.of(context).pop(true),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 24),
-              Text(
-                milestone == null ? '完攀记录已保存！' : '第一次完成 ${milestone.grade}！',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.headlineMedium,
-              ),
-              const SizedBox(height: 10),
-              Text(
-                pending
-                    ? '视频正在审核，通过后会进入线路榜单，并结算 ${widget.result.pendingPoints} 积分。'
-                    : '获得 ${widget.result.pointsEarned} 积分，继续保持！',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyLarge
-                    ?.copyWith(color: WanpanColors.inkSecondary),
-              ),
-              const Spacer(),
-              WanpanButton(
-                label: '完成',
-                onPressed: () => Navigator.of(context).pop(true),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
+}
+
+class _SuccessFact extends StatelessWidget {
+  const _SuccessFact({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+    decoration: BoxDecoration(
+      color: WanpanColors.surfaceSoft,
+      borderRadius: BorderRadius.circular(WanpanRadii.pill),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 16, color: WanpanColors.coral),
+        const SizedBox(width: 5),
+        Text(label, style: Theme.of(context).textTheme.labelMedium),
+      ],
+    ),
+  );
 }

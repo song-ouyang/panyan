@@ -12,6 +12,7 @@ import '../../../shared/app_assets.dart';
 import '../../../shared/widgets/wanpan_pressable.dart';
 import '../application/session_controller.dart';
 import '../data/auth_repository.dart';
+import '../domain/auth_return_path.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
   const ProfileSetupScreen({
@@ -100,10 +101,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   }
 
   void _finish() {
-    final destination = widget.returnTo.startsWith('/')
-        ? widget.returnTo
-        : '/gyms';
-    context.go(destination);
+    context.go(safeAuthReturnTo(widget.returnTo));
   }
 
   ImageProvider<Object>? get _avatarImage {

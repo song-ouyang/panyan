@@ -13,6 +13,17 @@ class RankingRegion {
 
   final String province;
   final String city;
+
+  String get key => '$province/$city';
+
+  @override
+  bool operator ==(Object other) =>
+      other is RankingRegion &&
+      other.province == province &&
+      other.city == city;
+
+  @override
+  int get hashCode => Object.hash(province, city);
 }
 
 class RankedRoute {
@@ -27,6 +38,8 @@ class RankedRoute {
     required this.totalLikes,
     this.coverUrl,
     this.wallZone,
+    this.province,
+    this.city,
     this.topSendId,
     this.topVideoUrl,
     this.topUserName,
@@ -40,6 +53,8 @@ class RankedRoute {
     color: jsonString(json['color'], field: 'color'),
     coverUrl: jsonNullableString(json['cover_url']),
     wallZone: jsonNullableString(json['wall_zone']),
+    province: jsonNullableString(json['province']),
+    city: jsonNullableString(json['city']),
     gymId: jsonString(json['gym_id'], field: 'gym_id'),
     gymName: jsonString(json['gym_name'], field: 'gym_name'),
     completionCount: jsonInt(json['completion_count']),
@@ -56,6 +71,8 @@ class RankedRoute {
   final String color;
   final String? coverUrl;
   final String? wallZone;
+  final String? province;
+  final String? city;
   final String gymId;
   final String gymName;
   final int completionCount;

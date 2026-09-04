@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wanpan_diary/app/wanpan_theme.dart';
 import 'package:wanpan_diary/core/config/app_config.dart';
@@ -156,7 +157,38 @@ Future<SessionController> _signedInSession() async {
   return session;
 }
 
+Future<SessionController> _guestSession() async {
+  SharedPreferences.setMockInitialValues({});
+  return SessionController(
+    preferences: await SharedPreferences.getInstance(),
+    config: _config,
+    tokenStore: MemorySessionTokenStore(),
+  );
+}
+
 void main() {
+  testWidgets('游客可以浏览广场公开动态', (tester) async {
+    final api = _SocialApiClient();
+    final session = await _guestSession();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: WanpanTheme.light(),
+        home: FeedScreen(api: api, session: session),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('广场动态'), findsOneWidget);
+    expect(find.text('登录'), findsOneWidget);
+    expect(
+      api.calls.any(
+        (call) => call.contains('GET /sends/feed') && call.contains('square'),
+      ),
+      isTrue,
+    );
+  });
+
   testWidgets('广场和朋友圈切换使用各自数据源', (tester) async {
     final api = _SocialApiClient();
     final session = await _signedInSession();
@@ -213,6 +245,59 @@ void main() {
       isTrue,
     );
     expect(find.text('评论已提交'), findsOneWidget);
+  });
+
+  testWidgets('游客在动态点赞或评论会跳转登录并保留返回地址', (tester) async {
+    final api = _SocialApiClient();
+    final session = await _guestSession();
+    addTearDown(session.dispose);
+    Uri? shownLoginUri;
+    final router = GoRouter(
+      initialLocation: '/posts/post-1',
+      routes: [
+        GoRoute(
+          path: '/posts/:postId',
+          builder: (context, state) => PostScreen(
+            api: api,
+            session: session,
+            postId: state.pathParameters['postId']!,
+          ),
+        ),
+        GoRoute(
+          path: '/login',
+          builder: (context, state) {
+            shownLoginUri = state.uri;
+            return const Scaffold(body: Text('登录页'));
+          },
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp.router(theme: WanpanTheme.light(), routerConfig: router),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.favorite_border_rounded));
+    await tester.pumpAndSettle();
+
+    expect(find.text('登录页'), findsOneWidget);
+    expect(shownLoginUri?.path, '/login');
+    expect(shownLoginUri?.queryParameters['from'], '/posts/post-1');
+    expect(api.calls.where((call) => call.contains('/like')), isEmpty);
+
+    router.go('/posts/post-1');
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), '登录后再聊');
+    await tester.pump();
+    await tester.tap(find.byIcon(Icons.arrow_upward_rounded));
+    await tester.pumpAndSettle();
+
+    expect(find.text('登录页'), findsOneWidget);
+    expect(shownLoginUri?.path, '/login');
+    expect(shownLoginUri?.queryParameters['from'], '/posts/post-1');
+    expect(api.calls.where((call) => call.contains('/comments')), isEmpty);
   });
 
   testWidgets('动态详情可见地提供举报入口并提交原因', (tester) async {

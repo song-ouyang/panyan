@@ -54,7 +54,7 @@
         <view wx:else class="brand-fallback"><image src="/assets/icons/gym-active.png" /></view>
         <view>
           <view class="name">{{item.brand_name}}</view>
-          <view class="count">{{item.route_count}} 条线路</view>
+          <view class="count">{{item.area_label}} · {{item.route_count}} 条线路</view>
         </view>
       </view>
       <view class="row-meta">

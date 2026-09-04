@@ -10,3 +10,5 @@
 !server/tsconfig.json
 !server/src/
 !server/src/**
+!data/
+!data/gyms.public-verified.json

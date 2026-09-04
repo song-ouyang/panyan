@@ -1,10 +1,10 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:video_player/video_player.dart';
 
@@ -19,6 +19,9 @@ import '../auth/application/session_controller.dart';
 import '../../shared/app_assets.dart';
 import '../../shared/motion/wanpan_motion.dart';
 import '../../shared/widgets/wanpan_card.dart';
+import '../../shared/widgets/wanpan_gym_picker.dart';
+import '../../shared/widgets/wanpan_lottie_stage.dart';
+import '../../shared/widgets/wanpan_mascot.dart';
 import '../../shared/widgets/wanpan_pressable.dart';
 
 typedef LocalRouteVideoPreviewBuilder = Widget Function(File file);
@@ -89,7 +92,6 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
   final _nameController = TextEditingController();
   final _colorController = TextEditingController();
   final _wallZoneController = TextEditingController();
-  final _routeSearchController = TextEditingController();
   final _captionController = TextEditingController();
 
   List<Gym> _gyms = const [];
@@ -101,11 +103,6 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
   bool _loadingGymDetail = false;
   Object? _gymLoadError;
   Object? _gymDetailError;
-  List<ClimbingRoute> _existingRoutes = const [];
-  bool _loadingRoutes = false;
-  Object? _routesLoadError;
-  String _routeQuery = '';
-  int _routesRequestId = 0;
 
   XFile? _cover;
   Size? _coverSize;
@@ -117,6 +114,10 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
   bool _submitting = false;
   double _progress = 0;
   String _stage = '';
+  bool _published = false;
+  bool _successHapticPlayed = false;
+  bool _motionPreloadStarted = false;
+  Timer? _successHapticTimer;
 
   @override
   void initState() {
@@ -130,17 +131,24 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
     if (initialGymId != null && initialGymId.isNotEmpty) {
       _gymId = initialGymId;
       _loadGymDetail(initialGymId);
-      _loadExistingRoutes(initialGymId);
     }
     _loadGyms();
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_motionPreloadStarted) return;
+    _motionPreloadStarted = true;
+    unawaited(preloadWanpanLottie(context, AppAssets.routePublishedAnimation));
+  }
+
+  @override
   void dispose() {
+    _successHapticTimer?.cancel();
     _nameController.dispose();
     _colorController.dispose();
     _wallZoneController.dispose();
-    _routeSearchController.dispose();
     _captionController.dispose();
     super.dispose();
   }
@@ -194,65 +202,8 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
       _gymDetail = null;
       _routeSetId = null;
       _gymDetailError = null;
-      _existingRoutes = const [];
-      _routesLoadError = null;
-      _routeQuery = '';
-      _routeSearchController.clear();
     });
-    await Future.wait([_loadGymDetail(gymId), _loadExistingRoutes(gymId)]);
-  }
-
-  Future<void> _loadExistingRoutes(String gymId) async {
-    final requestId = ++_routesRequestId;
-    setState(() {
-      _loadingRoutes = true;
-      _routesLoadError = null;
-    });
-    try {
-      final routes = await _gymRepository.getRoutes(gymId);
-      if (!mounted || _gymId != gymId || requestId != _routesRequestId) return;
-      setState(() => _existingRoutes = routes);
-    } catch (error) {
-      if (mounted && _gymId == gymId && requestId == _routesRequestId) {
-        setState(() => _routesLoadError = error);
-      }
-    } finally {
-      if (mounted && _gymId == gymId && requestId == _routesRequestId) {
-        setState(() => _loadingRoutes = false);
-      }
-    }
-  }
-
-  List<ClimbingRoute> get _filteredExistingRoutes {
-    final query = _routeQuery.trim().toLowerCase();
-    if (query.isEmpty) return _existingRoutes.take(5).toList(growable: false);
-    return _existingRoutes
-        .where((route) {
-          final searchable = <String>[
-            route.name,
-            route.grade,
-            route.color,
-            if (route.wallZone != null) route.wallZone!,
-            if (route.routeSetName != null) route.routeSetName!,
-            if (route.setterName != null) route.setterName!,
-          ].join(' ').toLowerCase();
-          return searchable.contains(query);
-        })
-        .take(8)
-        .toList(growable: false);
-  }
-
-  Future<void> _openExistingRoute(ClimbingRoute route) async {
-    FocusManager.instance.primaryFocus?.unfocus();
-    await HapticFeedback.selectionClick();
-    if (!mounted) return;
-    final created = await context.push<bool>(
-      '/routes/${route.id}/checkin',
-      extra: {'grade': route.grade, 'name': route.name},
-    );
-    if (created == true && mounted && _gymId != null) {
-      await _loadExistingRoutes(_gymId!);
-    }
+    await _loadGymDetail(gymId);
   }
 
   Future<void> _openGymPicker() async {
@@ -265,7 +216,8 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
     final selected = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
-      builder: (context) => _GymPickerSheet(gyms: _gyms, selectedGymId: _gymId),
+      builder: (context) =>
+          WanpanGymPickerSheet(gyms: _gyms, selectedGymId: _gymId),
     );
     if (selected != null && mounted) await _selectGym(selected);
   }
@@ -421,7 +373,7 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
   String? _validationMessage() {
     if (!widget.session.isAuthenticated) return '请先完成登录，再发布线路';
     if (_gymId == null) return '先选择这条线路所在的岩馆';
-    if (_loadingGymDetail) return '正在读取岩馆线路周期，请稍候';
+    if (_loadingGymDetail) return '正在读取岩馆信息，请稍候';
     if (_gymDetail == null) return '岩馆信息没有加载出来，请重试';
     if (_cover == null || _coverSize == null) return '先拍摄或选择线路照片';
     if (!_points.any((point) => point.type == RoutePointType.start)) {
@@ -502,7 +454,7 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
         _stage = selectedVideo == null ? '正在发布线路…' : '正在发布线路与首条完攀…';
         _progress = .92;
       });
-      final result = await _submissionRepository.create(
+      await _submissionRepository.create(
         RouteSubmissionDraft(
           clientRequestId: _clientRequestId,
           gymId: gymId,
@@ -519,17 +471,19 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
         ),
       );
       if (!mounted) return;
-      setState(() => _progress = 1);
-      await HapticFeedback.mediumImpact();
-      _notice(_successMessage(result, hasVideo: selectedVideo != null));
-      await Future<void>.delayed(const Duration(milliseconds: 650));
-      if (mounted) Navigator.of(context).pop(true);
+      ScaffoldMessenger.of(context).removeCurrentSnackBar();
+      setState(() {
+        _progress = 1;
+        _submitting = false;
+        _stage = '';
+        _published = true;
+      });
     } catch (error) {
       if (!mounted) return;
       final message = error is ApiException ? error.message : '发布没有完成，请稍后重试';
       _notice(message);
     } finally {
-      if (mounted) {
+      if (mounted && !_published) {
         setState(() {
           _submitting = false;
           _progress = 0;
@@ -539,20 +493,32 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
     }
   }
 
-  String _successMessage(RouteSubmission result, {required bool hasVideo}) {
-    if (!hasVideo) return '线路已发布';
-    return switch (result.videoModerationStatus) {
-      'approved' => '线路和首条完攀已发布',
-      'pending' => '线路已发布，视频审核后展示',
-      'rejected' => '线路已发布，视频未通过内容审核',
-      _ => '线路已发布，视频将按内容规则展示',
-    };
-  }
-
   void _notice(String message) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  void _handleSuccessAnimationPresented(bool animated) {
+    if (_successHapticPlayed) return;
+    _successHapticPlayed = true;
+    if (!animated) {
+      unawaited(_playSuccessHaptic());
+      return;
+    }
+    // The route seal lands at frame 37 in the 60 fps publication animation.
+    _successHapticTimer = Timer(
+      const Duration(milliseconds: 617),
+      () => unawaited(_playSuccessHaptic()),
+    );
+  }
+
+  Future<void> _playSuccessHaptic() async {
+    try {
+      await HapticFeedback.mediumImpact();
+    } catch (_) {
+      // Publication is already complete. Haptics must never change its result.
+    }
   }
 
   Gym? get _selectedGym {
@@ -562,7 +528,17 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => PopScope(
+  Widget build(BuildContext context) {
+    if (_published) {
+      return _RoutePublishedSuccessView(
+        onAnimationPresented: _handleSuccessAnimationPresented,
+        onDone: () => Navigator.of(context).pop(true),
+      );
+    }
+    return _buildSubmissionForm(context);
+  }
+
+  Widget _buildSubmissionForm(BuildContext context) => PopScope(
     canPop: !_submitting,
     child: Scaffold(
       appBar: AppBar(title: const Text('发布新线路')),
@@ -577,71 +553,111 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
             MediaQuery.viewInsetsOf(context).bottom + WanpanSpacing.xl,
           ),
           children: [
+            const _SectionTitle(number: '1', title: '线路信息'),
+            const SizedBox(height: 10),
             WanpanCard(
-              color: WanpanColors.coralSoft.withValues(alpha: .62),
-              borderColor: Colors.transparent,
-              padding: EdgeInsets.zero,
-              child: SizedBox(
-                height: 116,
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    const Positioned(
-                      left: 18,
-                      top: 24,
-                      child: Icon(
-                        Icons.gesture_rounded,
-                        color: WanpanColors.coral,
-                        size: 30,
-                      ),
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  TextField(
+                    controller: _nameController,
+                    enabled: !_submitting,
+                    maxLength: 80,
+                    textInputAction: TextInputAction.next,
+                    decoration: const InputDecoration(
+                      labelText: '线路名称',
+                      hintText: '例如：橙色动态线',
+                      counterText: '',
                     ),
-                    Positioned(
-                      left: 62,
-                      right: 106,
-                      top: 20,
-                      child: Text(
-                        '把新线路留给更多岩友',
-                        style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: DropdownButtonFormField<String>(
+                          key: ValueKey(_grade),
+                          initialValue: _grade,
+                          isExpanded: true,
+                          decoration: const InputDecoration(labelText: '难度'),
+                          items: _grades
+                              .map(
+                                (grade) => DropdownMenuItem(
+                                  value: grade,
+                                  child: Text(grade),
+                                ),
+                              )
+                              .toList(growable: false),
+                          onChanged: _submitting
+                              ? null
+                              : (value) {
+                                  if (value != null) {
+                                    setState(() => _grade = value);
+                                  }
+                                },
+                        ),
                       ),
-                    ),
-                    Positioned(
-                      left: 62,
-                      right: 92,
-                      top: 50,
-                      child: Text(
-                        '先搜索馆内已有线路；没找到时，拍照标点即可直接发布新线路。',
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodyMedium,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 5,
+                        child: TextField(
+                          controller: _colorController,
+                          enabled: !_submitting,
+                          maxLength: 24,
+                          textInputAction: TextInputAction.next,
+                          decoration: const InputDecoration(
+                            labelText: '线路颜色',
+                            hintText: '例如：珊瑚橙',
+                            counterText: '',
+                          ),
+                        ),
                       ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        for (final color in _suggestedColors) ...[
+                          ActionChip(
+                            label: Text(color),
+                            onPressed: _submitting
+                                ? null
+                                : () {
+                                    _colorController.text = color;
+                                    setState(() {});
+                                  },
+                          ),
+                          const SizedBox(width: 8),
+                        ],
+                      ],
                     ),
-                    Positioned(
-                      right: -25,
-                      top: -31,
-                      width: 140,
-                      height: 124,
-                      child: Image.asset(
-                        AppAssets.profilePeekCat,
-                        cacheWidth: 460,
-                        fit: BoxFit.contain,
-                        filterQuality: FilterQuality.medium,
-                      ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _wallZoneController,
+                    enabled: !_submitting,
+                    maxLength: 40,
+                    textInputAction: TextInputAction.next,
+                    decoration: const InputDecoration(
+                      labelText: '墙面区域（选填）',
+                      hintText: '例如：A区斜墙',
+                      counterText: '',
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 26),
-            const _SectionTitle(number: '1', title: '选择岩馆与线路墙'),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             _SelectionField(
               label: _selectedGym?.name ?? '选择岩馆',
               description: _selectedGym == null
                   ? '先确认线路所在门店'
                   : [
                       _selectedGym!.city,
-                      if (_selectedGym!.district != null)
-                        _selectedGym!.district!,
+                      ?_selectedGym!.displayDistrict,
                       _selectedGym!.address,
                     ].join(' · '),
               loading: _loadingGyms && _selectedGym == null,
@@ -657,34 +673,8 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
             ] else if (_gymDetailError != null) ...[
               const SizedBox(height: 8),
               _InlineError(
-                message: '线路周期没有加载出来',
+                message: '岩馆信息没有加载出来',
                 onRetry: _gymId == null ? null : () => _loadGymDetail(_gymId!),
-              ),
-            ] else if (_gymDetail != null) ...[
-              const SizedBox(height: 16),
-              Text('线路墙 / 周期', style: Theme.of(context).textTheme.labelMedium),
-              const SizedBox(height: 8),
-              _RouteSetPicker(
-                routeSets: _gymDetail!.routeSets,
-                selectedId: _routeSetId,
-                enabled: !_submitting,
-                onChanged: (value) => setState(() => _routeSetId = value),
-              ),
-            ],
-            if (_gymId != null) ...[
-              const SizedBox(height: 22),
-              _ExistingRoutesPanel(
-                controller: _routeSearchController,
-                routes: _filteredExistingRoutes,
-                totalCount: _existingRoutes.length,
-                query: _routeQuery,
-                loading: _loadingRoutes,
-                hasError: _routesLoadError != null,
-                enabled: !_submitting,
-                onQueryChanged: (value) =>
-                    setState(() => _routeQuery = value.trim()),
-                onRouteTap: _openExistingRoute,
-                onRetry: () => _loadExistingRoutes(_gymId!),
               ),
             ],
             const SizedBox(height: 30),
@@ -812,83 +802,6 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
                 },
               ),
             ],
-            const SizedBox(height: 24),
-            const _SectionTitle(number: '4', title: '补充线路信息'),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _nameController,
-              enabled: !_submitting,
-              maxLength: 80,
-              textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(
-                labelText: '线路名称',
-                hintText: '例如：橙色动态线',
-                counterText: '',
-              ),
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              key: ValueKey(_grade),
-              initialValue: _grade,
-              isExpanded: true,
-              decoration: const InputDecoration(labelText: '难度'),
-              items: _grades
-                  .map(
-                    (grade) =>
-                        DropdownMenuItem(value: grade, child: Text(grade)),
-                  )
-                  .toList(growable: false),
-              onChanged: _submitting
-                  ? null
-                  : (value) {
-                      if (value != null) setState(() => _grade = value);
-                    },
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _colorController,
-              enabled: !_submitting,
-              maxLength: 24,
-              textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(
-                labelText: '线路颜色',
-                hintText: '例如：珊瑚橙',
-                counterText: '',
-              ),
-            ),
-            const SizedBox(height: 10),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  for (final color in _suggestedColors) ...[
-                    ActionChip(
-                      label: Text(color),
-                      onPressed: _submitting
-                          ? null
-                          : () {
-                              _colorController.text = color;
-                              setState(() {});
-                            },
-                    ),
-                    const SizedBox(width: 8),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _wallZoneController,
-              enabled: !_submitting,
-              maxLength: 40,
-              textInputAction: TextInputAction.done,
-              onSubmitted: (_) => _submit(),
-              decoration: const InputDecoration(
-                labelText: '墙面区域（选填）',
-                hintText: '例如：A区斜墙',
-                counterText: '',
-              ),
-            ),
             const SizedBox(height: 26),
             if (_submitting) ...[
               Row(
@@ -914,11 +827,108 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
               loading: _submitting,
               onPressed: _submitting ? null : _submit,
             ),
-            const SizedBox(height: 10),
-            Text(
-              _video == null ? '提交后线路会立即发布。' : '线路会立即发布；视频按内容规则处理后展示。',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.labelMedium,
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+class _RoutePublishedSuccessView extends StatefulWidget {
+  const _RoutePublishedSuccessView({
+    required this.onAnimationPresented,
+    required this.onDone,
+  });
+
+  final WanpanLottiePresented onAnimationPresented;
+  final VoidCallback onDone;
+
+  @override
+  State<_RoutePublishedSuccessView> createState() =>
+      _RoutePublishedSuccessViewState();
+}
+
+class _RoutePublishedSuccessViewState
+    extends State<_RoutePublishedSuccessView> {
+  bool _showDone = false;
+
+  void _handleAnimationCompleted(bool _) {
+    if (_showDone || !mounted) return;
+    setState(() => _showDone = true);
+  }
+
+  @override
+  Widget build(BuildContext context) => PopScope(
+    canPop: false,
+    child: Scaffold(
+      body: SafeArea(
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Transform.scale(
+              key: const ValueKey('route-published-stage-scale'),
+              scale: 1.35,
+              child: LayoutBuilder(
+                builder: (context, constraints) => WanpanLottieStage(
+                  asset: AppAssets.routePublishedAnimation,
+                  semanticLabel: '黑猫用笔画完线路记录并点亮勾选',
+                  width: constraints.maxWidth,
+                  height: constraints.maxHeight,
+                  fit: BoxFit.contain,
+                  onPresented: widget.onAnimationPresented,
+                  onCompleted: _handleAnimationCompleted,
+                  fallback: const WanpanMascot(
+                    asset: AppAssets.routeMapCat,
+                    width: 320,
+                    height: 320,
+                    radius: 48,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
+            ),
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: AnimatedSwitcher(
+                duration: WanpanMotion.duration(
+                  context,
+                  WanpanMotion.enter,
+                  reduced: Duration.zero,
+                ),
+                switchInCurve: WanpanMotion.curve(context),
+                switchOutCurve: WanpanMotion.curve(context),
+                transitionBuilder: (child, animation) => FadeTransition(
+                  opacity: animation,
+                  child: SlideTransition(
+                    position: Tween<Offset>(
+                      begin: const Offset(0, .12),
+                      end: Offset.zero,
+                    ).animate(animation),
+                    child: child,
+                  ),
+                ),
+                child: _showDone
+                    ? Padding(
+                        key: const ValueKey('route-published-done'),
+                        padding: const EdgeInsets.fromLTRB(
+                          WanpanSpacing.page,
+                          0,
+                          WanpanSpacing.page,
+                          WanpanSpacing.xl,
+                        ),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: WanpanButton(
+                            label: '完成并返回',
+                            icon: const Icon(Icons.check_rounded),
+                            onPressed: widget.onDone,
+                          ),
+                        ),
+                      )
+                    : const SizedBox.shrink(
+                        key: ValueKey('route-published-waiting'),
+                      ),
+              ),
             ),
           ],
         ),
@@ -1029,288 +1039,6 @@ class _SelectionField extends StatelessWidget {
       ],
     ),
   );
-}
-
-class _ExistingRoutesPanel extends StatelessWidget {
-  const _ExistingRoutesPanel({
-    required this.controller,
-    required this.routes,
-    required this.totalCount,
-    required this.query,
-    required this.loading,
-    required this.hasError,
-    required this.enabled,
-    required this.onQueryChanged,
-    required this.onRouteTap,
-    required this.onRetry,
-  });
-
-  final TextEditingController controller;
-  final List<ClimbingRoute> routes;
-  final int totalCount;
-  final String query;
-  final bool loading;
-  final bool hasError;
-  final bool enabled;
-  final ValueChanged<String> onQueryChanged;
-  final ValueChanged<ClimbingRoute> onRouteTap;
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) => WanpanCard(
-    color: WanpanColors.grapeSoft.withValues(alpha: .42),
-    borderColor: WanpanColors.grape.withValues(alpha: .28),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: WanpanColors.surface,
-                borderRadius: BorderRadius.circular(13),
-              ),
-              child: const Icon(Icons.bolt_rounded, color: WanpanColors.grape),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '先找馆内已有线路',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '搜到后直接点击，发布这条线路的完攀',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 14),
-        TextField(
-          controller: controller,
-          enabled: enabled,
-          onChanged: onQueryChanged,
-          textInputAction: TextInputAction.search,
-          decoration: InputDecoration(
-            prefixIcon: const Icon(Icons.search_rounded),
-            hintText: '搜索线路名、颜色、难度或墙区',
-            suffixIcon: query.isEmpty
-                ? null
-                : IconButton(
-                    tooltip: '清空搜索',
-                    onPressed: enabled
-                        ? () {
-                            controller.clear();
-                            onQueryChanged('');
-                          }
-                        : null,
-                    icon: const Icon(Icons.close_rounded),
-                  ),
-          ),
-        ),
-        if (loading) ...[
-          const SizedBox(height: 12),
-          const LinearProgressIndicator(minHeight: 2),
-        ] else if (hasError) ...[
-          const SizedBox(height: 10),
-          _InlineError(message: '已有线路没有加载出来', onRetry: onRetry),
-        ] else if (totalCount == 0) ...[
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  '馆内还没有已发布线路，\n可以直接在下方新建。',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-              ),
-              SizedBox(
-                width: 146,
-                height: 92,
-                child: Image.asset(
-                  AppAssets.routeMapCat,
-                  cacheWidth: 520,
-                  fit: BoxFit.contain,
-                  filterQuality: FilterQuality.medium,
-                ),
-              ),
-            ],
-          ),
-        ] else if (routes.isEmpty) ...[
-          const SizedBox(height: 12),
-          Text(
-            '没有匹配的线路，继续在下方发布新线路。',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-        ] else ...[
-          const SizedBox(height: 10),
-          for (var index = 0; index < routes.length; index++) ...[
-            if (index > 0) const SizedBox(height: 8),
-            _ExistingRouteTile(
-              route: routes[index],
-              onTap: enabled ? () => onRouteTap(routes[index]) : null,
-            ),
-          ],
-          if (query.isEmpty && totalCount > routes.length) ...[
-            const SizedBox(height: 9),
-            Text(
-              '还有 ${totalCount - routes.length} 条，输入关键词可快速找到。',
-              style: Theme.of(context).textTheme.labelMedium,
-            ),
-          ],
-        ],
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            const Icon(
-              Icons.add_circle_outline_rounded,
-              size: 17,
-              color: WanpanColors.inkSecondary,
-            ),
-            const SizedBox(width: 7),
-            Expanded(
-              child: Text(
-                '没找到？继续完成下方步骤，新线路提交后立即发布。',
-                style: Theme.of(context).textTheme.labelMedium,
-              ),
-            ),
-          ],
-        ),
-      ],
-    ),
-  );
-}
-
-class _ExistingRouteTile extends StatelessWidget {
-  const _ExistingRouteTile({required this.route, required this.onTap});
-
-  final ClimbingRoute route;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final details = <String>[
-      route.color,
-      if (route.wallZone?.trim().isNotEmpty == true) route.wallZone!.trim(),
-      if (route.routeSetName?.trim().isNotEmpty == true)
-        route.routeSetName!.trim(),
-    ].join(' · ');
-    return WanpanPressable(
-      onTap: onTap,
-      semanticLabel: '直接记录${route.name}的完攀',
-      borderRadius: BorderRadius.circular(WanpanRadii.medium),
-      enableHaptics: false,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-        decoration: BoxDecoration(
-          color: WanpanColors.surface,
-          border: Border.all(color: WanpanColors.border),
-          borderRadius: BorderRadius.circular(WanpanRadii.medium),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: WanpanColors.coralSoft,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Text(
-                route.grade,
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  color: WanpanColors.coralStrong,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    route.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  if (details.isNotEmpty) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      details,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            const Icon(
-              Icons.video_call_outlined,
-              color: WanpanColors.coralStrong,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _RouteSetPicker extends StatelessWidget {
-  const _RouteSetPicker({
-    required this.routeSets,
-    required this.selectedId,
-    required this.enabled,
-    required this.onChanged,
-  });
-
-  final List<RouteSet> routeSets;
-  final String? selectedId;
-  final bool enabled;
-  final ValueChanged<String?> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    if (routeSets.isEmpty) {
-      return Text(
-        '这个岩馆暂无线路周期，将作为独立线路发布。',
-        style: Theme.of(context).textTheme.bodyMedium,
-      );
-    }
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          ChoiceChip(
-            label: const Text('暂不选择'),
-            selected: selectedId == null,
-            onSelected: enabled ? (_) => onChanged(null) : null,
-          ),
-          for (final set in routeSets) ...[
-            const SizedBox(width: 8),
-            ChoiceChip(
-              label: Text('${set.name}${set.active ? ' · 当前' : ''}'),
-              selected: selectedId == set.id,
-              onSelected: enabled ? (_) => onChanged(set.id) : null,
-            ),
-          ],
-        ],
-      ),
-    );
-  }
 }
 
 class _PhotoPlaceholder extends StatelessWidget {
@@ -1854,225 +1582,6 @@ class _InlineError extends StatelessWidget {
       ],
     ),
   );
-}
-
-class _GymPickerSheet extends StatefulWidget {
-  const _GymPickerSheet({required this.gyms, required this.selectedGymId});
-
-  final List<Gym> gyms;
-  final String? selectedGymId;
-
-  @override
-  State<_GymPickerSheet> createState() => _GymPickerSheetState();
-}
-
-class _GymPickerSheetState extends State<_GymPickerSheet> {
-  final _searchController = TextEditingController();
-  String _query = '';
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final query = _query.toLowerCase();
-    final gyms = widget.gyms
-        .where(
-          (gym) =>
-              query.isEmpty ||
-              gym.name.toLowerCase().contains(query) ||
-              gym.city.toLowerCase().contains(query) ||
-              (gym.district?.toLowerCase().contains(query) ?? false),
-        )
-        .toList(growable: false);
-    return SafeArea(
-      child: SizedBox(
-        height: MediaQuery.sizeOf(context).height * .78,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(
-                height: 58,
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Align(
-                      alignment: Alignment.bottomLeft,
-                      child: Text(
-                        '选择岩馆',
-                        style: Theme.of(context).textTheme.headlineMedium,
-                      ),
-                    ),
-                    Positioned(
-                      left: 18,
-                      top: -70,
-                      width: 126,
-                      height: 94,
-                      child: Image.asset(
-                        AppAssets.profilePeekCat,
-                        cacheWidth: 420,
-                        fit: BoxFit.contain,
-                        filterQuality: FilterQuality.medium,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _searchController,
-                autofocus: true,
-                onChanged: (value) => setState(() => _query = value.trim()),
-                decoration: const InputDecoration(
-                  prefixIcon: Icon(Icons.search_rounded),
-                  hintText: '搜索岩馆、城市或区域',
-                  fillColor: WanpanColors.surface,
-                  focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(
-                      color: WanpanColors.coral,
-                      width: 1.5,
-                    ),
-                    borderRadius: BorderRadius.all(
-                      Radius.circular(WanpanRadii.medium),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Expanded(
-                child: gyms.isEmpty
-                    ? const Center(child: Text('没有找到匹配的岩馆'))
-                    : ListView.separated(
-                        keyboardDismissBehavior:
-                            ScrollViewKeyboardDismissBehavior.onDrag,
-                        itemCount: gyms.length,
-                        separatorBuilder: (_, _) => const Divider(),
-                        itemBuilder: (context, index) {
-                          final gym = gyms[index];
-                          final selected = gym.id == widget.selectedGymId;
-                          return ListTile(
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 4,
-                            ),
-                            tileColor: selected
-                                ? WanpanColors.coralSoft.withValues(alpha: .48)
-                                : Colors.transparent,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(
-                                WanpanRadii.medium,
-                              ),
-                            ),
-                            leading: Container(
-                              width: 42,
-                              height: 42,
-                              decoration: BoxDecoration(
-                                color: WanpanColors.surface,
-                                borderRadius: BorderRadius.circular(13),
-                                border: Border.all(color: WanpanColors.border),
-                              ),
-                              child: const Icon(
-                                Icons.location_on_rounded,
-                                color: WanpanColors.sky,
-                              ),
-                            ),
-                            title: Text(
-                              gym.name,
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                            subtitle: Text(
-                              [
-                                gym.city,
-                                if (gym.district != null) gym.district!,
-                                gym.address,
-                              ].join(' · '),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            trailing: selected
-                                ? Container(
-                                    width: 40,
-                                    height: 40,
-                                    decoration: const BoxDecoration(
-                                      color: WanpanColors.coral,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(
-                                      Icons.check_rounded,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                : const Icon(Icons.chevron_right_rounded),
-                            onTap: () => Navigator.pop(context, gym.id),
-                          );
-                        },
-                      ),
-              ),
-              const SizedBox(height: 10),
-              Container(
-                height: 104,
-                clipBehavior: Clip.antiAlias,
-                decoration: BoxDecoration(
-                  color: WanpanColors.sunflowerSoft.withValues(alpha: .38),
-                  borderRadius: BorderRadius.circular(WanpanRadii.medium),
-                  border: Border.all(
-                    color: WanpanColors.sunflower.withValues(alpha: .35),
-                  ),
-                ),
-                child: Stack(
-                  children: [
-                    Positioned(
-                      left: 18,
-                      top: 20,
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.stars_rounded,
-                            color: WanpanColors.sunflower,
-                          ),
-                          const SizedBox(width: 10),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '小贴士',
-                                style: Theme.of(context).textTheme.titleMedium,
-                              ),
-                              Text(
-                                '找不到你的岩馆？\n可以直接拍照标点，添加为新岩馆。',
-                                style: Theme.of(context).textTheme.bodyMedium,
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    Positioned(
-                      right: -20,
-                      bottom: -24,
-                      width: 130,
-                      height: 100,
-                      child: Image.asset(
-                        AppAssets.profilePeekCat,
-                        cacheWidth: 420,
-                        fit: BoxFit.contain,
-                        filterQuality: FilterQuality.medium,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 extension on RoutePointType {

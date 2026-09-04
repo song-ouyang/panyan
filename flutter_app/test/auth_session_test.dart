@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -44,6 +45,29 @@ const _user = UserSummary(
   role: 'user',
   profileCompleted: true,
 );
+
+class _BlockingWriteTokenStore implements SessionTokenStore {
+  String? value;
+  bool blockNextWrite = false;
+  final writeStarted = Completer<void>();
+  final releaseWrite = Completer<void>();
+
+  @override
+  Future<String?> read() async => value;
+
+  @override
+  Future<void> write(String token) async {
+    if (blockNextWrite) {
+      blockNextWrite = false;
+      writeStarted.complete();
+      await releaseWrite.future;
+    }
+    value = token;
+  }
+
+  @override
+  Future<void> delete() async => value = null;
+}
 
 Future<SharedPreferences> _preferences([
   Map<String, Object> values = const {},
@@ -170,7 +194,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('登录'), findsOneWidget);
-    expect(find.text('登录后，每一次上墙都有记录'), findsOneWidget);
+    expect(find.text('每一次上墙都有记录'), findsOneWidget);
+    expect(find.textContaining('使用手机号验证码登录'), findsNothing);
     expect(router.routeInformationProvider.value.uri.path, '/login');
     expect(
       router.routeInformationProvider.value.uri.queryParameters['from'],
@@ -198,5 +223,32 @@ void main() {
     expect(tokens.value, 'new-secure-token');
     expect(preferences.containsKey('auth.token'), isFalse);
     expect(preferences.containsKey('auth.user'), isTrue);
+  });
+
+  test('旧请求的 401 不会在新登录写入期间清掉新会话', () async {
+    final tokens = _BlockingWriteTokenStore();
+    final session = SessionController(
+      preferences: await _preferences(),
+      config: _developmentConfig,
+      tokenStore: tokens,
+    );
+    addTearDown(session.dispose);
+    await session.acceptSession(
+      const AuthSession(token: 'old-token', user: _user, needsProfile: false),
+    );
+
+    tokens.blockNextWrite = true;
+    final newLogin = session.acceptSession(
+      const AuthSession(token: 'new-token', user: _user, needsProfile: false),
+    );
+    await tokens.writeStarted.future;
+    final staleUnauthorized = session.handleUnauthorizedResponse('old-token');
+    tokens.releaseWrite.complete();
+
+    await Future.wait([newLogin, staleUnauthorized]);
+
+    expect(session.token, 'new-token');
+    expect(session.isAuthenticated, isTrue);
+    expect(tokens.value, 'new-token');
   });
 }

@@ -11,3 +11,13 @@ miniprogram/private.config.json
 project.private.config.json
 output/
 tmp/
+
+# Local design/QA artifacts and intermediate exports.
+design/qa/
+design/wanpan-cute-ui/
+design/wanpan-motion/previews/wanpan-motion-simulator.mov
+design/wanpan-motion/previews/wanpan-motion-simulator.png
+design/wanpan-motion/previews/wanpan-motion-lab-*.png
+design/wanpan-motion/previews/record-success-skottie-v2.png
+design/wanpan-motion/previews/skottie/
+data/gym-directory.import.json

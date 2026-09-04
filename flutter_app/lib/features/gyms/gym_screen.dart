@@ -7,21 +7,31 @@ import '../../core/network/api_client.dart';
 import '../../core/repositories/gym_repository.dart';
 import '../../shared/app_assets.dart';
 import '../../shared/widgets/wanpan_card.dart';
+import '../../shared/widgets/wanpan_pressable.dart';
 import '../../shared/widgets/wanpan_skeleton.dart';
 import '../../shared/widgets/wanpan_states.dart';
+import 'map_navigation.dart';
 
 class GymScreen extends StatefulWidget {
-  const GymScreen({required this.api, required this.gymId, super.key});
+  const GymScreen({
+    required this.api,
+    required this.gymId,
+    super.key,
+    this.gymRepository,
+    this.mapNavigationLauncher = const DeviceMapNavigationLauncher(),
+  });
 
   final ApiClient api;
   final String gymId;
+  final GymRepository? gymRepository;
+  final MapNavigationLauncher mapNavigationLauncher;
 
   @override
   State<GymScreen> createState() => _GymScreenState();
 }
 
 class _GymScreenState extends State<GymScreen> {
-  late final GymRepository _repository = GymRepository(widget.api);
+  late final GymRepository _repository;
   final _routeSearchController = TextEditingController();
   GymDetail? _detail;
   List<ClimbingRoute> _routes = const [];
@@ -35,6 +45,7 @@ class _GymScreenState extends State<GymScreen> {
   @override
   void initState() {
     super.initState();
+    _repository = widget.gymRepository ?? GymRepository(widget.api);
     _loadAll();
   }
 
@@ -123,6 +134,24 @@ class _GymScreenState extends State<GymScreen> {
     if (created == true && mounted) await _loadAll();
   }
 
+  Future<void> _showNavigation(Gym gym) => showModalBottomSheet<void>(
+    context: context,
+    useSafeArea: true,
+    isScrollControlled: true,
+    backgroundColor: WanpanColors.surface,
+    showDragHandle: true,
+    builder: (_) => _MapNavigationSheet(
+      launcher: widget.mapNavigationLauncher,
+      target: MapNavigationTarget(
+        name: gym.name,
+        city: gym.city,
+        address: gym.address,
+        latitude: gym.latitude,
+        longitude: gym.longitude,
+      ),
+    ),
+  );
+
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
@@ -161,7 +190,12 @@ class _GymScreenState extends State<GymScreen> {
       child: CustomScrollView(
         key: PageStorageKey('gym-${widget.gymId}'),
         slivers: [
-          SliverToBoxAdapter(child: _GymHeader(gym: detail.gym)),
+          SliverToBoxAdapter(
+            child: _GymHeader(
+              gym: detail.gym,
+              onNavigate: () => _showNavigation(detail.gym),
+            ),
+          ),
           SliverToBoxAdapter(
             child: _Filters(
               routeSets: detail.routeSets,
@@ -298,9 +332,10 @@ class _GymScreenState extends State<GymScreen> {
 }
 
 class _GymHeader extends StatelessWidget {
-  const _GymHeader({required this.gym});
+  const _GymHeader({required this.gym, required this.onNavigate});
 
   final Gym gym;
+  final VoidCallback onNavigate;
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -322,13 +357,361 @@ class _GymHeader extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 6),
-        Text(
-          '${gym.city}${gym.district == null ? '' : ' · ${gym.district}'} · ${gym.address}',
-          style: Theme.of(context).textTheme.bodyMedium,
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  gym.locationLabel,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Tooltip(
+              message: '选择地图导航到${gym.name}',
+              excludeFromSemantics: true,
+              child: WanpanPressable(
+                key: const Key('gym-navigation-button'),
+                onTap: onNavigate,
+                semanticLabel: '导航到${gym.name}，选择地图',
+                enableHaptics: true,
+                borderRadius: BorderRadius.circular(WanpanRadii.pill),
+                child: Container(
+                  constraints: const BoxConstraints(
+                    minWidth: 76,
+                    minHeight: 44,
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: WanpanColors.skySoft,
+                    borderRadius: BorderRadius.circular(WanpanRadii.pill),
+                    border: Border.all(
+                      color: WanpanColors.sky.withValues(alpha: .72),
+                    ),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.navigation_rounded,
+                        size: 18,
+                        color: WanpanColors.ink,
+                      ),
+                      SizedBox(width: 5),
+                      Text(
+                        '导航',
+                        style: TextStyle(
+                          color: WanpanColors.ink,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     ),
   );
+}
+
+class _MapNavigationSheet extends StatefulWidget {
+  const _MapNavigationSheet({required this.launcher, required this.target});
+
+  final MapNavigationLauncher launcher;
+  final MapNavigationTarget target;
+
+  @override
+  State<_MapNavigationSheet> createState() => _MapNavigationSheetState();
+}
+
+class _MapNavigationSheetState extends State<_MapNavigationSheet> {
+  static const _primaryApps = <MapNavigationApp>[
+    MapNavigationApp.amap,
+    MapNavigationApp.tencent,
+    MapNavigationApp.baidu,
+    MapNavigationApp.system,
+  ];
+
+  late final Future<List<MapNavigationApp>> _apps = _loadApps();
+  MapNavigationApp? _opening;
+  String? _error;
+  bool _showWebFallback = false;
+
+  Future<List<MapNavigationApp>> _loadApps() async {
+    try {
+      final apps = await widget.launcher.availableApps(widget.target);
+      return apps.isEmpty ? const [MapNavigationApp.web] : apps;
+    } catch (_) {
+      return const [MapNavigationApp.web];
+    }
+  }
+
+  Future<void> _open(MapNavigationApp app, {required bool hasSystemMap}) async {
+    if (_opening != null) return;
+    final route = ModalRoute.of(context);
+    setState(() {
+      _opening = app;
+      _error = null;
+    });
+    final opened = await widget.launcher.open(app, widget.target);
+    if (!mounted || route?.isCurrent != true) return;
+    if (opened) {
+      Navigator.of(context).pop();
+      return;
+    }
+    setState(() {
+      _opening = null;
+      _showWebFallback = true;
+      final label = app.label(widget.launcher.currentPlatform);
+      _error = app == MapNavigationApp.web
+          ? '没有打开网页地图，请检查浏览器设置后重试。'
+          : app == MapNavigationApp.system
+          ? '没有打开$label，可以改用下方网页地图。'
+          : '没有打开$label，可能尚未安装或暂不可用，${hasSystemMap ? '可以改用系统地图。' : '可以使用下方网页地图。'}';
+    });
+  }
+
+  void _explainUnavailable(MapNavigationApp app, {required bool hasSystemMap}) {
+    setState(() {
+      _showWebFallback = !hasSystemMap;
+      final label = app.label(widget.launcher.currentPlatform);
+      _error = app == MapNavigationApp.system
+          ? '这台手机暂时没有可用的系统地图，可以使用下方网页地图。'
+          : '$label尚未安装或暂不可用，${hasSystemMap ? '可以改用系统地图。' : '可以使用下方网页地图。'}';
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => SafeArea(
+    top: false,
+    child: SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+      child: Column(
+        key: const Key('map-navigation-sheet'),
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('选择导航地图', style: Theme.of(context).textTheme.headlineSmall),
+          const SizedBox(height: 6),
+          Text(
+            '从当前位置前往 ${widget.target.name}',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '常用地图都列在这里；显示“不可用”时，可改用系统地图。',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 18),
+          FutureBuilder<List<MapNavigationApp>>(
+            future: _apps,
+            builder: (context, snapshot) {
+              final apps = snapshot.data;
+              if (apps == null) {
+                return const SizedBox(
+                  height: 104,
+                  child: Center(
+                    child: CircularProgressIndicator(color: WanpanColors.coral),
+                  ),
+                );
+              }
+              final availableApps = apps.toSet();
+              final hasSystemMap = availableApps.contains(
+                MapNavigationApp.system,
+              );
+              final showWebFallback =
+                  availableApps.contains(MapNavigationApp.web) ||
+                  !hasSystemMap ||
+                  _showWebFallback;
+              final usableApps = <MapNavigationApp>{
+                ...availableApps,
+                if (showWebFallback) MapNavigationApp.web,
+              };
+              final options = <MapNavigationApp>[
+                ..._primaryApps,
+                if (showWebFallback) MapNavigationApp.web,
+              ];
+              return Column(
+                children: [
+                  for (var index = 0; index < options.length; index++) ...[
+                    if (index > 0) const SizedBox(height: 10),
+                    _MapNavigationOption(
+                      app: options[index],
+                      platform: widget.launcher.currentPlatform,
+                      available: usableApps.contains(options[index]),
+                      loading: _opening == options[index],
+                      enabled: _opening == null,
+                      onTap: () => usableApps.contains(options[index])
+                          ? _open(options[index], hasSystemMap: hasSystemMap)
+                          : _explainUnavailable(
+                              options[index],
+                              hasSystemMap: hasSystemMap,
+                            ),
+                    ),
+                  ],
+                ],
+              );
+            },
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 12),
+            Semantics(
+              liveRegion: true,
+              child: Text(
+                _error!,
+                key: const Key('map-navigation-error'),
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: WanpanColors.danger,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    ),
+  );
+}
+
+class _MapNavigationOption extends StatelessWidget {
+  const _MapNavigationOption({
+    required this.app,
+    required this.platform,
+    required this.available,
+    required this.loading,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  final MapNavigationApp app;
+  final TargetPlatform platform;
+  final bool available;
+  final bool loading;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  ({IconData icon, Color color, Color softColor, String description})
+  get _style => switch (app) {
+    MapNavigationApp.amap => (
+      icon: Icons.near_me_rounded,
+      color: WanpanColors.sky,
+      softColor: WanpanColors.skySoft,
+      description: '打开高德并规划驾车路线',
+    ),
+    MapNavigationApp.tencent => (
+      icon: Icons.route_rounded,
+      color: WanpanColors.grape,
+      softColor: WanpanColors.grapeSoft,
+      description: '打开腾讯地图规划驾车路线',
+    ),
+    MapNavigationApp.baidu => (
+      icon: Icons.navigation_rounded,
+      color: WanpanColors.coral,
+      softColor: WanpanColors.coralSoft,
+      description: '打开百度地图开始导航',
+    ),
+    MapNavigationApp.system => (
+      icon: Icons.map_rounded,
+      color: WanpanColors.success,
+      softColor: WanpanColors.mintSoft,
+      description: platform == TargetPlatform.iOS ? '使用系统地图规划路线' : '交给手机里的其他地图',
+    ),
+    MapNavigationApp.web => (
+      icon: Icons.public_rounded,
+      color: WanpanColors.inkSecondary,
+      softColor: WanpanColors.surfaceMuted,
+      description: '未安装地图 App 时查看网页路线',
+    ),
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final style = _style;
+    final description = available
+        ? style.description
+        : app == MapNavigationApp.system
+        ? '系统地图不可用，可使用网页地图'
+        : '未安装或暂不可用，点按查看说明';
+    return WanpanPressable(
+      key: Key('map-navigation-${app.name}'),
+      onTap: enabled ? onTap : null,
+      semanticLabel:
+          '${app.label(platform)}，${available ? style.description : description}',
+      enableHaptics: true,
+      borderRadius: BorderRadius.circular(WanpanRadii.medium),
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 68),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: WanpanColors.surface,
+          borderRadius: BorderRadius.circular(WanpanRadii.medium),
+          border: Border.all(color: WanpanColors.border),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: style.softColor,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(style.icon, color: style.color),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    app.label(platform),
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    description,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            if (loading)
+              const SizedBox.square(
+                dimension: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.3,
+                  color: WanpanColors.coral,
+                ),
+              )
+            else if (!available)
+              Text(
+                '不可用',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: WanpanColors.muted,
+                  fontWeight: FontWeight.w800,
+                ),
+              )
+            else
+              const Icon(
+                Icons.open_in_new_rounded,
+                size: 20,
+                color: WanpanColors.muted,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _Filters extends StatelessWidget {

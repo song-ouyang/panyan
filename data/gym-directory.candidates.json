@@ -1,0 +1,3007 @@
+{
+  "schemaVersion": 1,
+  "collectedAt": "2026-09-03T17:31:44.553136+00:00",
+  "notice": "仅作公开来源发现与人工审核；不含完整地址的条目绝不导入数据库。",
+  "candidates": [
+    {
+      "name": "mellow climbing gym攀岩馆",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/68f5ce5d-ed09-48a7-afc9-296ef694c929-mellow-climbing-gym%E6%94%80%E5%B2%A9%E9%A6%86"
+      },
+      "last_modified": "2026-09-03",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "the wall此山攀岩 如是观山装备店北外滩来福士店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/66ec2ece-ffa6-4e70-b873-c8b73b277b5a-the-wall%E6%AD%A4%E5%B1%B1%E6%94%80%E5%B2%A9-%E5%A6%82%E6%98%AF%E8%A7%82%E5%B1%B1%E8%A3%85%E5%A4%87%E5%BA%97%E5%8C%97%E5%A4%96%E6%BB%A9%E6%9D%A5%E7%A6%8F%E5%A3%AB%E5%BA%97"
+      },
+      "last_modified": "2026-09-02",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "香蕉攀岩小月河店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/56d8c5a5-46f0-46fd-97b6-326daab2802d-%E9%A6%99%E8%95%89%E6%94%80%E5%B2%A9%E5%B0%8F%E6%9C%88%E6%B2%B3%E5%BA%97"
+      },
+      "last_modified": "2026-08-31",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "大黄蜂攀岩馆威斯顿智体360度店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/92aa7ec8-54b3-4cd1-a5a6-67dc44233a55-%E5%A4%A7%E9%BB%84%E8%9C%82%E6%94%80%E5%B2%A9%E9%A6%86%E5%A8%81%E6%96%AF%E9%A1%BF%E6%99%BA%E4%BD%93360%E5%BA%A6%E5%BA%97"
+      },
+      "last_modified": "2026-08-23",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "星空攀岩高铁吾悦店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/c3df973f-904a-4070-9a4d-1ef7b01d9546-%E6%98%9F%E7%A9%BA%E6%94%80%E5%B2%A9%E9%AB%98%E9%93%81%E5%90%BE%E6%82%A6%E5%BA%97"
+      },
+      "last_modified": "2026-08-12",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "tbw极限运动中心昆山文化艺术中心店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/bc9661ce-90ef-4f1d-897e-b972719ce7d6-tbw%E6%9E%81%E9%99%90%E8%BF%90%E5%8A%A8%E4%B8%AD%E5%BF%83%E6%98%86%E5%B1%B1%E6%96%87%E5%8C%96%E8%89%BA%E6%9C%AF%E4%B8%AD%E5%BF%83%E5%BA%97"
+      },
+      "last_modified": "2026-08-08",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "tbw极限运动中心花桥店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/2f7436ca-a7e0-45b4-ada2-f84864c4eec7-tbw%E6%9E%81%E9%99%90%E8%BF%90%E5%8A%A8%E4%B8%AD%E5%BF%83%E8%8A%B1%E6%A1%A5%E5%BA%97"
+      },
+      "last_modified": "2026-08-08",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "holdz climbing",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/91ba5daa-94de-4c23-9546-6f46bddaacff-holdz-climbing"
+      },
+      "last_modified": "2026-08-01",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "丘山攀岩cypark店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/d36ce39a-564b-4cad-ad3a-767aeaf1609c-%E4%B8%98%E5%B1%B1%E6%94%80%E5%B2%A9cypark%E5%BA%97"
+      },
+      "last_modified": "2026-07-24",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "星空攀岩新区美罗",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/67b96ddf-daf1-4775-89c6-27534486bbe2-%E6%98%9F%E7%A9%BA%E6%94%80%E5%B2%A9%E6%96%B0%E5%8C%BA%E7%BE%8E%E7%BD%97"
+      },
+      "last_modified": "2026-07-21",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "石屿攀岩",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/0e31330d-2bd8-4b00-828b-7d570fde7b23-%E7%9F%B3%E5%B1%BF%E6%94%80%E5%B2%A9"
+      },
+      "last_modified": "2026-07-18",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "咸鱼攀岩馆",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/44bdd625-d9bb-4a08-8c24-c3c53abceb84-%E5%92%B8%E9%B1%BC%E6%94%80%E5%B2%A9%E9%A6%86"
+      },
+      "last_modified": "2026-07-01",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "岩安攀岩阳光时代店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/9407e2be-025d-4674-bd2f-fe296eeb7bef-%E5%B2%A9%E5%AE%89%E6%94%80%E5%B2%A9%E9%98%B3%E5%85%89%E6%97%B6%E4%BB%A3%E5%BA%97"
+      },
+      "last_modified": "2026-06-30",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "山咔咔攀岩",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/4497da8a-95cf-467e-9722-385713da6a41-%E5%B1%B1%E5%92%94%E5%92%94%E6%94%80%E5%B2%A9"
+      },
+      "last_modified": "2026-06-30",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "星空攀岩苏州湾歌林公园店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/e8e6e355-d4e2-4304-ab56-f1a9d7c2c738-%E6%98%9F%E7%A9%BA%E6%94%80%E5%B2%A9%E8%8B%8F%E5%B7%9E%E6%B9%BE%E6%AD%8C%E6%9E%97%E5%85%AC%E5%9B%AD%E5%BA%97"
+      },
+      "last_modified": "2026-06-30",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "大海螺抱石攀岩climbing gym黄岛开发区店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/7fca4dcc-9bd7-4753-b65e-18bcfd592885-%E5%A4%A7%E6%B5%B7%E8%9E%BA%E6%8A%B1%E7%9F%B3%E6%94%80%E5%B2%A9climbing-gym%E9%BB%84%E5%B2%9B%E5%BC%80%E5%8F%91%E5%8C%BA%E5%BA%97"
+      },
+      "last_modified": "2026-06-30",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "克莱攀岩公园",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/5f8ec570-3f0f-4c26-8394-e5cefcfe46b4-%E5%85%8B%E8%8E%B1%E6%94%80%E5%B2%A9%E5%85%AC%E5%9B%AD"
+      },
+      "last_modified": "2026-06-29",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "一起攀岩中关村",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/314d64e7-3162-4c80-a302-701e6e98601c-%E4%B8%80%E8%B5%B7%E6%94%80%E5%B2%A9%E4%B8%AD%E5%85%B3%E6%9D%91"
+      },
+      "last_modified": "2026-06-29",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "岩时攀岩大屯店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/1d76657b-8051-4469-80f7-773696ed4069-%E5%B2%A9%E6%97%B6%E6%94%80%E5%B2%A9%E5%A4%A7%E5%B1%AF%E5%BA%97"
+      },
+      "last_modified": "2026-06-29",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "早安攀岩馆御溪国际店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/43a2e921-2e4d-4a28-9af7-216ec398522b-%E6%97%A9%E5%AE%89%E6%94%80%E5%B2%A9%E9%A6%86%E5%BE%A1%E6%BA%AA%E5%9B%BD%E9%99%85%E5%BA%97"
+      },
+      "last_modified": "2026-06-28",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "见山攀岩",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/397c875a-df1e-495e-9380-4eacec208276-%E8%A7%81%E5%B1%B1%E6%94%80%E5%B2%A9"
+      },
+      "last_modified": "2026-06-28",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "星空攀岩常州星湖广场店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/51ed09ef-f379-4e8a-9dbc-e9f4953dbed0-%E6%98%9F%E7%A9%BA%E6%94%80%E5%B2%A9%E5%B8%B8%E5%B7%9E%E6%98%9F%E6%B9%96%E5%B9%BF%E5%9C%BA%E5%BA%97"
+      },
+      "last_modified": "2026-06-28",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "星空攀岩高新文体店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/7820eb8f-29e3-44e4-ba70-ced56b69fbfb-%E6%98%9F%E7%A9%BA%E6%94%80%E5%B2%A9%E9%AB%98%E6%96%B0%E6%96%87%E4%BD%93%E5%BA%97"
+      },
+      "last_modified": "2026-06-28",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "视攀攀岩逆熵力量店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/1f981b20-6e2b-46ed-b5eb-fb324a61924d-%E8%A7%86%E6%94%80%E6%94%80%E5%B2%A9%E9%80%86%E7%86%B5%E5%8A%9B%E9%87%8F%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "视攀攀岩馆on sight climbing gym",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/f86ac8ad-12d3-4e7e-af5d-863d4087199d-%E8%A7%86%E6%94%80%E6%94%80%E5%B2%A9%E9%A6%86on-sight-climbing-gym"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "龙景攀岩阿罗海城市广场店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/cbf92376-ed80-45e4-8a68-0298e87a1c5a-%E9%BE%99%E6%99%AF%E6%94%80%E5%B2%A9%E9%98%BF%E7%BD%97%E6%B5%B7%E5%9F%8E%E5%B8%82%E5%B9%BF%E5%9C%BA%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "龙景攀岩海峡世茂广场店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/02b62317-d48b-4722-ac62-b6131c4327e1-%E9%BE%99%E6%99%AF%E6%94%80%E5%B2%A9%E6%B5%B7%E5%B3%A1%E4%B8%96%E8%8C%82%E5%B9%BF%E5%9C%BA%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "山海攀岩文灶潮场店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/6a452813-478e-443b-91a5-b7a23a8c7405-%E5%B1%B1%E6%B5%B7%E6%94%80%E5%B2%A9%E6%96%87%E7%81%B6%E6%BD%AE%E5%9C%BA%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "龙景攀岩波特曼佰翔酒店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/533dfcc0-a137-4b4c-8c0f-4a34c4f4d7b9-%E9%BE%99%E6%99%AF%E6%94%80%E5%B2%A9%E6%B3%A2%E7%89%B9%E6%9B%BC%E4%BD%B0%E7%BF%94%E9%85%92%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "不吃饭攀岩馆",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/4e4faa9b-c14e-4b58-8a90-e8914ef61089-%E4%B8%8D%E5%90%83%E9%A5%AD%E6%94%80%E5%B2%A9%E9%A6%86"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "山海攀岩馆",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/35051c41-eb6a-4142-8f4a-481f7d7306f7-%E5%B1%B1%E6%B5%B7%E6%94%80%E5%B2%A9%E9%A6%86"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "龙景攀岩coco park店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/a3f556c4-7008-470b-a1ce-d7509cf2ca11-%E9%BE%99%E6%99%AF%E6%94%80%E5%B2%A9coco-park%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "丘山攀岩北国未来城店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/c76d639b-4aad-42d8-b3df-ea24dca76f6f-%E4%B8%98%E5%B1%B1%E6%94%80%E5%B2%A9%E5%8C%97%E5%9B%BD%E6%9C%AA%E6%9D%A5%E5%9F%8E%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "78山丘抱石",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/848f1b29-1aa2-4a2a-aac5-2deedb71ed04-78%E5%B1%B1%E4%B8%98%E6%8A%B1%E7%9F%B3"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "今日攀岩和谐广场店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/9ef7a73a-0644-452c-b52a-81a225067865-%E4%BB%8A%E6%97%A5%E6%94%80%E5%B2%A9%E5%92%8C%E8%B0%90%E5%B9%BF%E5%9C%BA%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "今日攀岩万达广场店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/caaeff1b-830f-434d-ba59-1ead70ff60a8-%E4%BB%8A%E6%97%A5%E6%94%80%E5%B2%A9%E4%B8%87%E8%BE%BE%E5%B9%BF%E5%9C%BA%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "天空之城蹦床攀岩运动馆昆明店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/c20a9d98-3f25-4703-b18c-b5f28fdcf871-%E5%A4%A9%E7%A9%BA%E4%B9%8B%E5%9F%8E%E8%B9%A6%E5%BA%8A%E6%94%80%E5%B2%A9%E8%BF%90%E5%8A%A8%E9%A6%86%E6%98%86%E6%98%8E%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "今日攀岩建设路店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/0413bcd4-aa4f-438d-b78c-95f413a546d6-%E4%BB%8A%E6%97%A5%E6%94%80%E5%B2%A9%E5%BB%BA%E8%AE%BE%E8%B7%AF%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "tns攀岩馆大悦城店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/93d6425c-3741-4af0-b9a9-6acec3029a66-tns%E6%94%80%E5%B2%A9%E9%A6%86%E5%A4%A7%E6%82%A6%E5%9F%8E%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "skywall攀岩运动中心蜜油园店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/281de4eb-b94d-4ddc-90b6-de99089d6fd1-skywall%E6%94%80%E5%B2%A9%E8%BF%90%E5%8A%A8%E4%B8%AD%E5%BF%83%E8%9C%9C%E6%B2%B9%E5%9B%AD%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "kk攀岩运动中心",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/0cbbc598-95f9-45d5-ae8c-d61cc80a5991-kk%E6%94%80%E5%B2%A9%E8%BF%90%E5%8A%A8%E4%B8%AD%E5%BF%83"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "icg郑攀攀岩馆",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/4e1efb17-b787-4b87-86e8-862281feb67c-icg%E9%83%91%E6%94%80%E6%94%80%E5%B2%A9%E9%A6%86"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "skywall攀岩运动中心",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/294f93a6-3352-41f3-b208-8b87190f7eb7-skywall%E6%94%80%E5%B2%A9%E8%BF%90%E5%8A%A8%E4%B8%AD%E5%BF%83"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "k k攀岩俱乐部裕华广场店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/02514cda-05aa-46e2-89b8-9c33dd7bf885-k-k%E6%94%80%E5%B2%A9%E4%BF%B1%E4%B9%90%E9%83%A8%E8%A3%95%E5%8D%8E%E5%B9%BF%E5%9C%BA%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "若克攀岩运动馆公园茂店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/387193de-97a5-4fa1-a6c3-c51b0587224e-%E8%8B%A5%E5%85%8B%E6%94%80%E5%B2%A9%E8%BF%90%E5%8A%A8%E9%A6%86%E5%85%AC%E5%9B%AD%E8%8C%82%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "岩究所攀岩运动空间正弘店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/5fc1dccb-d2a8-46b2-a201-9c6bc816da60-%E5%B2%A9%E7%A9%B6%E6%89%80%E6%94%80%E5%B2%A9%E8%BF%90%E5%8A%A8%E7%A9%BA%E9%97%B4%E6%AD%A3%E5%BC%98%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "乐攀攀岩悦动城",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/6fe0b95f-068d-4ea6-831e-b8a615e744e6-%E4%B9%90%E6%94%80%E6%94%80%E5%B2%A9%E6%82%A6%E5%8A%A8%E5%9F%8E"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "515攀岩欧亚乐活城店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/7e4afd93-1af3-4838-9066-87f4e93d892c-515%E6%94%80%E5%B2%A9%E6%AC%A7%E4%BA%9A%E4%B9%90%E6%B4%BB%E5%9F%8E%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "岩色攀岩印象城店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/82abe9fa-ef52-4af7-bdb6-1be98a796de2-%E5%B2%A9%E8%89%B2%E6%94%80%E5%B2%A9%E5%8D%B0%E8%B1%A1%E5%9F%8E%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "岩攀攀岩",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/699bd188-9e89-47bd-9a28-0dc5b9e99eb5-%E5%B2%A9%E6%94%80%E6%94%80%E5%B2%A9"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "攀蛛侠攀岩馆胶州宝龙广场店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/e38beb21-b067-4c4f-882a-20d96a91117f-%E6%94%80%E8%9B%9B%E4%BE%A0%E6%94%80%E5%B2%A9%E9%A6%86%E8%83%B6%E5%B7%9E%E5%AE%9D%E9%BE%99%E5%B9%BF%E5%9C%BA%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "猴子攀岩",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/4ae9059d-c199-46bb-8bf5-39b6735d878b-%E7%8C%B4%E5%AD%90%E6%94%80%E5%B2%A9"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "在野攀岩",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/a65d6d11-24d8-45a5-8459-108639aaf16d-%E5%9C%A8%E9%87%8E%E6%94%80%E5%B2%A9"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "猫王攀岩",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/4edfb828-8014-400a-8259-6d7c9d93a19c-%E7%8C%AB%E7%8E%8B%E6%94%80%E5%B2%A9"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "菁英攀岩万科生活广场店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/ecd5d198-5dbc-4d1c-86ff-293072cc0a62-%E8%8F%81%E8%8B%B1%E6%94%80%E5%B2%A9%E4%B8%87%E7%A7%91%E7%94%9F%E6%B4%BB%E5%B9%BF%E5%9C%BA%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "岩舞者攀岩兴隆三路店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/9c90b574-5921-4b50-b93d-2f3a80b46d16-%E5%B2%A9%E8%88%9E%E8%80%85%E6%94%80%E5%B2%A9%E5%85%B4%E9%9A%86%E4%B8%89%E8%B7%AF%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "极攀岩俱乐部浑南店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/dc4cfbce-5c24-4630-a106-421d2f5fd926-%E6%9E%81%E6%94%80%E5%B2%A9%E4%BF%B1%E4%B9%90%E9%83%A8%E6%B5%91%E5%8D%97%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "酷玩攀岩环球港动感城店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/e2d362f4-7d73-45e6-b1e0-58057947e84a-%E9%85%B7%E7%8E%A9%E6%94%80%E5%B2%A9%E7%8E%AF%E7%90%83%E6%B8%AF%E5%8A%A8%E6%84%9F%E5%9F%8E%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "石猴子攀岩馆",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/46a737ba-145d-4dc1-a462-d1711918b7af-%E7%9F%B3%E7%8C%B4%E5%AD%90%E6%94%80%E5%B2%A9%E9%A6%86"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "极攀岩俱乐部铁西店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/57da60f3-c4c9-41d9-a53b-d06c85d543e2-%E6%9E%81%E6%94%80%E5%B2%A9%E4%BF%B1%E4%B9%90%E9%83%A8%E9%93%81%E8%A5%BF%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "小代克勇士体适能攀岩k11校区",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/cde21d43-dd11-40f8-a8e7-9d9215c007bf-%E5%B0%8F%E4%BB%A3%E5%85%8B%E5%8B%87%E5%A3%AB%E4%BD%93%E9%80%82%E8%83%BD%E6%94%80%E5%B2%A9k11%E6%A0%A1%E5%8C%BA"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "小代克勇士体适能攀岩皇姑万象汇校区",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/25c98f0b-a892-499e-b5ba-d51799217d80-%E5%B0%8F%E4%BB%A3%E5%85%8B%E5%8B%87%E5%A3%AB%E4%BD%93%E9%80%82%E8%83%BD%E6%94%80%E5%B2%A9%E7%9A%87%E5%A7%91%E4%B8%87%E8%B1%A1%E6%B1%87%E6%A0%A1%E5%8C%BA"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "今日攀岩龙之梦购物中心店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/a007913d-b70e-442b-bea3-a00c44a4ebd0-%E4%BB%8A%E6%97%A5%E6%94%80%E5%B2%A9%E9%BE%99%E4%B9%8B%E6%A2%A6%E8%B4%AD%E7%89%A9%E4%B8%AD%E5%BF%83%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "moment climbing 时刻攀岩富丽华大厦店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/8f55a421-667c-4722-b896-e974963b2304-moment-climbing-%E6%97%B6%E5%88%BB%E6%94%80%E5%B2%A9%E5%AF%8C%E4%B8%BD%E5%8D%8E%E5%A4%A7%E5%8E%A6%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "hello max攀岩顺德大信店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/28ef3375-bc8c-418d-b056-02635f2e8fee-hello-max%E6%94%80%E5%B2%A9%E9%A1%BA%E5%BE%B7%E5%A4%A7%E4%BF%A1%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "王者攀岩佛山桂城店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/61e76781-39f2-4f80-a6a2-59225577d7ab-%E7%8E%8B%E8%80%85%E6%94%80%E5%B2%A9%E4%BD%9B%E5%B1%B1%E6%A1%82%E5%9F%8E%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "火星攀岩馆顺联公园里店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/995447f7-b763-45b7-a8fb-66940c4b9926-%E7%81%AB%E6%98%9F%E6%94%80%E5%B2%A9%E9%A6%86%E9%A1%BA%E8%81%94%E5%85%AC%E5%9B%AD%E9%87%8C%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "k2攀岩佛山保利mall店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/4b98374f-330a-4558-841f-5accf51bf7eb-k2%E6%94%80%E5%B2%A9%E4%BD%9B%E5%B1%B1%E4%BF%9D%E5%88%A9mall%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "擎天攀岩馆黄岐店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/c323724e-1e82-492e-950c-8d4a875ffcd8-%E6%93%8E%E5%A4%A9%E6%94%80%E5%B2%A9%E9%A6%86%E9%BB%84%E5%B2%90%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "盛世攀岩百花时代广场市场路店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/537a7a0f-24c9-4fd5-b551-9022aea830b4-%E7%9B%9B%E4%B8%96%E6%94%80%E5%B2%A9%E7%99%BE%E8%8A%B1%E6%97%B6%E4%BB%A3%E5%B9%BF%E5%9C%BA%E5%B8%82%E5%9C%BA%E8%B7%AF%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "suchq climbing非常趣攀岩悠兰里店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/98d6c228-45ef-4595-afda-fc8720467d80-suchq-climbing%E9%9D%9E%E5%B8%B8%E8%B6%A3%E6%94%80%E5%B2%A9%E6%82%A0%E5%85%B0%E9%87%8C%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "擎天攀岩馆厚街店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/ed000d2a-4df9-4d92-848d-fb57304a1567-%E6%93%8E%E5%A4%A9%E6%94%80%E5%B2%A9%E9%A6%86%E5%8E%9A%E8%A1%97%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "擎天攀岩馆东城卓越店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/697d21fb-6ba0-4c66-ae3d-ec1b0546e801-%E6%93%8E%E5%A4%A9%E6%94%80%E5%B2%A9%E9%A6%86%E4%B8%9C%E5%9F%8E%E5%8D%93%E8%B6%8A%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "the game游戏攀岩莞城地王广场店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/db6c46c7-4bcb-483d-84f3-546aac3710c8-the-game%E6%B8%B8%E6%88%8F%E6%94%80%E5%B2%A9%E8%8E%9E%E5%9F%8E%E5%9C%B0%E7%8E%8B%E5%B9%BF%E5%9C%BA%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "suchq climbing非常趣攀岩",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/0dd145a4-b174-4e86-b7d2-763d8dbd57bd-suchq-climbing%E9%9D%9E%E5%B8%B8%E8%B6%A3%E6%94%80%E5%B2%A9"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "j climbing攀岩运动馆",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/6a8e3df6-431c-4819-99c9-47df9fdf3126-j-climbing%E6%94%80%E5%B2%A9%E8%BF%90%E5%8A%A8%E9%A6%86"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "变色龙攀岩馆",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/2de630f0-6331-4441-bc41-a08bff568786-%E5%8F%98%E8%89%B2%E9%BE%99%E6%94%80%E5%B2%A9%E9%A6%86"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "橘攀攀岩馆",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/04a8555e-1f31-4925-aad8-76550a94087a-%E6%A9%98%E6%94%80%E6%94%80%E5%B2%A9%E9%A6%86"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "岩咖攀岩馆居然之家店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/d0d832ec-20fd-4c96-85f3-04ca1bfeab0d-%E5%B2%A9%E5%92%96%E6%94%80%E5%B2%A9%E9%A6%86%E5%B1%85%E7%84%B6%E4%B9%8B%E5%AE%B6%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "岩咖攀岩馆金谷大厦店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/4ea4c585-9a05-48e9-912a-f0106478da48-%E5%B2%A9%E5%92%96%E6%94%80%E5%B2%A9%E9%A6%86%E9%87%91%E8%B0%B7%E5%A4%A7%E5%8E%A6%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "南京石刻 攀岩馆南邮广场店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/dbf44335-586c-4eff-980f-11f038f835e0-%E5%8D%97%E4%BA%AC%E7%9F%B3%E5%88%BB-%E6%94%80%E5%B2%A9%E9%A6%86%E5%8D%97%E9%82%AE%E5%B9%BF%E5%9C%BA%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "石刻攀岩印象汇馆",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/6c981c00-5e26-48a4-9f9b-1f241d0e6b0c-%E7%9F%B3%E5%88%BB%E6%94%80%E5%B2%A9%E5%8D%B0%E8%B1%A1%E6%B1%87%E9%A6%86"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "蓝鲸攀岩太阳城店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/646c909a-df43-43fc-8641-c38b3ddb2f2f-%E8%93%9D%E9%B2%B8%E6%94%80%E5%B2%A9%E5%A4%AA%E9%98%B3%E5%9F%8E%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "飞岩走壁 攀岩馆南京万达茂店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/f1e35ca9-50a9-449d-9ca4-6b9b2246040d-%E9%A3%9E%E5%B2%A9%E8%B5%B0%E5%A3%81-%E6%94%80%E5%B2%A9%E9%A6%86%E5%8D%97%E4%BA%AC%E4%B8%87%E8%BE%BE%E8%8C%82%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "宽润攀岩馆",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/1e461b68-fb12-41d0-8b62-61ffae235d56-%E5%AE%BD%E6%B6%A6%E6%94%80%E5%B2%A9%E9%A6%86"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "户外梦工厂 乐动力攀岩中心",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/eb4732ca-a958-4404-9f2f-0a07260cd98d-%E6%88%B7%E5%A4%96%E6%A2%A6%E5%B7%A5%E5%8E%82-%E4%B9%90%E5%8A%A8%E5%8A%9B%E6%94%80%E5%B2%A9%E4%B8%AD%E5%BF%83"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "mtc顶峰攀岩塔子湖店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/b15bee37-b2a9-41ea-a749-75c6dcbc0922-mtc%E9%A1%B6%E5%B3%B0%E6%94%80%E5%B2%A9%E5%A1%94%E5%AD%90%E6%B9%96%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "mtc顶峰攀岩",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/f63b8df3-569a-43d2-b8c3-9374cd06410c-mtc%E9%A1%B6%E5%B3%B0%E6%94%80%E5%B2%A9"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "新起点攀岩汉口馆",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/cd3b7938-f2ec-4fab-9fbf-3a0066f6654b-%E6%96%B0%E8%B5%B7%E7%82%B9%E6%94%80%E5%B2%A9%E6%B1%89%E5%8F%A3%E9%A6%86"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "新起点攀岩高新馆",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/f77ff3fe-b2c1-47a3-9fbd-8ab3efbdd9a4-%E6%96%B0%E8%B5%B7%E7%82%B9%E6%94%80%E5%B2%A9%E9%AB%98%E6%96%B0%E9%A6%86"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "优胜美岩运动攀岩馆",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/b043e64b-604e-48b2-93e5-057cc0301538-%E4%BC%98%E8%83%9C%E7%BE%8E%E5%B2%A9%E8%BF%90%E5%8A%A8%E6%94%80%E5%B2%A9%E9%A6%86"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "我攀 西安攀岩馆",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/d88a75f3-8f99-4348-be51-a5b157354774-%E6%88%91%E6%94%80-%E8%A5%BF%E5%AE%89%E6%94%80%E5%B2%A9%E9%A6%86"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "斑马攀岩",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/e4ed876e-3511-48d2-bc7b-3b0d86e1f67b-%E6%96%91%E9%A9%AC%E6%94%80%E5%B2%A9"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "红点攀岩龙湖长乐店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/7a197981-4390-43ea-8768-e0d57a272b7c-%E7%BA%A2%E7%82%B9%E6%94%80%E5%B2%A9%E9%BE%99%E6%B9%96%E9%95%BF%E4%B9%90%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "火石攀岩运动馆省体店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/b0e0a354-37da-4770-8634-63427715f9d8-%E7%81%AB%E7%9F%B3%E6%94%80%E5%B2%A9%E8%BF%90%E5%8A%A8%E9%A6%86%E7%9C%81%E4%BD%93%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "红点攀岩大唐西市店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/4e2122e2-1fb3-4d16-aaa3-89848e6ccf85-%E7%BA%A2%E7%82%B9%E6%94%80%E5%B2%A9%E5%A4%A7%E5%94%90%E8%A5%BF%E5%B8%82%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "零重力攀岩西安m3碧乐城店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/75b70531-f402-45b3-8378-18a4e5f1efe7-%E9%9B%B6%E9%87%8D%E5%8A%9B%E6%94%80%E5%B2%A9%E8%A5%BF%E5%AE%89m3%E7%A2%A7%E4%B9%90%E5%9F%8E%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "dc攀岩",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/f9620ad5-c0ec-43f2-915e-6f9d312d4370-dc%E6%94%80%E5%B2%A9"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "岩十三攀岩馆",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/08f685bb-d623-4931-bb1f-0a0138bc9cb4-%E5%B2%A9%E5%8D%81%E4%B8%89%E6%94%80%E5%B2%A9%E9%A6%86"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "西柚攀岩",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/ecdd3fe2-437b-4574-a50b-a261698f55e9-%E8%A5%BF%E6%9F%9A%E6%94%80%E5%B2%A9"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "山石攀岩c33店加工区九路店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/dc635664-01a6-4216-b204-4817faba4169-%E5%B1%B1%E7%9F%B3%E6%94%80%E5%B2%A9c33%E5%BA%97%E5%8A%A0%E5%B7%A5%E5%8C%BA%E4%B9%9D%E8%B7%AF%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "tnt攀岩馆大学城店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/8632ebab-f992-40d9-8a53-f5e34b922565-tnt%E6%94%80%E5%B2%A9%E9%A6%86%E5%A4%A7%E5%AD%A6%E5%9F%8E%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "尖叫趣攀攀岩馆时代天街店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/1d5de6d4-8968-4c98-8db0-eb0c82378ecc-%E5%B0%96%E5%8F%AB%E8%B6%A3%E6%94%80%E6%94%80%E5%B2%A9%E9%A6%86%E6%97%B6%E4%BB%A3%E5%A4%A9%E8%A1%97%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "极道攀岩运动馆东原1891时光道店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/99ee773e-d8ab-4fed-b531-70f16894b087-%E6%9E%81%E9%81%93%E6%94%80%E5%B2%A9%E8%BF%90%E5%8A%A8%E9%A6%86%E4%B8%9C%E5%8E%9F1891%E6%97%B6%E5%85%89%E9%81%93%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "酷基攀岩天江里店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/1b4688d6-4ad2-43af-9dff-2bdcc6348dc4-%E9%85%B7%E5%9F%BA%E6%94%80%E5%B2%A9%E5%A4%A9%E6%B1%9F%E9%87%8C%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "尖叫攀岩光电园店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/ebbabf7a-312d-4bcd-8f04-d9870ab0e60c-%E5%B0%96%E5%8F%AB%E6%94%80%E5%B2%A9%E5%85%89%E7%94%B5%E5%9B%AD%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "雨岩 攀岩重庆汉国中心b座店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/0667136a-d929-4e2a-aca2-caedb4c6e75e-%E9%9B%A8%E5%B2%A9-%E6%94%80%E5%B2%A9%E9%87%8D%E5%BA%86%E6%B1%89%E5%9B%BD%E4%B8%AD%E5%BF%83b%E5%BA%A7%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "攀猩儿童攀岩馆天津远洋店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/e5684b83-78f0-4639-aef2-98fca5a82489-%E6%94%80%E7%8C%A9%E5%84%BF%E7%AB%A5%E6%94%80%E5%B2%A9%E9%A6%86%E5%A4%A9%E6%B4%A5%E8%BF%9C%E6%B4%8B%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "行空攀岩馆刘园店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/f9be3d34-2898-408d-8405-e3997cafe6f4-%E8%A1%8C%E7%A9%BA%E6%94%80%E5%B2%A9%E9%A6%86%E5%88%98%E5%9B%AD%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "趣野攀岩梅江会展中心店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/d9143e6b-3117-4abb-85e9-5b5ceb947d93-%E8%B6%A3%E9%87%8E%E6%94%80%E5%B2%A9%E6%A2%85%E6%B1%9F%E4%BC%9A%E5%B1%95%E4%B8%AD%E5%BF%83%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "本攀攀岩天津店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/a97eb5d8-2b5d-4b2d-b680-764bb6a7135e-%E6%9C%AC%E6%94%80%E6%94%80%E5%B2%A9%E5%A4%A9%E6%B4%A5%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "over rock攀岩馆体育城店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/9033a577-784c-462c-8fed-8e0f515ea459-over-rock%E6%94%80%E5%B2%A9%E9%A6%86%E4%BD%93%E8%82%B2%E5%9F%8E%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "锋芒攀岩鼓楼新世界店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/3c08b353-b5cc-4074-9005-b3162efcd739-%E9%94%8B%E8%8A%92%E6%94%80%E5%B2%A9%E9%BC%93%E6%A5%BC%E6%96%B0%E4%B8%96%E7%95%8C%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "天津top climbing攀岩馆河西店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/d308ee94-03a7-4f0b-b922-73cf472d968d-%E5%A4%A9%E6%B4%A5top-climbing%E6%94%80%E5%B2%A9%E9%A6%86%E6%B2%B3%E8%A5%BF%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "天津top climbing攀岩馆凌奥店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/a6b6b06c-182e-4862-8f24-aa39652546fa-%E5%A4%A9%E6%B4%A5top-climbing%E6%94%80%E5%B2%A9%E9%A6%86%E5%87%8C%E5%A5%A5%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "芒果攀岩滨海金隅嘉品店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/2837e042-e78b-41b8-ad20-65bf3b6d3f24-%E8%8A%92%E6%9E%9C%E6%94%80%E5%B2%A9%E6%BB%A8%E6%B5%B7%E9%87%91%E9%9A%85%E5%98%89%E5%93%81%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "top攀岩黄河道店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/bc1e0ea4-1dbb-4201-8b6d-1cedc2ed203c-top%E6%94%80%E5%B2%A9%E9%BB%84%E6%B2%B3%E9%81%93%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "王者攀岩俱乐部",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/cdde9f3f-ff34-4976-a622-aafbe62ce3a2-%E7%8E%8B%E8%80%85%E6%94%80%E5%B2%A9%E4%BF%B1%E4%B9%90%E9%83%A8"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "超极限攀岩馆六元素店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/dc53ce58-bb09-4bb3-bc27-16e560bedc1d-%E8%B6%85%E6%9E%81%E9%99%90%E6%94%80%E5%B2%A9%E9%A6%86%E5%85%AD%E5%85%83%E7%B4%A0%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "超极限攀岩馆优托邦奥体店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/5595f45a-ac05-4175-bc19-f38b64e27a6c-%E8%B6%85%E6%9E%81%E9%99%90%E6%94%80%E5%B2%A9%E9%A6%86%E4%BC%98%E6%89%98%E9%82%A6%E5%A5%A5%E4%BD%93%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "极限运动中心攀岩场",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/747df8dc-e797-4b66-b9ed-ad061f7a5602-%E6%9E%81%E9%99%90%E8%BF%90%E5%8A%A8%E4%B8%AD%E5%BF%83%E6%94%80%E5%B2%A9%E5%9C%BA"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "羽石攀岩广州基盛万科里店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/94c161a6-21ad-4991-946e-ba1aa6b5f045-%E7%BE%BD%E7%9F%B3%E6%94%80%E5%B2%A9%E5%B9%BF%E5%B7%9E%E5%9F%BA%E7%9B%9B%E4%B8%87%E7%A7%91%E9%87%8C%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "火星攀岩馆广州悦汇城店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/55789db5-09d4-4369-99dd-5297ad584bbd-%E7%81%AB%E6%98%9F%E6%94%80%E5%B2%A9%E9%A6%86%E5%B9%BF%E5%B7%9E%E6%82%A6%E6%B1%87%E5%9F%8E%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "香蕉攀岩华侨城欢乐时光店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/3f344d5d-b456-46ec-bf14-00c2ba0be3f2-%E9%A6%99%E8%95%89%E6%94%80%E5%B2%A9%E5%8D%8E%E4%BE%A8%E5%9F%8E%E6%AC%A2%E4%B9%90%E6%97%B6%E5%85%89%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "征岩攀岩馆天安数码城店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/6a259e66-4626-4903-a33b-04ffc8989708-%E5%BE%81%E5%B2%A9%E6%94%80%E5%B2%A9%E9%A6%86%E5%A4%A9%E5%AE%89%E6%95%B0%E7%A0%81%E5%9F%8E%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "征岩攀岩馆大运店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/7659ad0b-de46-490d-84f4-bb4fdea44148-%E5%BE%81%E5%B2%A9%E6%94%80%E5%B2%A9%E9%A6%86%E5%A4%A7%E8%BF%90%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "蓝天攀岩 青少年训练福田体育公园店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/85b05cd7-2b77-404f-9489-79e891301476-%E8%93%9D%E5%A4%A9%E6%94%80%E5%B2%A9-%E9%9D%92%E5%B0%91%E5%B9%B4%E8%AE%AD%E7%BB%83%E7%A6%8F%E7%94%B0%E4%BD%93%E8%82%B2%E5%85%AC%E5%9B%AD%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "岩上攀岩",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/06a5e52a-ed20-4309-bc8b-cd8f2eba82ac-%E5%B2%A9%E4%B8%8A%E6%94%80%E5%B2%A9"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "岩浪攀岩馆stonewave",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/f82afec7-1cca-4637-bc9b-4d9e02caa0d0-%E5%B2%A9%E6%B5%AA%E6%94%80%E5%B2%A9%E9%A6%86stonewave"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "闪电攀岩深圳湾店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/1d6d3b02-0b82-4dec-9dc3-00d2770ba46b-%E9%97%AA%E7%94%B5%E6%94%80%E5%B2%A9%E6%B7%B1%E5%9C%B3%E6%B9%BE%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "蓝天攀岩南山华瀚创新园店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/2ecad111-d1a6-4af6-b8ec-152278ea7120-%E8%93%9D%E5%A4%A9%E6%94%80%E5%B2%A9%E5%8D%97%E5%B1%B1%E5%8D%8E%E7%80%9A%E5%88%9B%E6%96%B0%E5%9B%AD%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "阿叻室内攀岩馆allez climbing gym",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/2356ca20-cc9d-4b82-b987-cc7361a0218d-%E9%98%BF%E5%8F%BB%E5%AE%A4%E5%86%85%E6%94%80%E5%B2%A9%E9%A6%86allez-climbing-gym"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "蓝天攀岩罗湖体育馆店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/0d07bc9d-b355-4bea-a14a-2b82477e891c-%E8%93%9D%E5%A4%A9%E6%94%80%E5%B2%A9%E7%BD%97%E6%B9%96%E4%BD%93%E8%82%B2%E9%A6%86%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "呢度有家攀岩馆皇岗店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/66e49636-8c16-4260-b244-05443f0b2785-%E5%91%A2%E5%BA%A6%E6%9C%89%E5%AE%B6%E6%94%80%E5%B2%A9%E9%A6%86%E7%9A%87%E5%B2%97%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "博昇攀岩蛇口店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/88b40da9-8037-4bdd-be94-3fe5d47de7d7-%E5%8D%9A%E6%98%87%E6%94%80%E5%B2%A9%E8%9B%87%E5%8F%A3%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "闪电室内攀岩馆lightning climbing gym",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/0e7ee243-7af1-4377-8d77-14f1eee875d1-%E9%97%AA%E7%94%B5%E5%AE%A4%E5%86%85%E6%94%80%E5%B2%A9%E9%A6%86lightning-climbing-gym"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "nerdcave攀岩馆南山店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/360b37e8-31ea-49c8-865e-7156e33ed40e-nerdcave%E6%94%80%E5%B2%A9%E9%A6%86%E5%8D%97%E5%B1%B1%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "噜呐攀岩杭州西投银泰城店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/eb2dcf79-b9f2-4b3a-aaa6-9ef52f6dd299-%E5%99%9C%E5%91%90%E6%94%80%E5%B2%A9%E6%9D%AD%E5%B7%9E%E8%A5%BF%E6%8A%95%E9%93%B6%E6%B3%B0%E5%9F%8E%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "噜呐攀岩城西银泰店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/a582f18a-62d0-4844-832d-8d901a496a21-%E5%99%9C%E5%91%90%E6%94%80%E5%B2%A9%E5%9F%8E%E8%A5%BF%E9%93%B6%E6%B3%B0%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "噜呐攀岩金沙印象城店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/749fe81f-2804-4749-a9ff-419d8f013ffe-%E5%99%9C%E5%91%90%E6%94%80%E5%B2%A9%E9%87%91%E6%B2%99%E5%8D%B0%E8%B1%A1%E5%9F%8E%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "噜呐攀岩杭州大悦城店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/44cc2eb2-a6de-48fb-b260-dcb24b46e458-%E5%99%9C%E5%91%90%E6%94%80%E5%B2%A9%E6%9D%AD%E5%B7%9E%E5%A4%A7%E6%82%A6%E5%9F%8E%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "升升不息ascent ever攀岩馆",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/2854ea4e-9fa7-4144-beae-42404d95bdcc-%E5%8D%87%E5%8D%87%E4%B8%8D%E6%81%AFascent-ever%E6%94%80%E5%B2%A9%E9%A6%86"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "升升不息ever攀岩馆杭州亚奥万象天地店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/844974d4-f767-41ec-ac23-5881ffd2f8ef-%E5%8D%87%E5%8D%87%E4%B8%8D%E6%81%AFever%E6%94%80%E5%B2%A9%E9%A6%86%E6%9D%AD%E5%B7%9E%E4%BA%9A%E5%A5%A5%E4%B8%87%E8%B1%A1%E5%A4%A9%E5%9C%B0%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "开心攀岩馆七贤郡店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/18558306-e363-459f-a16a-7ed08410c1f2-%E5%BC%80%E5%BF%83%E6%94%80%E5%B2%A9%E9%A6%86%E4%B8%83%E8%B4%A4%E9%83%A1%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "开心攀岩五常店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/bd678583-191d-446d-86c5-5de1d0a68a70-%E5%BC%80%E5%BF%83%E6%94%80%E5%B2%A9%E4%BA%94%E5%B8%B8%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "浙体 杭攀攀岩馆",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/8a3e1dd6-38e2-4f64-b84f-ce6e22615eb7-%E6%B5%99%E4%BD%93-%E6%9D%AD%E6%94%80%E6%94%80%E5%B2%A9%E9%A6%86"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "滴搭攀岩dpump",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/3af943d2-07b7-4f0f-9767-7b2015594080-%E6%BB%B4%E6%90%AD%E6%94%80%E5%B2%A9dpump"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "环岛攀岩 z one climbing尚城1157 利星店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/a362be5b-b441-4da7-9017-b5e7549c4b72-%E7%8E%AF%E5%B2%9B%E6%94%80%E5%B2%A9-z-one-climbing%E5%B0%9A%E5%9F%8E1157-%E5%88%A9%E6%98%9F%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "cliffs颗粒攀岩东方时代店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/6b2af548-d7d2-409c-83f5-5880c43f9dfb-cliffs%E9%A2%97%E7%B2%92%E6%94%80%E5%B2%A9%E4%B8%9C%E6%96%B9%E6%97%B6%E4%BB%A3%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "cliffs颗粒攀岩萧山众安店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/c7acbae6-7e19-4350-92f9-6fe0d1991b9c-cliffs%E9%A2%97%E7%B2%92%E6%94%80%E5%B2%A9%E8%90%A7%E5%B1%B1%E4%BC%97%E5%AE%89%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "噜呐攀岩滨江店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/34dcc529-1fcc-4d34-9186-7251c1d916ab-%E5%99%9C%E5%91%90%E6%94%80%E5%B2%A9%E6%BB%A8%E6%B1%9F%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "绿壁虎攀岩基地tcar店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/3d13fa15-1d47-4dd8-ba22-41d0831bfab3-%E7%BB%BF%E5%A3%81%E8%99%8E%E6%94%80%E5%B2%A9%E5%9F%BA%E5%9C%B0tcar%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "go link攀岩馆莲荷里店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/8577d5c8-8161-46c1-ad6b-bacc9685d604-go-link%E6%94%80%E5%B2%A9%E9%A6%86%E8%8E%B2%E8%8D%B7%E9%87%8C%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "摇摆攀岩杭行荟mo mall店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/c5002113-2c0f-4d87-a818-ece63c266061-%E6%91%87%E6%91%86%E6%94%80%E5%B2%A9%E6%9D%AD%E8%A1%8C%E8%8D%9Fmo-mall%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "upper攀岩华侨城店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/90c4dfc7-f91f-4029-ae96-d4e57f0dc389-upper%E6%94%80%E5%B2%A9%E5%8D%8E%E4%BE%A8%E5%9F%8E%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "upper climbing gym攀岩龙华壹方城店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/8a487f9e-fb96-4e93-a510-bf3a6c2c2560-upper-climbing-gym%E6%94%80%E5%B2%A9%E9%BE%99%E5%8D%8E%E5%A3%B9%E6%96%B9%E5%9F%8E%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "upper攀岩南光店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/ee840d51-d01c-4e44-949f-712898067817-upper%E6%94%80%E5%B2%A9%E5%8D%97%E5%85%89%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "dyno climbing 攀岩馆南山店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/b6956fe0-929a-4593-ba4b-47ad761fda1b-dyno-climbing-%E6%94%80%E5%B2%A9%E9%A6%86%E5%8D%97%E5%B1%B1%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "boulder dash抱石突袭四季天地店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/82f1837f-bafb-4a5d-9cbc-31354f9f69ed-boulder-dash%E6%8A%B1%E7%9F%B3%E7%AA%81%E8%A2%AD%E5%9B%9B%E5%AD%A3%E5%A4%A9%E5%9C%B0%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "抱石突袭cocopark店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/44dc05b9-1ba0-4857-9aa3-610d3ff0c14b-%E6%8A%B1%E7%9F%B3%E7%AA%81%E8%A2%ADcocopark%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "rockinclimbing石间攀岩馆",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/53fa734f-d512-431e-87ea-0a29af77db09-rockinclimbing%E7%9F%B3%E9%97%B4%E6%94%80%E5%B2%A9%E9%A6%86"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "岩图攀岩馆climbing gym",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/4fdecae2-0002-4450-8de2-8e5c4af4495f-%E5%B2%A9%E5%9B%BE%E6%94%80%E5%B2%A9%E9%A6%86climbing-gym"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "趣野攀岩climbing gym",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/591b5362-d3b1-408b-8ee8-fd2c65933899-%E8%B6%A3%E9%87%8E%E6%94%80%E5%B2%A9climbing-gym"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "1778climbinggym攀岩馆三林印象汇店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/d6ffee60-1c5b-43af-830c-7e5f82cfa87d-1778climbinggym%E6%94%80%E5%B2%A9%E9%A6%86%E4%B8%89%E6%9E%97%E5%8D%B0%E8%B1%A1%E6%B1%87%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "尽峰攀岩acme climbing嘉定店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/688eb951-491c-4cfd-be7b-99df1e5d3080-%E5%B0%BD%E5%B3%B0%E6%94%80%E5%B2%A9acme-climbing%E5%98%89%E5%AE%9A%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "尽峰攀岩189弄购物中心",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/fac32219-b3d8-45e4-bbf8-1be3f7db21a4-%E5%B0%BD%E5%B3%B0%E6%94%80%E5%B2%A9189%E5%BC%84%E8%B4%AD%E7%89%A9%E4%B8%AD%E5%BF%83"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "dyno park攀岩馆盈丰天地店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/f45fc708-2934-405e-b278-a0250a7f471c-dyno-park%E6%94%80%E5%B2%A9%E9%A6%86%E7%9B%88%E4%B8%B0%E5%A4%A9%E5%9C%B0%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "beta boulders难点攀岩馆",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/58c5b98c-6d4a-43e4-bc18-c4a02fd12c6b-beta-boulders%E9%9A%BE%E7%82%B9%E6%94%80%E5%B2%A9%E9%A6%86"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "1778climbing",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/17af2e9f-7406-4524-8b74-a11dc078b7ab-1778climbing"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "一起攀岩崇文门店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/90733b36-98c3-4bd3-ad1d-be1d63eb3697-%E4%B8%80%E8%B5%B7%E6%94%80%E5%B2%A9%E5%B4%87%E6%96%87%E9%97%A8%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "青藤攀岩",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/9b8baf1a-c38f-4edb-8e28-9444cbcce124-%E9%9D%92%E8%97%A4%E6%94%80%E5%B2%A9"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "日坛攀岩馆",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/e117b146-c65e-4155-9268-1c82306bc508-%E6%97%A5%E5%9D%9B%E6%94%80%E5%B2%A9%E9%A6%86"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "鼎石攀岩",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/346c8459-b0bb-4756-8256-b36712cff55d-%E9%BC%8E%E7%9F%B3%E6%94%80%E5%B2%A9"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "极石攀岩",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/483e0fb7-562f-43d3-a4d0-f94574440a95-%E6%9E%81%E7%9F%B3%E6%94%80%E5%B2%A9"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "问山mountquest攀岩馆",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/08d58b10-6777-41be-8782-587ace6e5f3e-%E9%97%AE%E5%B1%B1mountquest%E6%94%80%E5%B2%A9%E9%A6%86"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "飞猫攀岩",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/4883dabd-ffe0-4e6b-9692-9fa92c1b87db-%E9%A3%9E%E7%8C%AB%E6%94%80%E5%B2%A9"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "飞猫攀岩纪家庙店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/43136970-8b8c-4a36-9631-a5f937f31aac-%E9%A3%9E%E7%8C%AB%E6%94%80%E5%B2%A9%E7%BA%AA%E5%AE%B6%E5%BA%99%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "青山攀石魏公村店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/f61700bb-94f4-44fe-9029-1fa6d5ae2870-%E9%9D%92%E5%B1%B1%E6%94%80%E7%9F%B3%E9%AD%8F%E5%85%AC%E6%9D%91%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "青山攀石清河店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/566bec41-a76a-4eac-a91e-c5f2685a7fe2-%E9%9D%92%E5%B1%B1%E6%94%80%E7%9F%B3%E6%B8%85%E6%B2%B3%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "此山攀岩亦庄通明湖商业港店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/e9875acf-d043-43bc-98f2-34c55110292e-%E6%AD%A4%E5%B1%B1%E6%94%80%E5%B2%A9%E4%BA%A6%E5%BA%84%E9%80%9A%E6%98%8E%E6%B9%96%E5%95%86%E4%B8%9A%E6%B8%AF%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "耀岩攀岩馆后沙峪店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/6e13d7a8-82b3-4494-94d7-1724aa4080ae-%E8%80%80%E5%B2%A9%E6%94%80%E5%B2%A9%E9%A6%86%E5%90%8E%E6%B2%99%E5%B3%AA%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "耀岩攀岩沙河店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/e6b093c6-b5a5-42dc-ac40-64bac29b3842-%E8%80%80%E5%B2%A9%E6%94%80%E5%B2%A9%E6%B2%99%E6%B2%B3%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "趣攀岩龙玥城店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/3bfa5243-59c8-4baf-b297-bc9dec384ae6-%E8%B6%A3%E6%94%80%E5%B2%A9%E9%BE%99%E7%8E%A5%E5%9F%8E%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "黑爆攀岩共享空间丰科万达店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/fd8b5e09-65c1-416e-9029-d2153f365382-%E9%BB%91%E7%88%86%E6%94%80%E5%B2%A9%E5%85%B1%E4%BA%AB%E7%A9%BA%E9%97%B4%E4%B8%B0%E7%A7%91%E4%B8%87%E8%BE%BE%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "中攀alps攀岩中心活力东方购物广场店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/92b39b50-7891-4fd2-84eb-e9fa445d24db-%E4%B8%AD%E6%94%80alps%E6%94%80%E5%B2%A9%E4%B8%AD%E5%BF%83%E6%B4%BB%E5%8A%9B%E4%B8%9C%E6%96%B9%E8%B4%AD%E7%89%A9%E5%B9%BF%E5%9C%BA%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "climb on gym攀岩馆来广营店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/9ba9a2be-35e4-4b14-b05b-2928897ddbb3-climb-on-gym%E6%94%80%E5%B2%A9%E9%A6%86%E6%9D%A5%E5%B9%BF%E8%90%A5%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "superbox超级秀场攀岩馆欢乐谷店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/92ccd108-3250-4ee6-b359-0144ed6ad2ec-superbox%E8%B6%85%E7%BA%A7%E7%A7%80%E5%9C%BA%E6%94%80%E5%B2%A9%E9%A6%86%E6%AC%A2%E4%B9%90%E8%B0%B7%E5%BA%97"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "首钢极限公园",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/415e686e-7ba9-4bc6-aff9-1d2a5688bead-%E9%A6%96%E9%92%A2%E6%9E%81%E9%99%90%E5%85%AC%E5%9B%AD"
+      },
+      "last_modified": "2026-06-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "utopon乌托攀攀岩馆中防万宝城店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/df2a4f25-b36b-477d-858a-cabb3c8ce093-utopon%E4%B9%8C%E6%89%98%E6%94%80%E6%94%80%E5%B2%A9%E9%A6%86%E4%B8%AD%E9%98%B2%E4%B8%87%E5%AE%9D%E5%9F%8E%E5%BA%97"
+      },
+      "last_modified": "2026-06-26",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "成都大松果马达攀岩馆金石店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/bc3d08d0-d789-46af-97f0-839ef62d5d75-%E6%88%90%E9%83%BD%E5%A4%A7%E6%9D%BE%E6%9E%9C%E9%A9%AC%E8%BE%BE%E6%94%80%E5%B2%A9%E9%A6%86%E9%87%91%E7%9F%B3%E5%BA%97"
+      },
+      "last_modified": "2026-06-26",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "道博攀岩馆",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/c1ea7e8c-a03e-44af-b36e-78d5204d2f23-%E9%81%93%E5%8D%9A%E6%94%80%E5%B2%A9%E9%A6%86"
+      },
+      "last_modified": "2026-06-25",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "flowc随石攀岩馆",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/41684a3c-44e2-4f37-ae29-869d3ae91576-flowc%E9%9A%8F%E7%9F%B3%E6%94%80%E5%B2%A9%E9%A6%86"
+      },
+      "last_modified": "2026-06-25",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "顽岩攀岩房天下大厦a座店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/fd0e1c2a-7b23-4df9-85e4-4d77e2f49e08-%E9%A1%BD%E5%B2%A9%E6%94%80%E5%B2%A9%E6%88%BF%E5%A4%A9%E4%B8%8B%E5%A4%A7%E5%8E%A6a%E5%BA%A7%E5%BA%97"
+      },
+      "last_modified": "2026-06-25",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "v one climbing gym",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/53e8de8c-5013-420c-a4ea-c443800c7e86-v-one-climbing-gym"
+      },
+      "last_modified": "2026-06-25",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "rockademy岩究生攀岩馆",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/9f26cd77-736b-4399-973a-b82595998fb4-rockademy%E5%B2%A9%E7%A9%B6%E7%94%9F%E6%94%80%E5%B2%A9%E9%A6%86"
+      },
+      "last_modified": "2026-06-25",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "攀岩工厂",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/8e6a7ed1-0b33-4493-81d4-0e695599a488-%E6%94%80%E5%B2%A9%E5%B7%A5%E5%8E%82"
+      },
+      "last_modified": "2026-06-25",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "尖极限攀岩馆",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/b82481fa-89bd-4751-bee9-b16eba08b921-%E5%B0%96%E6%9E%81%E9%99%90%E6%94%80%E5%B2%A9%E9%A6%86"
+      },
+      "last_modified": "2026-06-25",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "dome攀岩闵行店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/03155710-41b2-40d1-9858-cfd8f31380cd-dome%E6%94%80%E5%B2%A9%E9%97%B5%E8%A1%8C%E5%BA%97"
+      },
+      "last_modified": "2026-06-24",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "superbox超级秀场 成寿寺运动中心",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/c4f52cee-40ee-4b18-8aa7-106e3bc525ac-superbox%E8%B6%85%E7%BA%A7%E7%A7%80%E5%9C%BA-%E6%88%90%E5%AF%BF%E5%AF%BA%E8%BF%90%E5%8A%A8%E4%B8%AD%E5%BF%83"
+      },
+      "last_modified": "2026-06-20",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "五岩六色攀岩馆欧亚达汉口生活mall店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/d9acd49c-e08b-420c-abaa-cdd250f71d1f-%E4%BA%94%E5%B2%A9%E5%85%AD%E8%89%B2%E6%94%80%E5%B2%A9%E9%A6%86%E6%AC%A7%E4%BA%9A%E8%BE%BE%E6%B1%89%E5%8F%A3%E7%94%9F%E6%B4%BBmall%E5%BA%97"
+      },
+      "last_modified": "2026-06-17",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "九星龙国际攀岩苏州万象天地店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/a66633ae-8b04-4dc0-8139-367b6a917c70-%E4%B9%9D%E6%98%9F%E9%BE%99%E5%9B%BD%E9%99%85%E6%94%80%E5%B2%A9%E8%8B%8F%E5%B7%9E%E4%B8%87%E8%B1%A1%E5%A4%A9%E5%9C%B0%E5%BA%97"
+      },
+      "last_modified": "2026-06-17",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "北顶奥森攀岩生态园",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/0cd9b9f8-182b-4519-8b42-f3fb7e01f101-%E5%8C%97%E9%A1%B6%E5%A5%A5%E6%A3%AE%E6%94%80%E5%B2%A9%E7%94%9F%E6%80%81%E5%9B%AD"
+      },
+      "last_modified": "2026-06-16",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "我攀攀岩",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/769c337e-f6b5-4e73-842f-99a3e5016b32-%E6%88%91%E6%94%80%E6%94%80%E5%B2%A9"
+      },
+      "last_modified": "2026-06-16",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "考拉攀岩王府井",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/d01711f6-c67b-41a0-a5bc-75c90591663d-%E8%80%83%E6%8B%89%E6%94%80%E5%B2%A9%E7%8E%8B%E5%BA%9C%E4%BA%95"
+      },
+      "last_modified": "2026-06-15",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "顽攀 攀岩馆西湖文体中心馆",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/1ffe3f1d-1233-409b-8872-f007a61b50a7-%E9%A1%BD%E6%94%80-%E6%94%80%E5%B2%A9%E9%A6%86%E8%A5%BF%E6%B9%96%E6%96%87%E4%BD%93%E4%B8%AD%E5%BF%83%E9%A6%86"
+      },
+      "last_modified": "2026-06-14",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "顽攀 攀岩馆滨江馆",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/19ada17e-fcc3-4f83-880d-7bd4e08ee1fa-%E9%A1%BD%E6%94%80-%E6%94%80%E5%B2%A9%E9%A6%86%E6%BB%A8%E6%B1%9F%E9%A6%86"
+      },
+      "last_modified": "2026-06-14",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "hey bouldering嘿抱攀岩绿地外滩中心店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/1f687691-95d5-47ff-9e5d-311b352dfb3f-hey-bouldering%E5%98%BF%E6%8A%B1%E6%94%80%E5%B2%A9%E7%BB%BF%E5%9C%B0%E5%A4%96%E6%BB%A9%E4%B8%AD%E5%BF%83%E5%BA%97"
+      },
+      "last_modified": "2026-06-13",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "hey bouldering上海万象城店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/4c90b4d7-7741-40bd-b07c-8f500ce64414-hey-bouldering%E4%B8%8A%E6%B5%B7%E4%B8%87%E8%B1%A1%E5%9F%8E%E5%BA%97"
+      },
+      "last_modified": "2026-06-13",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "vmore攀岩馆",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/14fcb7f6-e4a7-47ee-a622-923af659884d-vmore%E6%94%80%E5%B2%A9%E9%A6%86"
+      },
+      "last_modified": "2026-06-13",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "5 plus 攀岩南翔黑钻店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/8a69486a-14cd-42c0-8595-e1f6f0292026-5-plus-%E6%94%80%E5%B2%A9%E5%8D%97%E7%BF%94%E9%BB%91%E9%92%BB%E5%BA%97"
+      },
+      "last_modified": "2026-06-13",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "rockplus攀岩运动中心环宇城购物中心店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/e4d3d49c-4422-4dfc-9f03-cc66f8953157-rockplus%E6%94%80%E5%B2%A9%E8%BF%90%E5%8A%A8%E4%B8%AD%E5%BF%83%E7%8E%AF%E5%AE%87%E5%9F%8E%E8%B4%AD%E7%89%A9%E4%B8%AD%E5%BF%83%E5%BA%97"
+      },
+      "last_modified": "2026-06-13",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "rockplus攀岩馆巴丽新地店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/b2e067b0-4ef3-46c0-8d8c-ed444e02dd35-rockplus%E6%94%80%E5%B2%A9%E9%A6%86%E5%B7%B4%E4%B8%BD%E6%96%B0%E5%9C%B0%E5%BA%97"
+      },
+      "last_modified": "2026-06-13",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "rockplus攀岩馆宏泰店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/325bc3bc-b6db-4915-a839-3ea6a04f114f-rockplus%E6%94%80%E5%B2%A9%E9%A6%86%E5%AE%8F%E6%B3%B0%E5%BA%97"
+      },
+      "last_modified": "2026-06-13",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "rockplus攀岩馆五一店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/d773f4ae-786b-4984-aaf4-b84fd9702942-rockplus%E6%94%80%E5%B2%A9%E9%A6%86%E4%BA%94%E4%B8%80%E5%BA%97"
+      },
+      "last_modified": "2026-06-13",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "攀岩主义东体馆",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/478934c7-a936-40bf-a91b-0b0e35b8e51a-%E6%94%80%E5%B2%A9%E4%B8%BB%E4%B9%89%E4%B8%9C%E4%BD%93%E9%A6%86"
+      },
+      "last_modified": "2026-06-13",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "攀岩主义静安馆",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/dace7d76-1e5a-42a0-abc4-8bd7f5e6abf5-%E6%94%80%E5%B2%A9%E4%B8%BB%E4%B9%89%E9%9D%99%E5%AE%89%E9%A6%86"
+      },
+      "last_modified": "2026-06-13",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "蓝天攀岩中国铁建 南沙环宇城黄阁南路店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/d5ddbc3c-8bc1-44e6-aa4d-9e47ac3f26dc-%E8%93%9D%E5%A4%A9%E6%94%80%E5%B2%A9%E4%B8%AD%E5%9B%BD%E9%93%81%E5%BB%BA-%E5%8D%97%E6%B2%99%E7%8E%AF%E5%AE%87%E5%9F%8E%E9%BB%84%E9%98%81%E5%8D%97%E8%B7%AF%E5%BA%97"
+      },
+      "last_modified": "2026-06-13",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "climbing panda熊猫攀岩生活馆金牛凯德店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/61703782-febd-4bf4-9a5b-e4c4b96a717d-climbing-panda%E7%86%8A%E7%8C%AB%E6%94%80%E5%B2%A9%E7%94%9F%E6%B4%BB%E9%A6%86%E9%87%91%E7%89%9B%E5%87%AF%E5%BE%B7%E5%BA%97"
+      },
+      "last_modified": "2026-06-13",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "climbing panda熊猫攀岩生活馆富力店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/48c9cc61-4ac2-4b9f-bce2-4d649f2a7fe2-climbing-panda%E7%86%8A%E7%8C%AB%E6%94%80%E5%B2%A9%E7%94%9F%E6%B4%BB%E9%A6%86%E5%AF%8C%E5%8A%9B%E5%BA%97"
+      },
+      "last_modified": "2026-06-13",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "climbing panda熊猫攀岩生活馆新光天地店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/456d2047-34a8-4849-a3b3-79e49a9c3ef7-climbing-panda%E7%86%8A%E7%8C%AB%E6%94%80%E5%B2%A9%E7%94%9F%E6%B4%BB%E9%A6%86%E6%96%B0%E5%85%89%E5%A4%A9%E5%9C%B0%E5%BA%97"
+      },
+      "last_modified": "2026-06-13",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "climbing panda熊猫攀岩生活馆武侯大悦城店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/3ca6c540-61e7-4977-9707-8a3d58e5d0e1-climbing-panda%E7%86%8A%E7%8C%AB%E6%94%80%E5%B2%A9%E7%94%9F%E6%B4%BB%E9%A6%86%E6%AD%A6%E4%BE%AF%E5%A4%A7%E6%82%A6%E5%9F%8E%E5%BA%97"
+      },
+      "last_modified": "2026-06-13",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "climbing panda熊猫攀岩生活馆天府大悦城店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/79c790f5-88d5-4a64-a404-93c55d634cd3-climbing-panda%E7%86%8A%E7%8C%AB%E6%94%80%E5%B2%A9%E7%94%9F%E6%B4%BB%E9%A6%86%E5%A4%A9%E5%BA%9C%E5%A4%A7%E6%82%A6%E5%9F%8E%E5%BA%97"
+      },
+      "last_modified": "2026-06-13",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "camp4岩肆",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/46111e2c-590f-49a6-b922-d11adf2294cf-camp4%E5%B2%A9%E8%82%86"
+      },
+      "last_modified": "2026-06-12",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "camp4攀岩馆新辰里酒仙桥店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/08dcb015-c01e-4fd4-b6cd-166e48c0fdbe-camp4%E6%94%80%E5%B2%A9%E9%A6%86%E6%96%B0%E8%BE%B0%E9%87%8C%E9%85%92%E4%BB%99%E6%A1%A5%E5%BA%97"
+      },
+      "last_modified": "2026-06-12",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "camp4岩肆 攀岩馆",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/51a0ee0e-80c0-4556-b986-f80cf907a221-camp4%E5%B2%A9%E8%82%86-%E6%94%80%E5%B2%A9%E9%A6%86"
+      },
+      "last_modified": "2026-06-12",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "camp4岩肆8号桥店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/5fbedc92-576b-4847-a466-065198d33847-camp4%E5%B2%A9%E8%82%868%E5%8F%B7%E6%A1%A5%E5%BA%97"
+      },
+      "last_modified": "2026-06-12",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "新途攀岩馆",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/70c684d2-f5dc-4189-86c2-419d01da38a6-%E6%96%B0%E9%80%94%E6%94%80%E5%B2%A9%E9%A6%86"
+      },
+      "last_modified": "2026-06-10",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "此山攀岩龙湖虹桥天街店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/07689870-3515-44e0-bc82-0d06c3fc8fe1-%E6%AD%A4%E5%B1%B1%E6%94%80%E5%B2%A9%E9%BE%99%E6%B9%96%E8%99%B9%E6%A1%A5%E5%A4%A9%E8%A1%97%E5%BA%97"
+      },
+      "last_modified": "2026-06-10",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "那岩0871攀岩俱乐部",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/37ef43a0-63df-496d-80f3-8674c238a921-%E9%82%A3%E5%B2%A90871%E6%94%80%E5%B2%A9%E4%BF%B1%E4%B9%90%E9%83%A8"
+      },
+      "last_modified": "2026-06-10",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "硬骨攀岩南七店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/2efa0f4d-615d-4806-bf9f-72ff3c3d12ea-%E7%A1%AC%E9%AA%A8%E6%94%80%E5%B2%A9%E5%8D%97%E4%B8%83%E5%BA%97"
+      },
+      "last_modified": "2026-06-10",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "supernatural超能攀岩",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/98341bdd-cdbc-4f0e-b679-0c2fef4b0c2f-supernatural%E8%B6%85%E8%83%BD%E6%94%80%E5%B2%A9"
+      },
+      "last_modified": "2026-06-10",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "方程式攀岩馆equation climbing",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/e9fab3ca-2b37-4ad0-af6b-c441621142f5-%E6%96%B9%E7%A8%8B%E5%BC%8F%E6%94%80%E5%B2%A9%E9%A6%86equation-climbing"
+      },
+      "last_modified": "2026-05-27",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "dome攀岩营地徐汇万科店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/f59763f9-f63a-48ce-be94-f1617d34e829-dome%E6%94%80%E5%B2%A9%E8%90%A5%E5%9C%B0%E5%BE%90%E6%B1%87%E4%B8%87%E7%A7%91%E5%BA%97"
+      },
+      "last_modified": "2026-05-24",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "向上攀岩upward climbing club三邻桥体育文化园店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/ae000a83-9f2b-4168-a5fd-c22c092f65e8-%E5%90%91%E4%B8%8A%E6%94%80%E5%B2%A9upward-climbing-club%E4%B8%89%E9%82%BB%E6%A1%A5%E4%BD%93%E8%82%B2%E6%96%87%E5%8C%96%E5%9B%AD%E5%BA%97"
+      },
+      "last_modified": "2026-05-24",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "benchmark攀岩馆 潮荟玩滨港商业中心店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/dc4bbbce-40ab-49cd-b8d7-fb763d569636-benchmark%E6%94%80%E5%B2%A9%E9%A6%86-%E6%BD%AE%E8%8D%9F%E7%8E%A9%E6%BB%A8%E6%B8%AF%E5%95%86%E4%B8%9A%E4%B8%AD%E5%BF%83%E5%BA%97"
+      },
+      "last_modified": "2026-05-24",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "香蕉攀岩768店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/c5c21de9-e2c0-4937-a337-bf3e115c6d28-%E9%A6%99%E8%95%89%E6%94%80%E5%B2%A9768%E5%BA%97"
+      },
+      "last_modified": "2026-05-24",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "香蕉攀岩环贸icd店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/af263670-4c84-4d18-9ddd-c7866c85fa30-%E9%A6%99%E8%95%89%E6%94%80%E5%B2%A9%E7%8E%AF%E8%B4%B8icd%E5%BA%97"
+      },
+      "last_modified": "2026-05-24",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "香蕉抱石banana plus 嘉乐道店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/6243036c-6ae1-4717-a8fd-8e97d823a34b-%E9%A6%99%E8%95%89%E6%8A%B1%E7%9F%B3banana-plus-%E5%98%89%E4%B9%90%E9%81%93%E5%BA%97"
+      },
+      "last_modified": "2026-05-24",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "香蕉攀岩金蝶店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/2f8153c7-80f6-4151-817e-92ebf6593eec-%E9%A6%99%E8%95%89%E6%94%80%E5%B2%A9%E9%87%91%E8%9D%B6%E5%BA%97"
+      },
+      "last_modified": "2026-05-24",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "bloc1 climbing攀岩馆",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/a9b10046-b974-49e6-aade-6c39bc36f639-bloc1-climbing%E6%94%80%E5%B2%A9%E9%A6%86"
+      },
+      "last_modified": "2026-05-24",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "奥攀攀岩鸿坤广场店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/dcf8d6d0-2201-435c-82d2-8ad76aa6b1ee-%E5%A5%A5%E6%94%80%E6%94%80%E5%B2%A9%E9%B8%BF%E5%9D%A4%E5%B9%BF%E5%9C%BA%E5%BA%97"
+      },
+      "last_modified": "2026-05-24",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "奥攀攀岩上地北体大店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/42352ef6-1a14-46fa-9201-0739baface22-%E5%A5%A5%E6%94%80%E6%94%80%E5%B2%A9%E4%B8%8A%E5%9C%B0%E5%8C%97%E4%BD%93%E5%A4%A7%E5%BA%97"
+      },
+      "last_modified": "2026-05-24",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "奥攀攀岩魔王富丰桥校区",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/97695424-2836-4f43-9584-fa8e687fc668-%E5%A5%A5%E6%94%80%E6%94%80%E5%B2%A9%E9%AD%94%E7%8E%8B%E5%AF%8C%E4%B8%B0%E6%A1%A5%E6%A0%A1%E5%8C%BA"
+      },
+      "last_modified": "2026-05-24",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "奥攀攀岩旧宫店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/f6e0ce4a-52b8-4dca-a59f-b3599c450644-%E5%A5%A5%E6%94%80%E6%94%80%E5%B2%A9%E6%97%A7%E5%AE%AB%E5%BA%97"
+      },
+      "last_modified": "2026-05-24",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "奥攀攀岩世界公园店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/39504687-17a8-43f3-9a2a-9f0c4b740504-%E5%A5%A5%E6%94%80%E6%94%80%E5%B2%A9%E4%B8%96%E7%95%8C%E5%85%AC%E5%9B%AD%E5%BA%97"
+      },
+      "last_modified": "2026-05-24",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "奥攀攀岩角门店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/596b6df9-2458-4710-931a-454f51b36cbe-%E5%A5%A5%E6%94%80%E6%94%80%E5%B2%A9%E8%A7%92%E9%97%A8%E5%BA%97"
+      },
+      "last_modified": "2026-05-24",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "奥攀攀岩五棵松校区",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/d0743892-b144-4935-9d0e-2ffacb36e231-%E5%A5%A5%E6%94%80%E6%94%80%E5%B2%A9%E4%BA%94%E6%A3%B5%E6%9D%BE%E6%A0%A1%E5%8C%BA"
+      },
+      "last_modified": "2026-05-24",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "奥攀攀岩四季青校区",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/20082044-42f7-4986-a76a-71ab03ca26f6-%E5%A5%A5%E6%94%80%E6%94%80%E5%B2%A9%E5%9B%9B%E5%AD%A3%E9%9D%92%E6%A0%A1%E5%8C%BA"
+      },
+      "last_modified": "2026-05-24",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "奥攀攀岩玉泉营店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/62f1483e-3145-42bc-b8cb-1bab6a58b481-%E5%A5%A5%E6%94%80%E6%94%80%E5%B2%A9%E7%8E%89%E6%B3%89%E8%90%A5%E5%BA%97"
+      },
+      "last_modified": "2026-05-24",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "我攀上海",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/025ba9e7-4174-4eee-ab66-aa1d2e722252-%E6%88%91%E6%94%80%E4%B8%8A%E6%B5%B7"
+      },
+      "last_modified": "2026-05-24",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "岩时攀岩印象城店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/68a1073f-cf04-4fda-9c5f-4df164bcbb20-%E5%B2%A9%E6%97%B6%E6%94%80%E5%B2%A9%E5%8D%B0%E8%B1%A1%E5%9F%8E%E5%BA%97"
+      },
+      "last_modified": "2026-05-24",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "岩时攀岩回龙观店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/d56ce48d-cab3-46b4-9f94-7b0fe327111c-%E5%B2%A9%E6%97%B6%E6%94%80%E5%B2%A9%E5%9B%9E%E9%BE%99%E8%A7%82%E5%BA%97"
+      },
+      "last_modified": "2026-05-24",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "岩时攀岩管庄店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/2b21e090-b66b-48ee-bc85-a4559b5fefb3-%E5%B2%A9%E6%97%B6%E6%94%80%E5%B2%A9%E7%AE%A1%E5%BA%84%E5%BA%97"
+      },
+      "last_modified": "2026-05-24",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "岩时攀登中心西三旗店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/76549d8f-ff6a-43ac-9279-9e88a004325d-%E5%B2%A9%E6%97%B6%E6%94%80%E7%99%BB%E4%B8%AD%E5%BF%83%E8%A5%BF%E4%B8%89%E6%97%97%E5%BA%97"
+      },
+      "last_modified": "2026-05-24",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "岩時攀岩prisma新嘉中心店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/91f7ea6b-984a-4782-b10f-fa74129df505-%E5%B2%A9%E6%99%82%E6%94%80%E5%B2%A9prisma%E6%96%B0%E5%98%89%E4%B8%AD%E5%BF%83%E5%BA%97"
+      },
+      "last_modified": "2026-05-24",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "岩时攀岩陆悦天地店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/5ba27484-dfd8-4482-9117-deae438608fd-%E5%B2%A9%E6%97%B6%E6%94%80%E5%B2%A9%E9%99%86%E6%82%A6%E5%A4%A9%E5%9C%B0%E5%BA%97"
+      },
+      "last_modified": "2026-05-24",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "岩时攀岩新天地东台里店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/48257e12-8043-4002-b1d1-4a1496ae1af8-%E5%B2%A9%E6%97%B6%E6%94%80%E5%B2%A9%E6%96%B0%E5%A4%A9%E5%9C%B0%E4%B8%9C%E5%8F%B0%E9%87%8C%E5%BA%97"
+      },
+      "last_modified": "2026-05-24",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "岩时攀岩西岸梦中心店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/a44713e4-1815-42a3-966e-d623c284131e-%E5%B2%A9%E6%97%B6%E6%94%80%E5%B2%A9%E8%A5%BF%E5%B2%B8%E6%A2%A6%E4%B8%AD%E5%BF%83%E5%BA%97"
+      },
+      "last_modified": "2026-05-24",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "考拉攀岩",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/9db915ca-e80e-47f6-81f5-6f47e56a0c6c-%E8%80%83%E6%8B%89%E6%94%80%E5%B2%A9"
+      },
+      "last_modified": "2026-05-22",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "mojo climbing攀岩馆",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/c1d12c8b-a425-494a-9181-888f6d3219dc-mojo-climbing%E6%94%80%E5%B2%A9%E9%A6%86"
+      },
+      "last_modified": "2026-05-22",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "蓝鲸攀岩舜禹大厦店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/3aa2e062-7238-4403-a292-93d379f14338-%E8%93%9D%E9%B2%B8%E6%94%80%E5%B2%A9%E8%88%9C%E7%A6%B9%E5%A4%A7%E5%8E%A6%E5%BA%97"
+      },
+      "last_modified": "2026-05-22",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "蓝鲸攀岩集庆门店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/2f20a447-bb43-4541-b5e2-fa99c7e6bc8a-%E8%93%9D%E9%B2%B8%E6%94%80%E5%B2%A9%E9%9B%86%E5%BA%86%E9%97%A8%E5%BA%97"
+      },
+      "last_modified": "2026-05-22",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "大石头boulder攀岩馆",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/8704b5d2-59f4-4e4d-a22e-bdcf96eae27a-%E5%A4%A7%E7%9F%B3%E5%A4%B4boulder%E6%94%80%E5%B2%A9%E9%A6%86"
+      },
+      "last_modified": "2026-05-22",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "山石 综合攀岩运动馆",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/9eb3dea7-1351-43d7-b53e-353a053da844-%E5%B1%B1%E7%9F%B3-%E7%BB%BC%E5%90%88%E6%94%80%E5%B2%A9%E8%BF%90%E5%8A%A8%E9%A6%86"
+      },
+      "last_modified": "2026-05-22",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "unfollow攀岩馆海珠石溪店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/445f05c1-a860-44b6-ac12-af336e3e99a7-unfollow%E6%94%80%E5%B2%A9%E9%A6%86%E6%B5%B7%E7%8F%A0%E7%9F%B3%E6%BA%AA%E5%BA%97"
+      },
+      "last_modified": "2026-05-22",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "香蕉攀岩乐士店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/546b94a9-7ff2-4504-aba2-7c014a599020-%E9%A6%99%E8%95%89%E6%94%80%E5%B2%A9%E4%B9%90%E5%A3%AB%E5%BA%97"
+      },
+      "last_modified": "2026-05-22",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "香蕉攀岩凯德壹中心店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/d4e619d4-b452-4470-8bd4-8beda103fc65-%E9%A6%99%E8%95%89%E6%94%80%E5%B2%A9%E5%87%AF%E5%BE%B7%E5%A3%B9%E4%B8%AD%E5%BF%83%E5%BA%97"
+      },
+      "last_modified": "2026-05-22",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "香蕉攀岩悦方idmall店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/4fd96895-42c0-4f0f-a6c1-b608eec06530-%E9%A6%99%E8%95%89%E6%94%80%E5%B2%A9%E6%82%A6%E6%96%B9idmall%E5%BA%97"
+      },
+      "last_modified": "2026-05-22",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "香蕉攀岩珠江星环店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/98ebdbed-f9d9-43ff-ba49-8c04bbaf1b1c-%E9%A6%99%E8%95%89%E6%94%80%E5%B2%A9%E7%8F%A0%E6%B1%9F%E6%98%9F%E7%8E%AF%E5%BA%97"
+      },
+      "last_modified": "2026-05-22",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "香蕉攀岩恒隆广场店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/c0a3d612-3f0b-46b7-ad70-7f4dbd888d5f-%E9%A6%99%E8%95%89%E6%94%80%E5%B2%A9%E6%81%92%E9%9A%86%E5%B9%BF%E5%9C%BA%E5%BA%97"
+      },
+      "last_modified": "2026-05-22",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "香蕉攀岩亲橙万象汇店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/2022c37f-22cb-4606-8631-e3850a787365-%E9%A6%99%E8%95%89%E6%94%80%E5%B2%A9%E4%BA%B2%E6%A9%99%E4%B8%87%E8%B1%A1%E6%B1%87%E5%BA%97"
+      },
+      "last_modified": "2026-05-22",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "香蕉攀岩光谷k11店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/fd9fcfe2-84e2-4b7d-91ea-92327dbed09b-%E9%A6%99%E8%95%89%E6%94%80%E5%B2%A9%E5%85%89%E8%B0%B7k11%E5%BA%97"
+      },
+      "last_modified": "2026-05-22",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "banana plus 香蕉攀岩华发中城店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/d17db0a4-b21e-46ba-8a4a-f23e6f426062-banana-plus-%E9%A6%99%E8%95%89%E6%94%80%E5%B2%A9%E5%8D%8E%E5%8F%91%E4%B8%AD%E5%9F%8E%E5%BA%97"
+      },
+      "last_modified": "2026-05-22",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "banana plus 香蕉攀岩cosmo店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/903919ec-02d2-46b8-93a1-da0734f1ee73-banana-plus-%E9%A6%99%E8%95%89%E6%94%80%E5%B2%A9cosmo%E5%BA%97"
+      },
+      "last_modified": "2026-05-22",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "香蕉攀岩凯德天府店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/70331606-94b6-42b6-ab76-59e8048f13fa-%E9%A6%99%E8%95%89%E6%94%80%E5%B2%A9%E5%87%AF%E5%BE%B7%E5%A4%A9%E5%BA%9C%E5%BA%97"
+      },
+      "last_modified": "2026-05-22",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "岩时攀岩大望路店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/32fb69ad-c0af-45c0-bf69-0832332b6802-%E5%B2%A9%E6%97%B6%E6%94%80%E5%B2%A9%E5%A4%A7%E6%9C%9B%E8%B7%AF%E5%BA%97"
+      },
+      "last_modified": "2026-05-22",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "香蕉攀岩上地店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/1792fd4e-2f82-4aaf-bd9e-f451d8fa74ac-%E9%A6%99%E8%95%89%E6%94%80%E5%B2%A9%E4%B8%8A%E5%9C%B0%E5%BA%97"
+      },
+      "last_modified": "2026-05-22",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "香蕉攀岩卓悦汇购物中心店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/16408d05-8d83-458b-80d7-5afb63d0639a-%E9%A6%99%E8%95%89%E6%94%80%E5%B2%A9%E5%8D%93%E6%82%A6%E6%B1%87%E8%B4%AD%E7%89%A9%E4%B8%AD%E5%BF%83%E5%BA%97"
+      },
+      "last_modified": "2026-05-22",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "香蕉攀岩in城市广场店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/f0d7f1a4-250b-40ac-94ee-2abf09869071-%E9%A6%99%E8%95%89%E6%94%80%E5%B2%A9in%E5%9F%8E%E5%B8%82%E5%B9%BF%E5%9C%BA%E5%BA%97"
+      },
+      "last_modified": "2026-05-22",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "香蕉攀岩宝安中心店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/488e5e0d-8430-4e4e-8588-c3ba33f7b02b-%E9%A6%99%E8%95%89%E6%94%80%E5%B2%A9%E5%AE%9D%E5%AE%89%E4%B8%AD%E5%BF%83%E5%BA%97"
+      },
+      "last_modified": "2026-05-22",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "香蕉攀岩领展中心城店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/03d4133a-d601-4d72-8fee-3586713b4a37-%E9%A6%99%E8%95%89%E6%94%80%E5%B2%A9%E9%A2%86%E5%B1%95%E4%B8%AD%E5%BF%83%E5%9F%8E%E5%BA%97"
+      },
+      "last_modified": "2026-05-22",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "香蕉攀岩深圳湾后海汇店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/979fc7c2-29ce-4642-b01d-abe23534aea9-%E9%A6%99%E8%95%89%E6%94%80%E5%B2%A9%E6%B7%B1%E5%9C%B3%E6%B9%BE%E5%90%8E%E6%B5%B7%E6%B1%87%E5%BA%97"
+      },
+      "last_modified": "2026-05-22",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "香蕉攀岩西溪天街店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/a60d01cd-11e2-48d0-b7f4-01fb0ac4020b-%E9%A6%99%E8%95%89%E6%94%80%E5%B2%A9%E8%A5%BF%E6%BA%AA%E5%A4%A9%E8%A1%97%E5%BA%97"
+      },
+      "last_modified": "2026-05-22",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "bloc攀岩",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/f2b6173e-0ff6-433d-b25f-e80fc39f9f27-bloc%E6%94%80%E5%B2%A9"
+      },
+      "last_modified": "2026-05-21",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "星空攀岩张家港金茂览秀城店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/e7c5d520-bca3-4f69-b310-450f93f2c483-%E6%98%9F%E7%A9%BA%E6%94%80%E5%B2%A9%E5%BC%A0%E5%AE%B6%E6%B8%AF%E9%87%91%E8%8C%82%E8%A7%88%E7%A7%80%E5%9F%8E%E5%BA%97"
+      },
+      "last_modified": "2026-05-18",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "goat攀岩俱乐部徐家汇tpy中心店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/c53e8228-3e74-475c-a7a4-f41b5790f89c-goat%E6%94%80%E5%B2%A9%E4%BF%B1%E4%B9%90%E9%83%A8%E5%BE%90%E5%AE%B6%E6%B1%87tpy%E4%B8%AD%E5%BF%83%E5%BA%97"
+      },
+      "last_modified": "2026-05-17",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "goat攀岩俱乐部普陀桃浦湾店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/09436a30-ed00-4078-b0ed-68f7a78c2eb2-goat%E6%94%80%E5%B2%A9%E4%BF%B1%E4%B9%90%E9%83%A8%E6%99%AE%E9%99%80%E6%A1%83%E6%B5%A6%E6%B9%BE%E5%BA%97"
+      },
+      "last_modified": "2026-05-17",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "香蕉攀岩金虹桥店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/20dc03b8-c952-4062-b81d-b415904a8c48-%E9%A6%99%E8%95%89%E6%94%80%E5%B2%A9%E9%87%91%E8%99%B9%E6%A1%A5%E5%BA%97"
+      },
+      "last_modified": "2026-05-17",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "香蕉攀岩延安西路店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/f47def4a-1ff2-4d0a-9695-05a93ae9ec22-%E9%A6%99%E8%95%89%E6%94%80%E5%B2%A9%E5%BB%B6%E5%AE%89%E8%A5%BF%E8%B7%AF%E5%BA%97"
+      },
+      "last_modified": "2026-05-17",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "引力攀岩",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/8bfc90fe-ee5b-458d-9744-1f00164a81ed-%E5%BC%95%E5%8A%9B%E6%94%80%E5%B2%A9"
+      },
+      "last_modified": "2026-05-17",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "刘常忠攀岩馆独墅湖店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/bd9f8613-8e04-403f-8457-64a36c24d02f-%E5%88%98%E5%B8%B8%E5%BF%A0%E6%94%80%E5%B2%A9%E9%A6%86%E7%8B%AC%E5%A2%85%E6%B9%96%E5%BA%97"
+      },
+      "last_modified": "2026-05-17",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "刘常忠攀岩馆奥体中心店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/b7b61e4d-5518-4551-a619-75eab677835c-%E5%88%98%E5%B8%B8%E5%BF%A0%E6%94%80%E5%B2%A9%E9%A6%86%E5%A5%A5%E4%BD%93%E4%B8%AD%E5%BF%83%E5%BA%97"
+      },
+      "last_modified": "2026-05-17",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "攀月攀岩园区星湖店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/365647a1-13e4-499b-9a63-369e658dbfaf-%E6%94%80%E6%9C%88%E6%94%80%E5%B2%A9%E5%9B%AD%E5%8C%BA%E6%98%9F%E6%B9%96%E5%BA%97"
+      },
+      "last_modified": "2026-05-17",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "攀月攀岩绿宝广场店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/744968d1-21e5-4269-bd68-24712bcb18ea-%E6%94%80%E6%9C%88%E6%94%80%E5%B2%A9%E7%BB%BF%E5%AE%9D%E5%B9%BF%E5%9C%BA%E5%BA%97"
+      },
+      "last_modified": "2026-05-17",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "九星龙国际攀岩乐动力苏州湾体育中心店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/6fa3741d-e24c-4def-9416-d0a5bb99fa8a-%E4%B9%9D%E6%98%9F%E9%BE%99%E5%9B%BD%E9%99%85%E6%94%80%E5%B2%A9%E4%B9%90%E5%8A%A8%E5%8A%9B%E8%8B%8F%E5%B7%9E%E6%B9%BE%E4%BD%93%E8%82%B2%E4%B8%AD%E5%BF%83%E5%BA%97"
+      },
+      "last_modified": "2026-05-17",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "九星龙国际攀岩loong climbing久光店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/416d6127-9375-4885-a116-797658684304-%E4%B9%9D%E6%98%9F%E9%BE%99%E5%9B%BD%E9%99%85%E6%94%80%E5%B2%A9loong-climbing%E4%B9%85%E5%85%89%E5%BA%97"
+      },
+      "last_modified": "2026-05-17",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "考拉攀岩狮山",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/cbb1af4a-750c-4209-9c35-7eecd0a75cbe-%E8%80%83%E6%8B%89%E6%94%80%E5%B2%A9%E7%8B%AE%E5%B1%B1"
+      },
+      "last_modified": "2026-05-17",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "香蕉攀岩嘉里合集店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/1af1a3c0-66f7-485e-bd92-7fa292a4432c-%E9%A6%99%E8%95%89%E6%94%80%E5%B2%A9%E5%98%89%E9%87%8C%E5%90%88%E9%9B%86%E5%BA%97"
+      },
+      "last_modified": "2026-05-11",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "攀月攀岩相城天街店",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/d8df83f9-ad14-4207-afbd-4c19af8b9348-%E6%94%80%E6%9C%88%E6%94%80%E5%B2%A9%E7%9B%B8%E5%9F%8E%E5%A4%A9%E8%A1%97%E5%BA%97"
+      },
+      "last_modified": "2026-05-11",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    },
+    {
+      "name": "aob攀岩馆",
+      "source": {
+        "name": "攀岩么公开 sitemap",
+        "url": "https://climbing.dusts.me/gyms/b16d9724-7934-43b2-905c-8373ff486da8-aob%E6%94%80%E5%B2%A9%E9%A6%86"
+      },
+      "last_modified": "2026-05-11",
+      "status": "needs_address_review",
+      "note": "公开 sitemap 发现；需补充城市和详细地址后才可导入数据库。"
+    }
+  ]
+}

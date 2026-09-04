@@ -14,6 +14,7 @@ import '../../../shared/widgets/wanpan_pressable.dart';
 import '../application/session_controller.dart';
 import '../data/auth_repository.dart';
 import '../data/native_auth_service.dart';
+import '../domain/auth_return_path.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({
@@ -40,6 +41,7 @@ class _LoginScreenState extends State<LoginScreen> {
   DateTime? _resendAvailableAt;
   String? _busyProvider;
   String? _inlineMessage;
+  String? _retryProvider;
   var _inlineIsError = true;
   var _secondsUntilResend = 0;
   var _agreedToTerms = false;
@@ -63,6 +65,7 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() {
       _busyProvider = provider;
       _inlineMessage = null;
+      _retryProvider = null;
       _inlineIsError = true;
     });
     try {
@@ -70,7 +73,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
       HapticFeedback.mediumImpact();
       if (!navigateAfterSuccess) return;
-      final destination = _safeReturnTo(widget.returnTo);
+      final destination = safeAuthReturnTo(widget.returnTo);
       if (widget.session.profileNeedsCompletion) {
         context.go(
           Uri(
@@ -85,17 +88,16 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted || error.canceled) return;
       setState(() {
         _inlineMessage = error.message;
+        _retryProvider = provider;
         _inlineIsError = true;
       });
       HapticFeedback.heavyImpact();
     } on ApiException catch (error) {
+      if (error.isUnauthorized) await widget.session.handleUnauthorized();
       if (!mounted) return;
       setState(() {
-        _inlineMessage = switch (error.statusCode) {
-          404 => '登录服务暂未就绪，请稍后重试。',
-          429 => '请求太频繁，请稍后再试。',
-          _ => error.message,
-        };
+        _inlineMessage = _friendlyApiMessage(provider, error);
+        _retryProvider = provider;
         _inlineIsError = true;
       });
       HapticFeedback.heavyImpact();
@@ -103,6 +105,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
       setState(() {
         _inlineMessage = '登录没有完成，请稍后重试。';
+        _retryProvider = provider;
         _inlineIsError = true;
       });
       HapticFeedback.heavyImpact();
@@ -111,14 +114,58 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  String _safeReturnTo(String value) =>
-      value.startsWith('/') && !value.startsWith('/login') ? value : '/gyms';
+  String _friendlyApiMessage(String provider, ApiException error) {
+    final normalizedCode = error.code.toUpperCase();
+    final normalizedMessage = error.message.toLowerCase();
+    final isValidationFailure =
+        normalizedCode.contains('VALIDATION') ||
+        error.issues.isNotEmpty ||
+        normalizedMessage.contains('zod') ||
+        normalizedMessage.contains('invalid input');
+    if (isValidationFailure && provider.startsWith('sms-')) {
+      return '手机号或验证码格式不正确，请检查后重试。';
+    }
+    if (isValidationFailure) return '登录信息格式不正确，请重试。';
+
+    return switch (error.statusCode) {
+      400 || 422 => '提交的登录信息不正确，请检查后重试。',
+      401 when provider == 'sms-login' => '验证码错误或已失效，请重新获取。',
+      401 => '登录状态已失效，请重新登录。',
+      403 => '当前登录方式暂不可用，请稍后重试。',
+      404 when provider.startsWith('sms-') => '当前服务器版本暂不支持手机号登录，请稍后重试。',
+      404 => '当前服务器版本暂不支持此登录方式，请稍后重试。',
+      429 => '请求太频繁，请稍后再试。',
+      500 => '登录服务处理失败，请稍后重试。',
+      502 || 503 || 504 when provider == 'sms-send' => '短信服务暂时不可用，请稍后重试。',
+      502 || 503 || 504 => '登录服务暂时不可用，请稍后重试。',
+      null when normalizedMessage.contains('超时') => '连接登录服务超时，请检查网络后重试。',
+      null => '网络连接失败，请检查网络后重试。',
+      _ => '登录没有完成，请稍后重试。',
+    };
+  }
+
+  Future<void> _retryLastFailure() async {
+    final provider = _retryProvider;
+    switch (provider) {
+      case 'sms-send':
+        return _sendSmsCode();
+      case 'sms-login':
+        return _smsLogin();
+      case 'apple':
+        return _appleLogin();
+      case 'development':
+        return _developmentLogin();
+      default:
+        return;
+    }
+  }
 
   String? _validatedPhone() {
     final phone = _phoneController.text.replaceAll(RegExp(r'\s+'), '');
     if (!RegExp(r'^1\d{10}$').hasMatch(phone)) {
       setState(() {
         _inlineMessage = '请输入正确的 11 位中国大陆手机号。';
+        _retryProvider = null;
         _inlineIsError = true;
       });
       return null;
@@ -130,6 +177,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (_agreedToTerms) return true;
     setState(() {
       _inlineMessage = '请先阅读并同意用户协议与隐私政策。';
+      _retryProvider = null;
       _inlineIsError = true;
     });
     return false;
@@ -146,6 +194,7 @@ class _LoginScreenState extends State<LoginScreen> {
         _secondsUntilResend = 60;
         _resendAvailableAt = DateTime.now().add(const Duration(seconds: 60));
         _inlineMessage = '验证码已发送，请注意查收。';
+        _retryProvider = null;
         _inlineIsError = false;
       });
       _countdownTimer?.cancel();
@@ -176,6 +225,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!RegExp(r'^\d{6}$').hasMatch(code)) {
       setState(() {
         _inlineMessage = '请输入 6 位验证码。';
+        _retryProvider = null;
         _inlineIsError = true;
       });
       return;
@@ -209,6 +259,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!opened && mounted) {
       setState(() {
         _inlineMessage = '暂时无法打开网页，请稍后再试。';
+        _retryProvider = null;
         _inlineIsError = true;
       });
     }
@@ -262,16 +313,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 24),
                     Text(
-                      '登录后，每一次上墙都有记录',
+                      '每一次上墙都有记录',
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.headlineMedium
                           ?.copyWith(fontSize: 26, letterSpacing: -.6),
-                    ),
-                    const SizedBox(height: 9),
-                    Text(
-                      '使用手机号验证码登录。打卡、发布动态、投稿线路和添加岩友时才需要登录，岩馆仍可以直接浏览。',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodyMedium,
                     ),
                     const SizedBox(height: 24),
                     SizedBox(
@@ -503,15 +548,41 @@ class _LoginScreenState extends State<LoginScreen> {
                                   WanpanRadii.small,
                                 ),
                               ),
-                              child: Text(
-                                _inlineMessage!,
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: _inlineIsError
-                                      ? WanpanColors.danger
-                                      : const Color(0xFF2E7D4F),
-                                  fontWeight: FontWeight.w700,
-                                ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      _inlineMessage!,
+                                      textAlign: _retryProvider == null
+                                          ? TextAlign.center
+                                          : TextAlign.start,
+                                      style: TextStyle(
+                                        color: _inlineIsError
+                                            ? WanpanColors.danger
+                                            : const Color(0xFF2E7D4F),
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                  if (_inlineIsError &&
+                                      _retryProvider != null) ...[
+                                    const SizedBox(width: 8),
+                                    TextButton(
+                                      key: const Key('login-retry'),
+                                      onPressed: _busy
+                                          ? null
+                                          : _retryLastFailure,
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: WanpanColors.coral,
+                                        minimumSize: const Size(48, 44),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                        ),
+                                      ),
+                                      child: const Text('重试'),
+                                    ),
+                                  ],
+                                ],
                               ),
                             ),
                     ),

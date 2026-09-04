@@ -9,7 +9,9 @@ import '../json/json_helpers.dart';
 import 'api_exception.dart';
 
 typedef AccessTokenProvider = FutureOr<String?> Function();
-typedef UnauthorizedHandler = FutureOr<void> Function();
+typedef UnauthorizedHandler = FutureOr<void> Function(
+  String rejectedAccessToken,
+);
 
 class ApiClient {
   ApiClient({
@@ -42,8 +44,13 @@ class ApiClient {
         onError: (error, handler) {
           if (error.response?.statusCode == 401 &&
               _isFirstPartyRequest(error.requestOptions.uri)) {
+            final rejectedAccessToken = _bearerToken(
+              error.requestOptions.headers['Authorization'],
+            );
             final callback = onUnauthorized;
-            if (callback != null) unawaited(Future<void>.sync(callback));
+            if (callback != null && rejectedAccessToken != null) {
+              unawaited(Future<void>.sync(() => callback(rejectedAccessToken)));
+            }
           }
           handler.next(error);
         },
@@ -156,6 +163,14 @@ class ApiClient {
   bool _isFirstPartyRequest(Uri uri) {
     final base = Uri.parse(_dio.options.baseUrl);
     return uri.host == base.host && uri.port == base.port;
+  }
+
+  String? _bearerToken(Object? authorization) {
+    if (authorization is! String) return null;
+    const prefix = 'Bearer ';
+    if (!authorization.startsWith(prefix)) return null;
+    final token = authorization.substring(prefix.length).trim();
+    return token.isEmpty ? null : token;
   }
 
   ApiException _toApiException(DioException error) {

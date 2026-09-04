@@ -12,30 +12,51 @@ import '../../shared/widgets/wanpan_skeleton.dart';
 import '../../shared/widgets/wanpan_states.dart';
 
 class BrandScreen extends StatefulWidget {
-  const BrandScreen({required this.api, required this.brandId, super.key});
+  const BrandScreen({
+    required this.api,
+    required this.brandId,
+    this.city,
+    super.key,
+    this.gymRepository,
+  });
 
   final ApiClient api;
   final String brandId;
+  final String? city;
+  final GymRepository? gymRepository;
 
   @override
   State<BrandScreen> createState() => _BrandScreenState();
 }
 
 class _BrandScreenState extends State<BrandScreen> {
-  late final GymRepository _repository = GymRepository(widget.api);
+  late final GymRepository _repository;
   GymBrandDetail? _detail;
   Object? _error;
 
   @override
   void initState() {
     super.initState();
+    _repository = widget.gymRepository ?? GymRepository(widget.api);
     _load();
+  }
+
+  @override
+  void didUpdateWidget(covariant BrandScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.brandId != widget.brandId || oldWidget.city != widget.city) {
+      _detail = null;
+      _load();
+    }
   }
 
   Future<void> _load() async {
     setState(() => _error = null);
     try {
-      final detail = await _repository.getBrandStores(widget.brandId);
+      final detail = await _repository.getBrandStores(
+        widget.brandId,
+        city: widget.city,
+      );
       if (mounted) setState(() => _detail = detail);
     } catch (error) {
       if (mounted) setState(() => _error = error);
@@ -62,6 +83,8 @@ class _BrandScreenState extends State<BrandScreen> {
         description: '岩馆入驻后会显示在这里。',
       );
     }
+    final storesByCity = detail.storesByCity;
+    final showCitySections = widget.city == null;
     return RefreshIndicator(
       onRefresh: _load,
       color: WanpanColors.coral,
@@ -75,59 +98,77 @@ class _BrandScreenState extends State<BrandScreen> {
             child: _BrandSummary(detail: detail),
           ),
           const SizedBox(height: 24),
-          Text('选择门店', style: Theme.of(context).textTheme.titleLarge),
+          Text(
+            widget.city == null ? '选择城市与门店' : '选择门店',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
           const SizedBox(height: 12),
-          ...detail.stores.map(
-            (gym) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: WanpanCard(
-                semanticLabel: '打开${gym.name}',
-                onTap: () => context.push('/gyms/${gym.id}'),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: WanpanColors.goldSoft,
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                      child: const Icon(
-                        Icons.location_on_rounded,
-                        color: WanpanColors.gold,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            gym.name,
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '${gym.district ?? gym.city} · ${gym.routeCount} 条线路',
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Icon(
-                      Icons.chevron_right_rounded,
-                      color: WanpanColors.muted,
-                    ),
-                  ],
+          for (final cityGroup in storesByCity.entries) ...[
+            if (showCitySections)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(2, 6, 2, 10),
+                child: Text(
+                  '${cityGroup.key} · ${cityGroup.value.length} 家',
+                  style: Theme.of(context).textTheme.titleMedium
+                      ?.copyWith(color: WanpanColors.muted),
                 ),
               ),
-            ),
-          ),
+            for (final gym in cityGroup.value)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _StoreCard(gym: gym),
+              ),
+          ],
         ],
       ),
     );
   }
+}
+
+class _StoreCard extends StatelessWidget {
+  const _StoreCard({required this.gym});
+
+  final Gym gym;
+
+  @override
+  Widget build(BuildContext context) => WanpanCard(
+    semanticLabel: '打开${gym.name}',
+    onTap: () => context.push('/gyms/${gym.id}'),
+    child: Row(
+      children: [
+        Container(
+          width: 48,
+          height: 48,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: WanpanColors.goldSoft,
+            borderRadius: BorderRadius.circular(15),
+          ),
+          child: const Icon(
+            Icons.location_on_rounded,
+            color: WanpanColors.gold,
+          ),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(gym.name, style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 4),
+              Text(
+                '${gym.locationLabel} · ${gym.routeCount} 条线路',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ],
+          ),
+        ),
+        const Icon(Icons.chevron_right_rounded, color: WanpanColors.muted),
+      ],
+    ),
+  );
 }
 
 class _BrandSummary extends StatelessWidget {

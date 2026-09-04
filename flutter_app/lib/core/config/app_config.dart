@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
+
 enum AppEnvironment { development, production }
 
 class AppConfig {
@@ -29,28 +31,54 @@ class AppConfig {
       'ENABLE_APPLE_LOGIN',
       defaultValue: false,
     );
-    // A build without dart-defines is a real App build (including an Xcode
-    // Run/Archive), so it must never silently point at localhost. Local API
-    // development remains opt-in with APP_ENV=development.
-    final environment = environmentValue.toLowerCase() == 'development'
+    return resolveForBuild(
+      isReleaseMode: kReleaseMode,
+      isAndroid: Platform.isAndroid,
+      appEnvironment: environmentValue,
+      apiBaseUrl: overrideUrl,
+      productionApiBaseUrl: productionApiBaseUrl,
+      enableDevelopmentLogin: developmentLogin,
+      enableAppleLogin: appleLogin,
+    );
+  }
+
+  /// Pure build-configuration resolver used by [fromEnvironment] and tests.
+  ///
+  /// Release builds always resolve to production, only accept the dedicated
+  /// production URL, and never expose development login. This prevents stale
+  /// Xcode/Gradle dart-defines from leaking local development settings into an
+  /// archived app.
+  static AppConfig resolveForBuild({
+    required bool isReleaseMode,
+    required bool isAndroid,
+    required String appEnvironment,
+    required String apiBaseUrl,
+    required String productionApiBaseUrl,
+    required bool enableDevelopmentLogin,
+    bool enableAppleLogin = false,
+  }) {
+    final requestedDevelopment =
+        appEnvironment.trim().toLowerCase() == 'development';
+    final environment = !isReleaseMode && requestedDevelopment
         ? AppEnvironment.development
         : AppEnvironment.production;
-    final platformLocalUrl = Platform.isAndroid
-        ? 'http://10.0.2.2:3000/api'
-        : 'http://127.0.0.1:3000/api';
+
+    final resolvedUrl = environment == AppEnvironment.production
+        ? _validatedProductionUrl(productionApiBaseUrl)
+        : _normalizeBaseUrl(
+            apiBaseUrl.trim().isNotEmpty
+                ? apiBaseUrl
+                : isAndroid
+                ? 'http://10.0.2.2:3000/api'
+                : 'http://127.0.0.1:3000/api',
+          );
 
     return AppConfig(
       environment: environment,
-      apiBaseUrl: _normalizeBaseUrl(
-        overrideUrl.isNotEmpty
-            ? overrideUrl
-            : environment == AppEnvironment.production
-            ? productionApiBaseUrl
-            : platformLocalUrl,
-      ),
+      apiBaseUrl: resolvedUrl,
       enableDevelopmentLogin:
-          environment == AppEnvironment.development && developmentLogin,
-      enableAppleLogin: appleLogin,
+          environment == AppEnvironment.development && enableDevelopmentLogin,
+      enableAppleLogin: enableAppleLogin,
     );
   }
 
@@ -66,5 +94,25 @@ class AppConfig {
     return trimmed.endsWith('/')
         ? trimmed.substring(0, trimmed.length - 1)
         : trimmed;
+  }
+
+  static String _validatedProductionUrl(String value) {
+    final normalized = _normalizeBaseUrl(value);
+    final uri = Uri.tryParse(normalized);
+    final host = uri?.host.toLowerCase() ?? '';
+    const forbiddenHosts = {'localhost', '127.0.0.1', '10.0.2.2', '::1'};
+
+    if (uri == null ||
+        uri.scheme.toLowerCase() != 'https' ||
+        host.isEmpty ||
+        forbiddenHosts.contains(host) ||
+        host.endsWith('.localhost')) {
+      throw ArgumentError.value(
+        value,
+        'productionApiBaseUrl',
+        'Production API URL must use HTTPS and must not target a local host.',
+      );
+    }
+    return normalized;
   }
 }

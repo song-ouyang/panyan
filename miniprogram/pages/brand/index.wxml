@@ -35,23 +35,27 @@
         <view class="subtitle">选择门店后查看本轮线路</view>
       </view>
     </view>
-    <view class="section-title">全部门店 · {{stores.length}}</view>
-    <view
-      class="store card pressable"
-      wx:for="{{stores}}"
-      wx:key="id"
-      data-id="{{item.id}}"
-      bindtap="open"
-      role="button"
-      aria-label="查看{{item.name}}"
-    >
-      <view>
-        <view class="store-name">{{item.name}}</view>
-        <view class="muted">{{item.district}} · {{item.address}}</view>
-        <view class="stats">{{item.route_count}}条线路</view>
+    <view class="section-title">{{showCityGroups ? '按城市选择门店' : '全部门店'}} · {{stores.length}}</view>
+    <block wx:for="{{storeGroups}}" wx:key="city" wx:for-item="group">
+      <view wx:if="{{showCityGroups}}" class="city-section">{{group.city}} · {{group.stores.length}} 家</view>
+      <view
+        class="store card pressable"
+        wx:for="{{group.stores}}"
+        wx:key="id"
+        wx:for-item="store"
+        data-id="{{store.id}}"
+        bindtap="open"
+        role="button"
+        aria-label="查看{{store.name}}"
+      >
+        <view>
+          <view class="store-name">{{store.name}}</view>
+          <view class="muted">{{store.district || store.city}} · {{store.address}}</view>
+          <view class="stats">{{store.route_count}}条线路</view>
+        </view>
+        <text class="arrow">›</text>
       </view>
-      <text class="arrow">›</text>
-    </view>
+    </block>
     <view class="empty" wx:if="{{!stores.length}}">这个品牌暂时还没有可查看的门店</view>
   </view>
 </view>

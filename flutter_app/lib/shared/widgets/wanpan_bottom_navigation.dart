@@ -76,10 +76,7 @@ class _WanpanBottomTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final duration = WanpanMotion.duration(
-      context,
-      selected ? WanpanMotion.enter : WanpanMotion.exit,
-    );
+    final duration = WanpanMotion.duration(context, WanpanMotion.selection);
     return Semantics(
       container: true,
       button: true,
@@ -88,7 +85,8 @@ class _WanpanBottomTab extends StatelessWidget {
       child: ExcludeSemantics(
         child: WanpanPressable(
           onTap: onTap,
-          pressedScale: .94,
+          pressedScale: .965,
+          pressedOffset: 1,
           borderRadius: BorderRadius.circular(WanpanRadii.large),
           child: TweenAnimationBuilder<double>(
             tween: Tween(end: selected ? 1 : 0),
@@ -115,12 +113,15 @@ class _WanpanBottomTab extends StatelessWidget {
                             painter: _SelectionPatchPainter(selection),
                           ),
                         ),
-                        Transform.scale(
-                          scale: 1 + selection * .045,
-                          child: WanpanTabIcon(
-                            kind: kind,
-                            color: foreground,
-                            selection: selection,
+                        Transform.translate(
+                          offset: Offset(0, -2 * selection),
+                          child: Transform.scale(
+                            scale: 1 + selection * .06,
+                            child: WanpanTabIcon(
+                              kind: kind,
+                              color: foreground,
+                              selection: selection,
+                            ),
                           ),
                         ),
                       ],

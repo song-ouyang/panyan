@@ -3,32 +3,54 @@ import 'feed_models.dart';
 
 class GymDirectoryItem {
   const GymDirectoryItem({
-    required this.city,
     required this.brandId,
     required this.brandName,
     required this.storeCount,
     required this.routeCount,
     required this.verified,
+    this.city,
+    this.cities = const [],
     this.logoUrl,
   });
 
-  factory GymDirectoryItem.fromJson(JsonMap json) => GymDirectoryItem(
-    city: jsonString(json['city'], field: 'city'),
-    brandId: jsonString(json['brand_id'], field: 'brand_id'),
-    brandName: jsonString(json['brand_name'], field: 'brand_name'),
-    logoUrl: jsonNullableString(json['logo_url']),
-    storeCount: jsonInt(json['store_count']),
-    routeCount: jsonInt(json['route_count']),
-    verified: jsonBool(json['verified']),
-  );
+  factory GymDirectoryItem.fromJson(JsonMap json) {
+    final city = jsonNullableString(json['city']);
+    final parsedCities = jsonStringList(json['cities']);
+    return GymDirectoryItem(
+      city: city,
+      cities: parsedCities.isEmpty && city != null ? [city] : parsedCities,
+      brandId: jsonString(json['brand_id'], field: 'brand_id'),
+      brandName: jsonString(json['brand_name'], field: 'brand_name'),
+      logoUrl: jsonNullableString(json['logo_url']),
+      storeCount: jsonInt(json['store_count']),
+      routeCount: jsonInt(json['route_count']),
+      verified: jsonBool(json['verified']),
+    );
+  }
 
-  final String city;
+  final String? city;
+  final List<String> cities;
   final String brandId;
   final String brandName;
   final String? logoUrl;
   final int storeCount;
   final int routeCount;
   final bool verified;
+
+  List<String> get availableCities => cities.isNotEmpty
+      ? cities
+      : city == null
+      ? const []
+      : [city!];
+
+  bool hasCity(String value) => availableCities.contains(value);
+
+  String get areaLabel {
+    if (city != null) return city!;
+    if (availableCities.length == 1) return availableCities.single;
+    if (availableCities.isNotEmpty) return '${availableCities.length} 个城市';
+    return '全国';
+  }
 }
 
 class Gym {
@@ -41,6 +63,7 @@ class Gym {
     required this.verified,
     this.district,
     this.brandId,
+    this.brandName,
     this.latitude,
     this.longitude,
     this.coverUrl,
@@ -55,6 +78,7 @@ class Gym {
     province: jsonNullableString(json['province']) ?? '',
     district: jsonNullableString(json['district']),
     brandId: jsonNullableString(json['brand_id']),
+    brandName: jsonNullableString(json['brand_name']),
     address: jsonString(json['address'], field: 'address'),
     latitude: jsonNullableDouble(json['latitude']),
     longitude: jsonNullableDouble(json['longitude']),
@@ -70,6 +94,7 @@ class Gym {
   final String province;
   final String? district;
   final String? brandId;
+  final String? brandName;
   final String address;
   final double? latitude;
   final double? longitude;
@@ -77,6 +102,20 @@ class Gym {
   final String? description;
   final bool verified;
   final int routeCount;
+
+  /// Directory imports use this value as a workflow placeholder, not a real
+  /// district. Keep the source data intact while hiding it from customer UI.
+  String? get displayDistrict {
+    final value = district?.trim();
+    if (value == null || value.isEmpty || value == '待核验') return null;
+    return value;
+  }
+
+  String get locationLabel => <String>[
+    city.trim(),
+    ?displayDistrict,
+    address.trim(),
+  ].where((part) => part.isNotEmpty).join(' · ');
 }
 
 class RouteSet {
@@ -142,6 +181,19 @@ class GymBrandDetail {
   final String? logoUrl;
   final String? description;
   final List<Gym> stores;
+
+  Map<String, List<Gym>> get storesByCity {
+    final grouped = <String, List<Gym>>{};
+    for (final store in stores) {
+      grouped.putIfAbsent(store.city, () => <Gym>[]).add(store);
+    }
+    return Map<String, List<Gym>>.unmodifiable(
+      grouped.map<String, List<Gym>>(
+        (city, cityStores) =>
+            MapEntry(city, List<Gym>.unmodifiable(cityStores)),
+      ),
+    );
+  }
 }
 
 class ClimbingRoute {

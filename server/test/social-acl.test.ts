@@ -40,12 +40,16 @@ function result(rows: unknown[] = []) {
 async function createApp(
   plugin: FastifyPluginAsync,
   prefix: string,
-  role: 'user' | 'gym_admin' | 'admin' = 'user'
+  role: 'user' | 'gym_admin' | 'admin' = 'user',
+  authenticated = true
 ) {
   const app = Fastify();
   await app.register(sensible);
   app.decorate('authenticate', async (request) => {
     request.user = { sub: viewerId, role };
+  });
+  app.decorate('authenticateOptional', async (request) => {
+    if (authenticated) request.user = { sub: viewerId, role };
   });
   app.setErrorHandler((error, _request, reply) => {
     if (error instanceof ZodError) return reply.status(400).send({ code: 'VALIDATION_ERROR' });
@@ -126,7 +130,81 @@ describe('send visibility', () => {
     expect(sql).toContain("s.visibility IN ('public','friends')");
     expect(sql).toContain("f.status='accepted'");
     expect(sql).toContain("c.moderation_status='approved'");
-    expect(values).toEqual([viewerId, null, 20, 'friends']);
+    expect(values).toEqual([viewerId, null, null, 20, 'friends']);
+    await app.close();
+  });
+
+  it('lets a guest read the public square without a user identity', async () => {
+    mocks.query.mockResolvedValue(result([
+      { id: sendId, visibility: 'public', liked: false, sent_at: '2026-08-30T00:00:00.000Z' }
+    ]));
+    const app = await createApp(sendRoutes, '/api/sends', 'user', false);
+
+    const response = await app.inject({ method: 'GET', url: '/api/sends/feed?scope=square' });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().items[0]).toMatchObject({ visibility: 'public', liked: false });
+    expect(mocks.query.mock.calls[0]![1]).toEqual([null, null, null, 20, 'square']);
+    await app.close();
+  });
+
+  it('uses an opaque timestamp-and-id cursor so equal timestamps are not skipped', async () => {
+    const firstId = '00000000-0000-4000-8000-000000000010';
+    const secondId = '00000000-0000-4000-8000-000000000009';
+    const sentAt = '2026-08-30T00:00:00.000Z';
+    mocks.query
+      .mockResolvedValueOnce(result([{ id: firstId, sent_at: sentAt, visibility: 'public' }]))
+      .mockResolvedValueOnce(result([{ id: secondId, sent_at: sentAt, visibility: 'public' }]));
+    const app = await createApp(sendRoutes, '/api/sends', 'user', false);
+
+    const first = await app.inject({
+      method: 'GET',
+      url: '/api/sends/feed?scope=square&limit=1'
+    });
+    const cursor = first.json().nextCursor as string;
+    expect(cursor).toEqual(expect.any(String));
+    expect(cursor).not.toContain(sentAt);
+
+    const second = await app.inject({
+      method: 'GET',
+      url: `/api/sends/feed?scope=square&limit=1&cursor=${encodeURIComponent(cursor)}`
+    });
+
+    expect(second.statusCode).toBe(200);
+    expect(second.json().items[0].id).toBe(secondId);
+    expect(mocks.query.mock.calls[1]![1]).toEqual([
+      null,
+      sentAt,
+      firstId,
+      1,
+      'square'
+    ]);
+    const sql = mocks.query.mock.calls[1]![0] as string;
+    expect(sql).toContain('(s.sent_at,s.id)<($2::timestamptz,$3::uuid)');
+    expect(sql).toContain('WITH visible_sends AS');
+    await app.close();
+  });
+
+  it('rejects a damaged opaque feed cursor before querying the database', async () => {
+    const app = await createApp(sendRoutes, '/api/sends', 'user', false);
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/sends/feed?scope=square&cursor=not-a-valid-cursor'
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(mocks.query).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('keeps the friends feed private for a guest', async () => {
+    const app = await createApp(sendRoutes, '/api/sends', 'user', false);
+
+    const response = await app.inject({ method: 'GET', url: '/api/sends/feed?scope=friends' });
+
+    expect(response.statusCode).toBe(401);
+    expect(mocks.query).not.toHaveBeenCalled();
     await app.close();
   });
 
@@ -182,7 +260,7 @@ describe('route featured send visibility', () => {
     mocks.query
       .mockResolvedValueOnce(result([routeRow]))
       .mockResolvedValueOnce(result([featuredRow]));
-    const app = await createApp(routeRoutes, '/api/routes');
+    const app = await createApp(routeRoutes, '/api/routes', 'user', false);
 
     const response = await app.inject({ method: 'GET', url: `/api/routes/${routeId}` });
 
@@ -222,12 +300,48 @@ describe('route featured send visibility', () => {
     mocks.query
       .mockResolvedValueOnce(result([routeRow]))
       .mockResolvedValueOnce(result());
-    const app = await createApp(routeRoutes, '/api/routes');
+    const app = await createApp(routeRoutes, '/api/routes', 'user', false);
 
     const response = await app.inject({ method: 'GET', url: `/api/routes/${routeId}` });
 
     expect(response.statusCode).toBe(200);
     expect(response.json().featuredSend).toBeNull();
+    await app.close();
+  });
+
+  it('filters blocked authors from featured route videos', async () => {
+    mocks.query
+      .mockResolvedValueOnce(result([routeRow]))
+      .mockResolvedValueOnce(result());
+    const app = await createApp(routeRoutes, '/api/routes');
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/routes/${routeId}`,
+      headers: { authorization: 'Bearer test-token' }
+    });
+
+    expect(response.statusCode).toBe(200);
+    const [sql, values] = mocks.query.mock.calls[1]!;
+    expect(sql).toContain("blocked.status='blocked'");
+    expect(values).toEqual([routeId, viewerId]);
+    await app.close();
+  });
+
+  it('allows guests to browse the public route leaderboard', async () => {
+    mocks.query.mockResolvedValueOnce(result([{ id: sendId, rank: 1, liked: false }]));
+    const app = await createApp(routeRoutes, '/api/routes', 'user', false);
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/routes/${routeId}/leaderboard`
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({ completionCount: 1 });
+    const [sql, values] = mocks.query.mock.calls[0]!;
+    expect(sql).toContain("blocked.status='blocked'");
+    expect(values).toEqual([routeId, null]);
     await app.close();
   });
 });
@@ -276,14 +390,30 @@ describe('public rankings', () => {
     }
     await app.close();
   });
+
+  it('returns public ranking rows to a guest without calculating my rank', async () => {
+    mocks.query.mockResolvedValue(result([{ user_id: otherId, points: 20 }]));
+    const app = await createApp(rankingRoutes, '/api/rankings', 'user', false);
+
+    const response = await app.inject({ method: 'GET', url: '/api/rankings' });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({ myRank: null });
+    expect(mocks.query).toHaveBeenCalledTimes(1);
+    await app.close();
+  });
 });
 
 describe('friendship idempotency', () => {
   it('replaces an existing relationship with a directional block', async () => {
     mocks.clientQuery
-      .mockResolvedValueOnce(result([{ id: otherId }]))
-      .mockResolvedValueOnce(result())
-      .mockResolvedValueOnce(result());
+      .mockResolvedValueOnce(result([{ id: viewerId }, { id: otherId }]))
+      .mockResolvedValueOnce(result([{
+        requester_id: otherId,
+        addressee_id: viewerId,
+        status: 'accepted'
+      }]))
+      .mockResolvedValueOnce(result([{ requester_id: viewerId }]));
     const app = await createApp(userRoutes, '/api/users');
 
     const response = await app.inject({ method: 'POST', url: `/api/users/${otherId}/block` });
@@ -291,9 +421,58 @@ describe('friendship idempotency', () => {
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({ blocked: true });
     expect(mocks.clientQuery).toHaveBeenCalledTimes(3);
-    expect(mocks.clientQuery.mock.calls[1]![0]).toContain('DELETE FROM friendships');
-    expect(mocks.clientQuery.mock.calls[2]![0]).toContain("VALUES($1,$2,'blocked')");
+    expect(mocks.clientQuery.mock.calls[0]![0]).toContain('ORDER BY id');
+    expect(mocks.clientQuery.mock.calls[0]![0]).toContain('FOR UPDATE');
+    expect(mocks.clientQuery.mock.calls[1]![0]).toContain('FROM friendships');
+    expect(mocks.clientQuery.mock.calls[1]![0]).toContain('FOR UPDATE');
+    expect(mocks.clientQuery.mock.calls[2]![0]).toContain('UPDATE friendships');
+    expect(mocks.clientQuery.mock.calls[2]![0]).toContain("status IN ('pending','accepted')");
     expect(mocks.clientQuery.mock.calls[2]![1]).toEqual([viewerId, otherId]);
+    await app.close();
+  });
+
+  it('never takes ownership of a block created by the other user', async () => {
+    mocks.clientQuery
+      .mockResolvedValueOnce(result([{ id: viewerId }, { id: otherId }]))
+      .mockResolvedValueOnce(result([{
+        requester_id: otherId,
+        addressee_id: viewerId,
+        status: 'blocked'
+      }]));
+    const app = await createApp(userRoutes, '/api/users');
+
+    const response = await app.inject({ method: 'POST', url: `/api/users/${otherId}/block` });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ blocked: true });
+    expect(mocks.clientQuery).toHaveBeenCalledTimes(2);
+    expect(mocks.clientQuery.mock.calls.some(([sql]) =>
+      /(?:INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+friendships/i.test(sql as string)
+    )).toBe(false);
+    await app.close();
+  });
+
+  it('does not remove either direction of a blocked relationship through friend deletion', async () => {
+    mocks.query.mockResolvedValueOnce(result());
+    const app = await createApp(userRoutes, '/api/users');
+
+    const response = await app.inject({ method: 'DELETE', url: `/api/users/${otherId}/friend` });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ removed: false });
+    expect(mocks.query.mock.calls[0]![0]).toContain("status IN ('pending','accepted')");
+    expect(mocks.query.mock.calls[0]![1]).toEqual([viewerId, otherId]);
+    await app.close();
+  });
+
+  it('still removes an accepted friendship through the friend endpoint', async () => {
+    mocks.query.mockResolvedValueOnce(result([{ requester_id: viewerId }]));
+    const app = await createApp(userRoutes, '/api/users');
+
+    const response = await app.inject({ method: 'DELETE', url: `/api/users/${otherId}/friend` });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ removed: true });
     await app.close();
   });
 

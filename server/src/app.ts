@@ -38,6 +38,15 @@ export async function buildApp() {
   await app.register(multipart);
   await app.register(rateLimit, { max: 120, timeWindow: '1 minute' });
   await app.register(staticPlugin, { root: resolve(config.UPLOAD_DIR), prefix: '/uploads/' });
+  // Fastify error handlers are encapsulated. Register the root handler before
+  // route plugins so every child context inherits the same safe error mapping.
+  app.setErrorHandler((error: unknown, _request, reply) => {
+    if (error instanceof ZodError) return reply.status(400).send({ code: 'VALIDATION_ERROR', message: error.issues[0]?.message, issues: error.issues });
+    const known = error instanceof Error ? error as Error & { statusCode?: number; code?: string } : null;
+    const status = known?.statusCode ?? 500;
+    if (status >= 500) app.log.error(error);
+    return reply.status(status).send({ code: known?.code ?? 'INTERNAL_ERROR', message: status >= 500 ? '服务暂时不可用' : known?.message ?? '请求失败' });
+  });
   await app.register(authPlugin);
   await app.register(authRoutes, { prefix: '/api/auth' });
   await app.register(gymRoutes, { prefix: '/api/gyms' });
@@ -79,13 +88,6 @@ export async function buildApp() {
       app.log.error({ err: error }, 'Database readiness check failed');
       return reply.status(503).send({ ok: false, database: 'unavailable' });
     }
-  });
-  app.setErrorHandler((error: unknown, _request, reply) => {
-    if (error instanceof ZodError) return reply.status(400).send({ code: 'VALIDATION_ERROR', message: error.issues[0]?.message, issues: error.issues });
-    const known = error instanceof Error ? error as Error & { statusCode?: number; code?: string } : null;
-    const status = known?.statusCode ?? 500;
-    if (status >= 500) app.log.error(error);
-    return reply.status(status).send({ code: known?.code ?? 'INTERNAL_ERROR', message: status >= 500 ? '服务暂时不可用' : known?.message ?? '请求失败' });
   });
   return app;
 }

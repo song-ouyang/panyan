@@ -14,6 +14,7 @@ COPY server/package.json ./server/package.json
 RUN npm ci --omit=dev
 COPY --from=build --chown=node:node /app/server/dist ./server/dist
 COPY --chown=node:node server/src/db/schema.sql ./server/dist/db/schema.sql
+COPY --chown=node:node data/gyms.public-verified.json ./data/gyms.public-verified.json
 RUN mkdir -p /app/uploads && chown -R node:node /app/uploads
 USER node
 EXPOSE 3000

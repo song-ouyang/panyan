@@ -1,8 +1,10 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:lottie/lottie.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wanpan_diary/app/wanpan_theme.dart';
 import 'package:wanpan_diary/core/config/app_config.dart';
@@ -16,6 +18,8 @@ import 'package:wanpan_diary/features/auth/application/session_controller.dart';
 import 'package:wanpan_diary/features/auth/data/session_token_store.dart';
 import 'package:wanpan_diary/features/auth/domain/auth_session.dart';
 import 'package:wanpan_diary/features/gyms/route_submission_screen.dart';
+import 'package:wanpan_diary/shared/app_assets.dart';
+import 'package:wanpan_diary/shared/widgets/wanpan_lottie_stage.dart';
 import 'package:wanpan_diary/shared/widgets/wanpan_pressable.dart';
 
 const _config = AppConfig(
@@ -62,6 +66,8 @@ class _RouteApiClient extends ApiClient {
 class _RouteGymRepository extends GymRepository {
   _RouteGymRepository(super.api);
 
+  int getRoutesCallCount = 0;
+
   @override
   Future<List<Gym>> getGyms({String? city, String? query}) async => [_gym];
 
@@ -74,7 +80,10 @@ class _RouteGymRepository extends GymRepository {
     String gymId, {
     String? grade,
     String? routeSetId,
-  }) async => [_existingRoute];
+  }) async {
+    getRoutesCallCount++;
+    return [_existingRoute];
+  }
 }
 
 class _RouteSubmissionRepository extends RouteSubmissionRepository {
@@ -165,6 +174,24 @@ void main() {
       tester.view.resetDevicePixelRatio();
     });
     final fixturePath = File('assets/logo.png').absolute.path;
+    Lottie.cache.clear();
+    await AssetLottie(AppAssets.routePublishedAnimation).load();
+    final haptics = <Object?>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'HapticFeedback.vibrate') {
+          haptics.add(call.arguments);
+        }
+        return null;
+      },
+    );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      ),
+    );
 
     SharedPreferences.setMockInitialValues({});
     final session = SessionController(
@@ -180,20 +207,28 @@ void main() {
       ),
     );
     final api = _RouteApiClient();
+    final gymRepository = _RouteGymRepository(api);
     final submissionRepository = _RouteSubmissionRepository(api);
     final imagePicker = _RouteImagePicker(
       imagePath: fixturePath,
       videoPath: fixturePath,
     );
+    final navigatorKey = GlobalKey<NavigatorState>();
 
     await tester.pumpWidget(
       MaterialApp(
+        navigatorKey: navigatorKey,
         theme: WanpanTheme.light(),
-        home: RouteSubmissionScreen(
+        home: const Scaffold(body: Center(child: Text('线路列表'))),
+      ),
+    );
+    final routeResult = navigatorKey.currentState!.push<bool>(
+      MaterialPageRoute(
+        builder: (_) => RouteSubmissionScreen(
           api: api,
           session: session,
           initialGymId: _gym.id,
-          gymRepository: _RouteGymRepository(api),
+          gymRepository: gymRepository,
           submissionRepository: submissionRepository,
           imagePicker: imagePicker,
           localVideoPreviewBuilder: (_) => const SizedBox(
@@ -207,7 +242,15 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text(_gym.name), findsWidgets);
-    expect(find.text(_existingRoute.name), findsOneWidget);
+    expect(gymRepository.getRoutesCallCount, 0);
+    expect(find.text(_existingRoute.name), findsNothing);
+    expect(find.text('把新线路留给更多岩友'), findsNothing);
+    expect(find.text('线路墙 / 周期'), findsNothing);
+    expect(find.text('先找馆内已有线路'), findsNothing);
+    expect(
+      tester.getTopLeft(_fieldWithLabel('线路名称')).dy,
+      lessThan(tester.getTopLeft(find.text('拍摄或选择线路照片').first).dy),
+    );
 
     await tester.tap(find.text('拍摄或选择线路照片'));
     await tester.pumpAndSettle();
@@ -286,12 +329,65 @@ void main() {
 
     await tester.enterText(_fieldWithLabel('线路名称'), '测试橙线');
     await tester.enterText(_fieldWithLabel('线路颜色'), '橙');
+    ScaffoldMessenger.of(tester.element(find.byType(RouteSubmissionScreen)))
+        .showSnackBar(const SnackBar(content: Text('旧错误提示')));
+    await tester.pump();
+    expect(find.text('旧错误提示'), findsOneWidget);
     await tester.tap(
       find.byWidgetPredicate(
         (widget) => widget is WanpanButton && widget.label == '发布新线路',
       ),
     );
-    await tester.pump(const Duration(milliseconds: 700));
+    for (var index = 0; index < 4; index++) {
+      await tester.pump();
+    }
+
+    expect(find.byType(WanpanLottieStage), findsOneWidget);
+    expect(find.text('旧错误提示'), findsNothing);
+    expect(find.text('新线路发布成功！'), findsNothing);
+    expect(find.text('测试橙线'), findsNothing);
+    expect(find.text('线路和首条完攀已发布'), findsNothing);
+    expect(find.text('完成并返回'), findsNothing);
+    tester.view.physicalSize = const Size(430, 932);
+    await tester.pump();
+    final successStage = tester.widget<WanpanLottieStage>(
+      find.byType(WanpanLottieStage),
+    );
+    expect(successStage.width, 430);
+    expect(successStage.height, 932);
+    expect(
+      tester.getSize(find.byType(WanpanLottieStage)),
+      const Size(430, 932),
+    );
+    expect(
+      tester
+          .widget<Transform>(
+            find.byKey(const ValueKey('route-published-stage-scale')),
+          )
+          .transform
+          .storage[0],
+      closeTo(1.35, .001),
+    );
+    await tester.pump(const Duration(milliseconds: 1));
+    haptics.clear();
+
+    await tester.pump(const Duration(milliseconds: 615));
+    expect(
+      haptics.where((value) => value == 'HapticFeedbackType.mediumImpact'),
+      isEmpty,
+    );
+    await tester.pump(const Duration(milliseconds: 1));
+    expect(
+      haptics.where((value) => value == 'HapticFeedbackType.mediumImpact'),
+      hasLength(1),
+    );
+    expect(find.text('完成并返回'), findsNothing);
+    await tester.pump(const Duration(milliseconds: 383));
+    expect(find.text('完成并返回'), findsNothing);
+    await tester.pump(const Duration(milliseconds: 1));
+    await tester.pump();
+    expect(find.text('完成并返回'), findsOneWidget);
+    await tester.pumpAndSettle();
 
     final draft = submissionRepository.submittedDraft;
     expect(draft, isNotNull);
@@ -305,5 +401,19 @@ void main() {
     expect(draft.videoUrl, 'https://example.com/first-send.mp4');
     expect(draft.caption, '第一次完攀');
     expect(draft.visibility, 'friends');
+
+    await tester.pump(const Duration(seconds: 5));
+    expect(find.byType(WanpanLottieStage), findsOneWidget);
+    expect(find.text('完成并返回'), findsOneWidget);
+    expect(find.text('线路列表'), findsNothing);
+
+    await tester.tap(
+      find.byWidgetPredicate(
+        (widget) => widget is WanpanButton && widget.label == '完成并返回',
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(await routeResult, isTrue);
+    expect(find.text('线路列表'), findsOneWidget);
   });
 }

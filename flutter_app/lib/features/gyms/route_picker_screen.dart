@@ -6,6 +6,7 @@ import '../../core/models/gym_models.dart';
 import '../../core/network/api_client.dart';
 import '../../core/repositories/gym_repository.dart';
 import '../../shared/widgets/wanpan_card.dart';
+import '../../shared/widgets/wanpan_gym_picker.dart';
 import '../../shared/widgets/wanpan_pressable.dart';
 import '../../shared/widgets/wanpan_skeleton.dart';
 import '../../shared/widgets/wanpan_states.dart';
@@ -164,7 +165,8 @@ class _RoutePickerScreenState extends State<RoutePickerScreen> {
     final gymId = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
-      builder: (_) => _GymPickerSheet(gyms: _gyms, selectedGymId: _gymId),
+      useSafeArea: true,
+      builder: (_) => WanpanGymPickerSheet(gyms: _gyms, selectedGymId: _gymId),
     );
     if (gymId != null && mounted) await _selectGym(gymId);
   }
@@ -400,7 +402,7 @@ class _GymField extends StatelessWidget {
                     ? '先确认你在哪家门店'
                     : [
                         gym!.city,
-                        if (gym!.district != null) gym!.district!,
+                        ?gym!.displayDistrict,
                         gym!.address,
                       ].join(' · '),
                 maxLines: 1,
@@ -643,121 +645,4 @@ class _RouteChoiceCard extends StatelessWidget {
       ],
     ),
   );
-}
-
-class _GymPickerSheet extends StatefulWidget {
-  const _GymPickerSheet({required this.gyms, required this.selectedGymId});
-
-  final List<Gym> gyms;
-  final String? selectedGymId;
-
-  @override
-  State<_GymPickerSheet> createState() => _GymPickerSheetState();
-}
-
-class _GymPickerSheetState extends State<_GymPickerSheet> {
-  final _controller = TextEditingController();
-  String _query = '';
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final query = _query.trim().toLowerCase();
-    final gyms = query.isEmpty
-        ? widget.gyms
-        : widget.gyms
-              .where((gym) {
-                final searchable = <String>[
-                  gym.name,
-                  gym.city,
-                  gym.province,
-                  if (gym.district != null) gym.district!,
-                  gym.address,
-                ].join(' ').toLowerCase();
-                return searchable.contains(query);
-              })
-              .toList(growable: false);
-    return SafeArea(
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(
-          WanpanSpacing.page,
-          4,
-          WanpanSpacing.page,
-          MediaQuery.viewInsetsOf(context).bottom + WanpanSpacing.md,
-        ),
-        child: SizedBox(
-          height: MediaQuery.sizeOf(context).height * .68,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('选择岩馆', style: Theme.of(context).textTheme.titleLarge),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _controller,
-                autofocus: true,
-                onChanged: (value) => setState(() => _query = value),
-                textInputAction: TextInputAction.search,
-                decoration: const InputDecoration(
-                  prefixIcon: Icon(Icons.search_rounded),
-                  hintText: '搜索岩馆、城市或地址',
-                ),
-              ),
-              const SizedBox(height: 12),
-              Expanded(
-                child: gyms.isEmpty
-                    ? const Center(child: Text('没找到岩馆'))
-                    : ListView.separated(
-                        keyboardDismissBehavior:
-                            ScrollViewKeyboardDismissBehavior.onDrag,
-                        itemCount: gyms.length,
-                        separatorBuilder: (_, _) => const Divider(),
-                        itemBuilder: (context, index) {
-                          final gym = gyms[index];
-                          final selected = gym.id == widget.selectedGymId;
-                          return ListTile(
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 4,
-                              vertical: 3,
-                            ),
-                            leading: Container(
-                              width: 42,
-                              height: 42,
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: selected
-                                    ? WanpanColors.coralSoft
-                                    : WanpanColors.surfaceSoft,
-                                borderRadius: BorderRadius.circular(13),
-                              ),
-                              child: Icon(
-                                selected
-                                    ? Icons.check_rounded
-                                    : Icons.location_on_outlined,
-                                color: selected
-                                    ? WanpanColors.coralStrong
-                                    : WanpanColors.muted,
-                              ),
-                            ),
-                            title: Text(gym.name),
-                            subtitle: Text(
-                              '${gym.city}${gym.district == null ? '' : ' · ${gym.district}'} · ${gym.address}',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            onTap: () => Navigator.pop(context, gym.id),
-                          );
-                        },
-                      ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }

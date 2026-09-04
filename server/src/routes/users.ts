@@ -147,7 +147,17 @@ export const userRoutes: FastifyPluginAsync = async (app) => {
   });
   app.get('/:id/public', { preHandler: app.authenticate }, async (request) => {
     const { id } = idParams.parse(request.params);
-    const user = await query(`SELECT id,nickname,avatar_url,bio,created_at FROM users WHERE id=$1`, [id]);
+    const user = await query(
+      `SELECT u.id,u.nickname,u.avatar_url,u.bio,u.created_at
+       FROM users u
+       WHERE u.id=$1 AND ($1=$2 OR NOT EXISTS (
+         SELECT 1 FROM friendships blocked
+         WHERE blocked.status='blocked'
+           AND blocked.requester_id=u.id
+           AND blocked.addressee_id=$2
+       ))`,
+      [id, request.user.sub]
+    );
     if (!user.rowCount) throw app.httpErrors.notFound('岩友不存在');
     const stats = await query(
       `SELECT count(DISTINCT s.route_id)::int total_sends,count(DISTINCT r.gym_id)::int gym_count,
@@ -176,17 +186,74 @@ export const userRoutes: FastifyPluginAsync = async (app) => {
     const { id } = idParams.parse(request.params);
     if (id === request.user.sub) throw app.httpErrors.badRequest('不能拉黑自己');
     return transaction(async (client) => {
-      const target = await client.query('SELECT id FROM users WHERE id=$1', [id]);
-      if (!target.rowCount) throw app.httpErrors.notFound('岩友不存在');
-      await client.query(
-        `DELETE FROM friendships
-         WHERE (requester_id=$1 AND addressee_id=$2) OR
-               (requester_id=$2 AND addressee_id=$1)`,
+      // Lock both accounts in a stable order. This serializes opposing block
+      // requests even when the pair does not have a friendship row yet.
+      const participants = await client.query<{ id: string }>(
+        `SELECT id FROM users
+         WHERE id IN ($1,$2)
+         ORDER BY id
+         FOR UPDATE`,
         [request.user.sub, id]
       );
-      await client.query(
+      const participantIds = new Set(participants.rows.map((row) => row.id));
+      if (!participantIds.has(request.user.sub)) {
+        throw app.httpErrors.unauthorized('登录已失效，请重新登录');
+      }
+      if (!participantIds.has(id)) throw app.httpErrors.notFound('岩友不存在');
+
+      const findRelationship = () => client.query<{
+        requester_id: string;
+        addressee_id: string;
+        status: 'pending' | 'accepted' | 'blocked';
+      }>(
+        `SELECT requester_id,addressee_id,status FROM friendships
+         WHERE (requester_id=$1 AND addressee_id=$2) OR
+               (requester_id=$2 AND addressee_id=$1)
+         FOR UPDATE`,
+        [request.user.sub, id]
+      );
+
+      let relationship = (await findRelationship()).rows[0];
+      if (relationship?.status === 'blocked') {
+        // A block is mutual for visibility but directional for ownership. Never
+        // replace the other user's row, otherwise the blocked user could take
+        // ownership and immediately remove it through DELETE /:id/block.
+        return { blocked: true };
+      }
+
+      if (relationship) {
+        await client.query(
+          `UPDATE friendships
+           SET requester_id=$1,addressee_id=$2,status='blocked',updated_at=now()
+           WHERE ((requester_id=$1 AND addressee_id=$2) OR
+                  (requester_id=$2 AND addressee_id=$1))
+             AND status IN ('pending','accepted')`,
+          [request.user.sub, id]
+        );
+        return { blocked: true };
+      }
+
+      const inserted = await client.query(
         `INSERT INTO friendships(requester_id,addressee_id,status)
-         VALUES($1,$2,'blocked')`,
+         VALUES($1,$2,'blocked')
+         ON CONFLICT DO NOTHING
+         RETURNING requester_id`,
+        [request.user.sub, id]
+      );
+      if (inserted.rowCount) return { blocked: true };
+
+      // A legacy friend-request writer may have won the unique-pair race
+      // without taking the participant locks above. Re-read its committed row
+      // and only replace non-blocking relationship states.
+      relationship = (await findRelationship()).rows[0];
+      if (relationship?.status === 'blocked') return { blocked: true };
+      if (!relationship) throw app.httpErrors.conflict('好友关系状态已变化，请重试');
+      await client.query(
+        `UPDATE friendships
+         SET requester_id=$1,addressee_id=$2,status='blocked',updated_at=now()
+         WHERE ((requester_id=$1 AND addressee_id=$2) OR
+                (requester_id=$2 AND addressee_id=$1))
+           AND status IN ('pending','accepted')`,
         [request.user.sub, id]
       );
       return { blocked: true };
@@ -283,8 +350,15 @@ export const userRoutes: FastifyPluginAsync = async (app) => {
   });
   app.delete('/:id/friend', { preHandler: app.authenticate }, async (request) => {
     const { id } = idParams.parse(request.params);
-    await query(`DELETE FROM friendships WHERE (requester_id=$1 AND addressee_id=$2) OR (requester_id=$2 AND addressee_id=$1)`, [request.user.sub,id]);
-    return { removed: true };
+    const result = await query(
+      `DELETE FROM friendships
+       WHERE ((requester_id=$1 AND addressee_id=$2) OR
+              (requester_id=$2 AND addressee_id=$1))
+         AND status IN ('pending','accepted')
+       RETURNING requester_id`,
+      [request.user.sub,id]
+    );
+    return { removed: Boolean(result.rowCount) };
   });
   app.delete('/me', { preHandler: app.authenticate }, async (request) => {
     await query('DELETE FROM users WHERE id=$1', [request.user.sub]);

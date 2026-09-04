@@ -9,4 +9,99 @@ void main() {
     expect(config.apiBaseUrl, 'https://panyan-api.gblh.cloud/api');
     expect(config.enableDevelopmentLogin, isFalse);
   });
+
+  group('release build guardrails', () {
+    test('force production and ignore stale development defines', () {
+      final config = AppConfig.resolveForBuild(
+        isReleaseMode: true,
+        isAndroid: false,
+        appEnvironment: 'development',
+        apiBaseUrl: 'http://127.0.0.1:3000/api',
+        productionApiBaseUrl: 'https://api.example.com/api/',
+        enableDevelopmentLogin: true,
+      );
+
+      expect(config.environment, AppEnvironment.production);
+      expect(config.apiBaseUrl, 'https://api.example.com/api');
+      expect(config.enableDevelopmentLogin, isFalse);
+    });
+
+    test('rejects non-HTTPS and local production URLs', () {
+      const invalidUrls = [
+        'http://api.example.com/api',
+        'https://localhost:3000/api',
+        'https://127.0.0.1:3000/api',
+        'https://10.0.2.2:3000/api',
+      ];
+
+      for (final url in invalidUrls) {
+        expect(
+          () => AppConfig.resolveForBuild(
+            isReleaseMode: true,
+            isAndroid: false,
+            appEnvironment: 'production',
+            apiBaseUrl: '',
+            productionApiBaseUrl: url,
+            enableDevelopmentLogin: false,
+          ),
+          throwsArgumentError,
+          reason: url,
+        );
+      }
+    });
+  });
+
+  test('production configuration never consumes the generic API override', () {
+    final config = AppConfig.resolveForBuild(
+      isReleaseMode: false,
+      isAndroid: false,
+      appEnvironment: 'production',
+      apiBaseUrl: 'http://127.0.0.1:3000/api',
+      productionApiBaseUrl: 'https://api.example.com/api',
+      enableDevelopmentLogin: true,
+    );
+
+    expect(config.environment, AppEnvironment.production);
+    expect(config.apiBaseUrl, 'https://api.example.com/api');
+    expect(config.enableDevelopmentLogin, isFalse);
+  });
+
+  group('debug development configuration', () {
+    test('keeps an explicit local override and development login', () {
+      final config = AppConfig.resolveForBuild(
+        isReleaseMode: false,
+        isAndroid: false,
+        appEnvironment: 'development',
+        apiBaseUrl: 'http://192.168.1.8:3000/api/',
+        productionApiBaseUrl: 'https://api.example.com/api',
+        enableDevelopmentLogin: true,
+      );
+
+      expect(config.environment, AppEnvironment.development);
+      expect(config.apiBaseUrl, 'http://192.168.1.8:3000/api');
+      expect(config.enableDevelopmentLogin, isTrue);
+    });
+
+    test('uses the platform local address without an override', () {
+      final ios = AppConfig.resolveForBuild(
+        isReleaseMode: false,
+        isAndroid: false,
+        appEnvironment: 'development',
+        apiBaseUrl: '',
+        productionApiBaseUrl: 'https://api.example.com/api',
+        enableDevelopmentLogin: false,
+      );
+      final android = AppConfig.resolveForBuild(
+        isReleaseMode: false,
+        isAndroid: true,
+        appEnvironment: 'development',
+        apiBaseUrl: '',
+        productionApiBaseUrl: 'https://api.example.com/api',
+        enableDevelopmentLogin: false,
+      );
+
+      expect(ios.apiBaseUrl, 'http://127.0.0.1:3000/api');
+      expect(android.apiBaseUrl, 'http://10.0.2.2:3000/api');
+    });
+  });
 }

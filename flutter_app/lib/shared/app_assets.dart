@@ -1,5 +1,5 @@
 abstract final class AppAssets {
-  static const launchHero = 'assets/launch-hero-v2.jpg';
+  static const launchBackground = 'assets/launch-background-v3.png';
   static const logo = 'assets/logo.png';
   static const mascotWelcome = 'assets/mascot-welcome.jpg';
   static const mascotLoading = 'assets/mascot-loading.jpg';
@@ -10,6 +10,11 @@ abstract final class AppAssets {
   static const profilePeekCat = 'assets/profile-peek-cat-v2.png';
   static const routeMapCat = 'assets/route-map-cat-v2.png';
   static const routeReviewCat = 'assets/route-review-cat-v2.png';
+  static const sendSuccessAnimation = 'assets/lottie/send-success.json';
+  static const gradeMilestoneAnimation = 'assets/lottie/grade-milestone.json';
+  static const routePublishedAnimation = 'assets/lottie/route-published.json';
+  static const rankingEncouragementAnimation =
+      'assets/lottie/ranking-encouragement.json';
   static const successSound = 'assets/sounds/success.wav';
   static const milestoneSound = 'assets/sounds/milestone.wav';
 }

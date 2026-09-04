@@ -45,7 +45,7 @@ class _FeedScreenState extends State<FeedScreen> {
   Future<void> _load({bool showLoading = false}) async {
     final scope = _scope;
     final revision = ++_loadRevision;
-    if (!widget.session.isAuthenticated) {
+    if (!widget.session.isAuthenticated && scope == 'friends') {
       if (mounted && revision == _loadRevision) {
         setState(() => _loading = false);
       }
@@ -77,6 +77,10 @@ class _FeedScreenState extends State<FeedScreen> {
   }
 
   Future<void> _toggleLike(_FeedEntry entry) async {
+    if (!widget.session.isAuthenticated) {
+      await context.push('/login?from=/feed');
+      return;
+    }
     final postId = entry.post.id;
     if (_likingPostIds.contains(postId)) return;
     final previous = entry.liked;
@@ -116,7 +120,7 @@ class _FeedScreenState extends State<FeedScreen> {
 
   Future<void> _compose() async {
     if (!widget.session.isAuthenticated) {
-      _notice('登录后就可以分享攀岩动态');
+      await context.push('/login?from=/feed');
       return;
     }
     final published = await showModalBottomSheet<bool>(
@@ -136,6 +140,10 @@ class _FeedScreenState extends State<FeedScreen> {
   }
 
   Future<void> _openFriends() async {
+    if (!widget.session.isAuthenticated) {
+      await context.push('/login?from=/feed');
+      return;
+    }
     await context.push('/friends');
     if (!mounted) return;
     setState(() => _scopeCache.remove('friends'));
@@ -156,6 +164,10 @@ class _FeedScreenState extends State<FeedScreen> {
 
   void _changeScope(String value) {
     if (value == _scope) return;
+    if (value == 'friends' && !widget.session.isAuthenticated) {
+      context.push('/login?from=/feed');
+      return;
+    }
     setState(() {
       _scope = value;
       _loading = !_scopeCache.containsKey(value);
@@ -176,23 +188,32 @@ class _FeedScreenState extends State<FeedScreen> {
       appBar: AppBar(
         title: const Text('广场'),
         actions: [
-          IconButton(
-            tooltip: '我的岩友',
-            onPressed: _openFriends,
-            icon: const Icon(Icons.people_outline_rounded),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: IconButton.filled(
-              tooltip: '发布动态',
-              onPressed: _compose,
-              style: IconButton.styleFrom(
-                backgroundColor: WanpanColors.coral,
-                foregroundColor: Colors.white,
-              ),
-              icon: const Icon(Icons.add_rounded, size: 28),
+          if (widget.session.isAuthenticated) ...[
+            IconButton(
+              tooltip: '我的岩友',
+              onPressed: _openFriends,
+              icon: const Icon(Icons.people_outline_rounded),
             ),
-          ),
+            Padding(
+              padding: const EdgeInsets.only(right: 12),
+              child: IconButton.filled(
+                tooltip: '发布动态',
+                onPressed: _compose,
+                style: IconButton.styleFrom(
+                  backgroundColor: WanpanColors.coral,
+                  foregroundColor: Colors.white,
+                ),
+                icon: const Icon(Icons.add_rounded, size: 28),
+              ),
+            ),
+          ] else
+            Padding(
+              padding: const EdgeInsets.only(right: 12),
+              child: TextButton(
+                onPressed: () => context.push('/login?from=/feed'),
+                child: const Text('登录'),
+              ),
+            ),
         ],
       ),
       body: Column(
@@ -213,12 +234,12 @@ class _FeedScreenState extends State<FeedScreen> {
   }
 
   Widget _body() {
-    if (!widget.session.isAuthenticated) {
+    if (!widget.session.isAuthenticated && _scope == 'friends') {
       return const _FeedEmpty(
         key: ValueKey('signed-out'),
         icon: Icons.people_alt_outlined,
-        title: '登录后看看岩友们在爬什么',
-        description: '点赞、评论，也可以分享自己的完攀瞬间。',
+        title: '登录后查看朋友圈',
+        description: '朋友圈只展示你和已成为岩友的人发布的动态。',
       );
     }
     if (_loading) {

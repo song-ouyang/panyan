@@ -29,6 +29,7 @@ class _GymsScreenState extends State<GymsScreen> {
     widget.api,
   );
   List<GymDirectoryItem> _items = const [];
+  List<GymDirectoryItem> _globalItems = const [];
   UserProfile? _profile;
   String? _city;
   Object? _error;
@@ -57,14 +58,21 @@ class _GymsScreenState extends State<GymsScreen> {
       _error = null;
     });
     final profileFuture = _tryLoadProfile();
+    final directoryFuture = _repository.getDirectory(city: _city);
+    final globalDirectoryFuture = _city == null
+        ? directoryFuture
+        : _globalItems.isEmpty
+        ? _repository.getDirectory()
+        : Future.value(_globalItems);
     try {
-      final items = await _repository.getDirectory();
+      final items = await directoryFuture;
+      final globalItems = await globalDirectoryFuture;
       final profile = await profileFuture;
       if (!mounted || requestId != _requestId) return;
       setState(() {
         _items = items;
+        _globalItems = globalItems;
         _profile = profile;
-        _city ??= items.isEmpty ? null : items.first.city;
       });
     } catch (error) {
       if (!mounted || requestId != _requestId) return;
@@ -74,31 +82,55 @@ class _GymsScreenState extends State<GymsScreen> {
     }
   }
 
-  Set<String> get _cities => _items.map((item) => item.city).toSet();
+  List<String> get _cities {
+    final cities = _globalItems
+        .expand((item) => item.availableCities)
+        .toSet()
+        .toList(growable: false);
+    return cities..sort();
+  }
 
-  List<GymDirectoryItem> get _cityItems => _city == null
-      ? _items
-      : _items.where((item) => item.city == _city).toList(growable: false);
+  String _brandPath(GymDirectoryItem item, {required String? city}) => Uri(
+    path: '/brands/${item.brandId}',
+    queryParameters: city == null ? null : {'city': city},
+  ).toString();
 
   Future<void> _showDirectory() async {
-    final selected = await showModalBottomSheet<GymDirectoryItem>(
+    final selected = await showModalBottomSheet<_GymDirectorySelection>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
       builder: (_) => _GymDirectorySheet(
-        items: _items,
+        repository: _repository,
+        initialItems: _items,
+        globalItems: _globalItems,
         cities: _cities,
         initialCity: _city,
       ),
     );
     if (selected != null && mounted) {
-      await context.push('/brands/${selected.brandId}');
+      await context.push(_brandPath(selected.item, city: selected.city));
     }
+  }
+
+  Future<void> _showCityPicker() async {
+    final selected = await showModalBottomSheet<_CityChoice>(
+      context: context,
+      useSafeArea: true,
+      isScrollControlled: true,
+      builder: (_) => _CityPickerSheet(cities: _cities, selected: _city),
+    );
+    if (!mounted || selected == null || selected.city == _city) return;
+    setState(() {
+      _city = selected.city;
+      _items = const [];
+    });
+    await _load();
   }
 
   @override
   Widget build(BuildContext context) {
-    final items = _cityItems;
+    final items = _items;
     return Scaffold(
       body: SafeArea(
         bottom: false,
@@ -115,8 +147,7 @@ class _GymsScreenState extends State<GymsScreen> {
                   children: [
                     _HomeHeader(
                       city: _city,
-                      cities: _cities,
-                      onCityChanged: (value) => setState(() => _city = value),
+                      onChooseCity: _showCityPicker,
                       onUpdates: () => context.go('/feed'),
                     ),
                     const SizedBox(height: 14),
@@ -180,7 +211,7 @@ class _GymsScreenState extends State<GymsScreen> {
                               accent: WanpanColors.sky,
                               mascot: AppAssets.mascotCelebrate,
                               onTap: () => context.push(
-                                '/brands/${items.first.brandId}',
+                                _brandPath(items.first, city: _city),
                               ),
                             ),
                           ),
@@ -192,8 +223,9 @@ class _GymsScreenState extends State<GymsScreen> {
                                 color: WanpanColors.grapeSoft,
                                 accent: WanpanColors.grape,
                                 mascot: AppAssets.mascotWelcome,
-                                onTap: () =>
-                                    context.push('/brands/${items[1].brandId}'),
+                                onTap: () => context.push(
+                                  _brandPath(items[1], city: _city),
+                                ),
                               ),
                             ),
                           ],
@@ -228,7 +260,7 @@ class _GymsScreenState extends State<GymsScreen> {
                       _DirectoryBrandCard(
                         item: items.first,
                         onTap: () =>
-                            context.push('/brands/${items.first.brandId}'),
+                            context.push(_brandPath(items.first, city: _city)),
                       ),
                   ],
                 ),
@@ -243,13 +275,17 @@ class _GymsScreenState extends State<GymsScreen> {
 
 class _GymDirectorySheet extends StatefulWidget {
   const _GymDirectorySheet({
-    required this.items,
+    required this.repository,
+    required this.initialItems,
+    required this.globalItems,
     required this.cities,
     required this.initialCity,
   });
 
-  final List<GymDirectoryItem> items;
-  final Set<String> cities;
+  final GymRepository repository;
+  final List<GymDirectoryItem> initialItems;
+  final List<GymDirectoryItem> globalItems;
+  final List<String> cities;
   final String? initialCity;
 
   @override
@@ -259,25 +295,80 @@ class _GymDirectorySheet extends StatefulWidget {
 class _GymDirectorySheetState extends State<_GymDirectorySheet> {
   final _searchController = TextEditingController();
   late String? _city = widget.initialCity;
+  late List<GymDirectoryItem> _items = widget.initialCity == null
+      ? widget.globalItems
+      : widget.initialItems;
   String _query = '';
+  Object? _error;
+  bool _loading = false;
+  int _requestId = 0;
 
   @override
   void dispose() {
+    _requestId += 1;
     _searchController.dispose();
     super.dispose();
   }
 
   List<GymDirectoryItem> get _visible {
     final normalized = _query.trim().toLowerCase();
-    return widget.items
+    return _items
         .where((item) {
-          final matchesCity = _city == null || item.city == _city;
+          final matchesCity = _city == null || item.hasCity(_city!);
           final matchesQuery =
               normalized.isEmpty ||
               item.brandName.toLowerCase().contains(normalized);
           return matchesCity && matchesQuery;
         })
         .toList(growable: false);
+  }
+
+  void _chooseCity(String? city) {
+    if (city == _city) return;
+    _city = city;
+    _error = null;
+    if (city == null) {
+      _requestId += 1;
+      setState(() {
+        _items = widget.globalItems;
+        _loading = false;
+      });
+      return;
+    }
+    setState(() {
+      _items = const [];
+      _loading = true;
+    });
+    _loadCity(city);
+  }
+
+  Future<void> _loadCity(String city) async {
+    final requestId = ++_requestId;
+    try {
+      final items = await widget.repository.getDirectory(city: city);
+      if (!mounted || requestId != _requestId) return;
+      setState(() {
+        _items = items;
+        _loading = false;
+      });
+    } catch (error) {
+      if (!mounted || requestId != _requestId) return;
+      setState(() {
+        _error = error;
+        _loading = false;
+      });
+    }
+  }
+
+  void _retry() {
+    final city = _city;
+    if (city != null) {
+      setState(() {
+        _error = null;
+        _loading = true;
+      });
+      _loadCity(city);
+    }
   }
 
   @override
@@ -327,14 +418,14 @@ class _GymDirectorySheetState extends State<_GymDirectorySheet> {
                 _CityChip(
                   label: '全部',
                   selected: _city == null,
-                  onTap: () => setState(() => _city = null),
+                  onTap: () => _chooseCity(null),
                 ),
                 for (final option in widget.cities) ...[
                   const SizedBox(width: 8),
                   _CityChip(
                     label: option,
                     selected: _city == option,
-                    onTap: () => setState(() => _city = option),
+                    onTap: () => _chooseCity(option),
                   ),
                 ],
               ],
@@ -342,7 +433,11 @@ class _GymDirectorySheetState extends State<_GymDirectorySheet> {
           ),
           const SizedBox(height: 12),
           Expanded(
-            child: visible.isEmpty
+            child: _loading
+                ? const WanpanListSkeleton(itemCount: 4)
+                : _error != null
+                ? WanpanErrorState(title: '岩馆列表没有加载出来', onRetry: _retry)
+                : visible.isEmpty
                 ? const WanpanEmptyState(
                     title: '还没有找到岩馆',
                     description: '换一个城市或关键词试试。',
@@ -356,7 +451,10 @@ class _GymDirectorySheetState extends State<_GymDirectorySheet> {
                       return _DirectoryBrandCard(
                         item: item,
                         compact: true,
-                        onTap: () => Navigator.pop(context, item),
+                        onTap: () => Navigator.pop(
+                          context,
+                          _GymDirectorySelection(item: item, city: _city),
+                        ),
                       );
                     },
                   ),
@@ -367,17 +465,22 @@ class _GymDirectorySheetState extends State<_GymDirectorySheet> {
   }
 }
 
+class _GymDirectorySelection {
+  const _GymDirectorySelection({required this.item, required this.city});
+
+  final GymDirectoryItem item;
+  final String? city;
+}
+
 class _HomeHeader extends StatelessWidget {
   const _HomeHeader({
     required this.city,
-    required this.cities,
-    required this.onCityChanged,
+    required this.onChooseCity,
     required this.onUpdates,
   });
 
   final String? city;
-  final Set<String> cities;
-  final ValueChanged<String?> onCityChanged;
+  final VoidCallback onChooseCity;
   final VoidCallback onUpdates;
 
   @override
@@ -396,17 +499,9 @@ class _HomeHeader extends StatelessWidget {
               ?.copyWith(fontSize: 25, letterSpacing: -.8),
         ),
         const Spacer(),
-        PopupMenuButton<String?>(
-          tooltip: '切换城市',
-          onSelected: onCityChanged,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-          ),
-          itemBuilder: (_) => [
-            const PopupMenuItem(value: null, child: Text('全部城市')),
-            for (final option in cities)
-              PopupMenuItem(value: option, child: Text(option)),
-          ],
+        WanpanPressable(
+          semanticLabel: '切换城市',
+          onTap: onChooseCity,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
             child: Row(
@@ -444,6 +539,119 @@ class _HomeHeader extends StatelessWidget {
           ],
         ),
       ],
+    ),
+  );
+}
+
+class _CityPickerSheet extends StatefulWidget {
+  const _CityPickerSheet({required this.cities, required this.selected});
+
+  final List<String> cities;
+  final String? selected;
+
+  @override
+  State<_CityPickerSheet> createState() => _CityPickerSheetState();
+}
+
+class _CityChoice {
+  const _CityChoice(this.city);
+  final String? city;
+}
+
+class _CityPickerSheetState extends State<_CityPickerSheet> {
+  String _query = '';
+
+  List<String> get _visible => widget.cities
+      .where((city) => city.contains(_query.trim()))
+      .toList(growable: false);
+
+  @override
+  Widget build(BuildContext context) => FractionallySizedBox(
+    heightFactor: .82,
+    child: Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '选择城市',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ),
+              IconButton(
+                tooltip: '关闭',
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.close_rounded),
+              ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: TextField(
+            autofocus: true,
+            onChanged: (value) => setState(() => _query = value),
+            decoration: const InputDecoration(
+              prefixIcon: Icon(Icons.search_rounded),
+              hintText: '搜索城市',
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+            children: [
+              _CityRow(
+                label: '全国',
+                selected: widget.selected == null,
+                onTap: () => Navigator.pop(context, const _CityChoice(null)),
+              ),
+              for (final city in _visible)
+                _CityRow(
+                  label: city,
+                  selected: city == widget.selected,
+                  onTap: () => Navigator.pop(context, _CityChoice(city)),
+                ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _CityRow extends StatelessWidget {
+  const _CityRow({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => WanpanPressable(
+    onTap: onTap,
+    child: Container(
+      height: 58,
+      alignment: Alignment.centerLeft,
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: WanpanColors.border)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(label, style: Theme.of(context).textTheme.titleMedium),
+          ),
+          if (selected)
+            const Icon(Icons.check_rounded, color: WanpanColors.coral),
+        ],
+      ),
     ),
   );
 }
@@ -992,7 +1200,7 @@ class _DirectoryBrandCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '${item.city} · ${item.storeCount} 家门店 · ${item.routeCount} 条线路',
+                  '${item.areaLabel} · ${item.storeCount} 家门店 · ${item.routeCount} 条线路',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.bodyMedium,

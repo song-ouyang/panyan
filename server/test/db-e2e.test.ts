@@ -307,8 +307,20 @@ suite('real PostgreSQL API flow', () => {
     expect(routeRanking.statusCode).toBe(200);
     expect(routeRanking.json().items).toContainEqual(expect.objectContaining({
       route_id: routeId,
+      province: '广东省',
+      city: '深圳市',
       completion_count: 1,
       top_send_id: checkinId
+    }));
+    const cityRouteRanking = await app.inject({
+      method: 'GET',
+      url: `/api/rankings/routes?province=${encodeURIComponent('广东省')}&city=${encodeURIComponent('深圳市')}`
+    });
+    expect(cityRouteRanking.statusCode).toBe(200);
+    expect(cityRouteRanking.json().items).toContainEqual(expect.objectContaining({
+      route_id: routeId,
+      province: '广东省',
+      city: '深圳市'
     }));
 
     const me = await app.inject({ method: 'GET', url: '/api/users/me', headers: authHeader(owner) });
@@ -464,6 +476,43 @@ suite('real PostgreSQL API flow', () => {
     });
     expect(blocked.statusCode).toBe(200);
     expect(blocked.json()).toEqual({ blocked: true });
+
+    const blockedOwnerFriendDelete = await app.inject({
+      method: 'DELETE',
+      url: `/api/users/${stranger.user.id}/friend`,
+      headers: authHeader(owner)
+    });
+    expect(blockedOwnerFriendDelete.statusCode).toBe(200);
+    expect(blockedOwnerFriendDelete.json()).toEqual({ removed: false });
+
+    const blockedOwnerReverseBlock = await app.inject({
+      method: 'POST',
+      url: `/api/users/${stranger.user.id}/block`,
+      headers: authHeader(owner)
+    });
+    expect(blockedOwnerReverseBlock.statusCode).toBe(200);
+    expect(blockedOwnerReverseBlock.json()).toEqual({ blocked: true });
+
+    const blockedOwnerUnblock = await app.inject({
+      method: 'DELETE',
+      url: `/api/users/${stranger.user.id}/block`,
+      headers: authHeader(owner)
+    });
+    expect(blockedOwnerUnblock.statusCode).toBe(200);
+    expect(blockedOwnerUnblock.json()).toEqual({ blocked: true });
+
+    const preservedBlock = await query<{ requester_id: string; addressee_id: string; status: string }>(
+      `SELECT requester_id,addressee_id,status FROM friendships
+       WHERE (requester_id=$1 AND addressee_id=$2) OR
+             (requester_id=$2 AND addressee_id=$1)`,
+      [stranger.user.id, owner.user.id]
+    );
+    expect(preservedBlock.rows).toEqual([{
+      requester_id: stranger.user.id,
+      addressee_id: owner.user.id,
+      status: 'blocked'
+    }]);
+
     const blockedProfile = await app.inject({
       method: 'GET',
       url: `/api/users/${owner.user.id}/public`,
@@ -471,6 +520,12 @@ suite('real PostgreSQL API flow', () => {
     });
     expect(blockedProfile.statusCode).toBe(200);
     expect(blockedProfile.json()).toMatchObject({ friendship: 'blocked_by_me' });
+    const blockerProfileHiddenFromBlockedUser = await app.inject({
+      method: 'GET',
+      url: `/api/users/${stranger.user.id}/public`,
+      headers: authHeader(owner)
+    });
+    expect(blockerProfileHiddenFromBlockedUser.statusCode).toBe(404);
     const feedAfterBlock = await app.inject({
       method: 'GET',
       url: '/api/sends/feed?scope=square',

@@ -153,11 +153,11 @@ class FeedPage {
 
   factory FeedPage.fromJson(JsonMap json) => FeedPage(
     items: jsonModelList(json['items'], FeedPost.fromJson),
-    nextCursor: jsonDateTime(json['nextCursor']),
+    nextCursor: jsonNullableString(json['nextCursor']),
   );
 
   final List<FeedPost> items;
-  final DateTime? nextCursor;
+  final String? nextCursor;
 }
 
 class RouteLeaderboardEntry {

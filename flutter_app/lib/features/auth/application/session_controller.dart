@@ -36,6 +36,7 @@ class SessionController extends ChangeNotifier {
   bool _isInitializing = true;
   bool _profileNeedsCompletion = false;
   bool _clearing = false;
+  Future<void> _sessionMutation = Future<void>.value();
 
   String? get token => _token;
   UserSummary? get user => _user;
@@ -84,29 +85,41 @@ class SessionController extends ChangeNotifier {
     );
   }
 
-  Future<void> acceptSession(AuthSession session) async {
-    await _tokenStore.write(session.token);
-    await _persistUser(session.user);
-    await _preferences.remove(_legacyTokenKey);
-    _token = session.token;
-    _user = session.user;
-    _profileNeedsCompletion = session.needsProfile;
-    notifyListeners();
-  }
+  Future<void> acceptSession(AuthSession session) =>
+      _queueSessionMutation(() async {
+        await _tokenStore.write(session.token);
+        await _persistUser(session.user);
+        await _preferences.remove(_legacyTokenKey);
+        _token = session.token;
+        _user = session.user;
+        _profileNeedsCompletion = session.needsProfile;
+        notifyListeners();
+      });
 
-  Future<void> updateUser(UserSummary user) async {
+  Future<void> updateUser(UserSummary user) => _queueSessionMutation(() async {
     _user = user;
     _profileNeedsCompletion = !user.profileCompleted;
     await _persistUser(user);
     notifyListeners();
-  }
+  });
 
-  Future<void> signOut() => _clearSession();
+  Future<void> signOut() => _queueSessionMutation(_clearSession);
 
-  Future<void> handleUnauthorized() async {
+  Future<void> handleUnauthorized() => _queueSessionMutation(() async {
     if (_token == null || _clearing) return;
     await _clearSession();
-  }
+  });
+
+  /// Clears only the session whose bearer token was rejected by the server.
+  ///
+  /// A delayed 401 from an older request must not sign out a user who has
+  /// already completed a newer login. Session mutations are serialized so an
+  /// in-flight secure-storage write cannot race an older token deletion.
+  Future<void> handleUnauthorizedResponse(String rejectedAccessToken) =>
+      _queueSessionMutation(() async {
+        if (_token != rejectedAccessToken || _clearing) return;
+        await _clearSession();
+      });
 
   void _restoreUser() {
     final storedUser = _preferences.getString(_userKey);
@@ -138,6 +151,12 @@ class SessionController extends ChangeNotifier {
 
   Future<void> _persistUser(UserSummary user) =>
       _preferences.setString(_userKey, jsonEncode(user.toJson()));
+
+  Future<void> _queueSessionMutation(Future<void> Function() mutation) {
+    final next = _sessionMutation.then((_) => mutation());
+    _sessionMutation = next.then<void>((_) {}, onError: (_, _) {});
+    return next;
+  }
 
   Future<void> _clearSession({bool notify = true}) async {
     if (_clearing) return;
