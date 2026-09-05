@@ -47,11 +47,11 @@ EOF
 
 cat > /etc/systemd/system/wanpan-auto-deploy.timer <<'EOF'
 [Unit]
-Description=Check for a tested Wanpan server release every minute
+Description=Check for a tested Wanpan server release every twelve hours
 
 [Timer]
-OnBootSec=60s
-OnUnitInactiveSec=60s
+OnBootSec=12h
+OnUnitInactiveSec=12h
 AccuracySec=5s
 Unit=wanpan-auto-deploy.service
 
@@ -62,7 +62,7 @@ EOF
 chmod 644 /etc/systemd/system/wanpan-auto-deploy.{service,timer}
 systemctl daemon-reload
 systemctl enable wanpan-auto-deploy.timer
-systemctl start wanpan-auto-deploy.timer
+systemctl restart wanpan-auto-deploy.timer
 systemctl start --no-block wanpan-auto-deploy.service
-echo "已启用：每分钟检查 GitHub；只有测试、镜像发布完成的新版本才会部署。"
+echo "已启用：每 12 小时检查 GitHub；只有测试、镜像发布完成的新版本才会部署。"
 echo "查看日志：journalctl -u wanpan-auto-deploy.service -n 80 --no-pager"

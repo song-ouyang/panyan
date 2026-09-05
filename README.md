@@ -102,7 +102,7 @@ npm run dev:server
 
 ## 生产部署
 
-当前服务器（CentOS 7、宝塔/Nginx、`/www/wwwroot/wanpan-diary`）的完整安装、HTTPS、备份和回滚命令见 [`deploy/DEPLOY.md`](deploy/DEPLOY.md)。完成其中的「main 自动部署」一次性配置后，后端或部署相关代码推送/合并到 `main` 会自动测试并构建镜像；服务器沿用现有 GitHub 连接，每分钟检查已准备好的新版，然后备份数据库并部署。仅修改 Flutter 或小程序不会触发。手动部署仍可执行：
+当前服务器（CentOS 7、宝塔/Nginx、`/www/wwwroot/wanpan-diary`）的完整安装、HTTPS、备份和回滚命令见 [`deploy/DEPLOY.md`](deploy/DEPLOY.md)。完成其中的「main 自动部署」一次性配置后，后端或部署相关代码推送/合并到 `main` 会自动测试并构建镜像；服务器沿用现有 GitHub 连接，每 12 小时检查已准备好的新版，然后备份数据库并部署。仅修改 Flutter 或小程序不会触发。手动部署仍可执行：
 
 ```bash
 cd /www/wwwroot/wanpan-diary && bash deploy/server-deploy.sh

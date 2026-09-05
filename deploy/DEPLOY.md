@@ -133,7 +133,7 @@ npm run test:server:e2e
 
 ## main 自动部署（沿用服务器现有 GitHub 连接）
 
-GitHub 负责测试、构建和发布镜像包，服务器通过 systemd 计时器每分钟主动检查远端仓库。继续使用服务器原来的 GitHub 认证；不需要把服务器 SSH 私钥上传 GitHub，也不需要新增公网入口。
+GitHub 负责测试、构建和发布镜像包，服务器通过 systemd 计时器每 12 小时主动检查远端仓库。继续使用服务器原来的 GitHub 认证；不需要把服务器 SSH 私钥上传 GitHub，也不需要新增公网入口。
 
 工作流 [Build server release for automatic deployment](https://github.com/song-ouyang/panyan/actions/workflows/server-image-bundle.yml) 在 `main` 的后端、镜像输入或部署文件变化时自动运行。Flutter、小程序和普通文档变更不触发（`deploy/` 内运维文档也会触发）。合并 PR 和直接 push 都适用。
 
@@ -161,13 +161,15 @@ systemctl list-timers wanpan-auto-deploy.timer
 journalctl -u wanpan-auto-deploy.service -n 80 --no-pager
 ```
 
-日常无需手动部署。镜像发布完成后，服务器通常在下一个一分钟检查周期开始更新。没有新版本时保持安静。GitHub Actions 全绿代表测试和镜像发布成功，服务器日志中的“自动部署完成”及 `.deploy/auto-deploy-success-revision` 才代表上线验证成功。
+首次启用会立即检查一次，此后每次检查/部署结束 12 小时后再次检查。更新间隔配置后，重新执行安装脚本会重载并重启计时器，使新间隔生效。
+
+日常无需手动部署。镜像发布完成后，服务器通常在下一个 12 小时检查周期开始更新。没有新版本时保持安静。GitHub Actions 全绿代表测试和镜像发布成功，服务器日志中的“自动部署完成”及 `.deploy/auto-deploy-success-revision` 才代表上线验证成功。
 
 ### 连续提交、失败与暂停
 
 - 服务器读取 main 第一父链上最近的 ready 标签，并比较后端及部署输入。后续只有客户端改动时仍可部署已测试镜像；后续有后端改动时等待新版 CI，不部署过期的后端版本。合并提交也需要自己的测试和 ready 标记。
 - 代码、镜像标签、Release 完整提交号必须一致；部署必须快进，拒绝倒退和分叉。开启自动部署后让脚本管理服务器 checkout，日常不再另外执行 `git pull`。
-- systemd 不会重叠启动同一个服务，文件锁同时防止与手动部署/回滚重叠。计时器不因下一分钟到来而中断正在运行的备份或 migration。
+- systemd 不会重叠启动同一个服务，文件锁同时防止与手动部署/回滚重叠。计时器会等待当前检查/部署结束，再计算下一次检查时间。
 - 某个版本部署失败/中断后，记入 `.deploy/auto-deploy-failed-revision`，停止自动重试该版本，避免反复迁移。后续新的 ready 版本可以继续尝试。
 - 新 API 启动或本机健康检查失败时，部署脚本尝试恢复上一 API 镜像；数据库不自动回退。公网检查失败会记录失败，由运维排查网络/Nginx。修复后清除失败记录并手动执行一次检查；若该镜像已部署，只重试公网检查，不重复迁移。
 
