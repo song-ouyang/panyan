@@ -6,23 +6,26 @@ import {
 } from "../src/db/seed_square_experience_support.js";
 
 describe("square experience seed", () => {
-  it("requires one-command authorization in production", async () => {
+  it("allows experience fixtures in development", () => {
     expect(() =>
       assertSquareExperienceSeedAllowed("development", false),
     ).not.toThrow();
-    expect(() =>
-      assertSquareExperienceSeedAllowed("production", true),
-    ).not.toThrow();
-    expect(() =>
-      assertSquareExperienceSeedAllowed("production", false),
-    ).toThrow("ALLOW_PRODUCTION_SQUARE_SEED=true");
-
-    const runQuery = vi.fn() as unknown as SquareExperienceSeedQuery;
-    await expect(
-      runSquareExperienceSeed(runQuery, "production", false),
-    ).rejects.toThrow("ALLOW_PRODUCTION_SQUARE_SEED=true");
-    expect(runQuery).not.toHaveBeenCalled();
   });
+
+  it.each([false, true])(
+    "rejects production before any query even with legacy authorization %s",
+    async (allowProductionSquareSeed) => {
+      expect(() =>
+        assertSquareExperienceSeedAllowed("production", allowProductionSquareSeed),
+      ).toThrow("Production square experience seed is disabled");
+
+      const runQuery = vi.fn() as unknown as SquareExperienceSeedQuery;
+      await expect(
+        runSquareExperienceSeed(runQuery, "production", allowProductionSquareSeed),
+      ).rejects.toThrow("Production square experience seed is disabled");
+      expect(runQuery).not.toHaveBeenCalled();
+    },
+  );
 
   it("writes only namespaced, route-free, public approved experience data", async () => {
     const statements: Array<{ sql: string; values: unknown[] }> = [];
@@ -30,8 +33,7 @@ describe("square experience seed", () => {
       statements.push({ sql, values });
       if (
         sql.includes("INSERT INTO users") ||
-        sql.includes("INSERT INTO sends") ||
-        sql.includes("INSERT INTO comments")
+        sql.includes("INSERT INTO sends")
       ) {
         return { rows: [{ id: values[0] }], rowCount: 1 };
       }
@@ -39,8 +41,8 @@ describe("square experience seed", () => {
     }) as unknown as SquareExperienceSeedQuery;
 
     await expect(
-      runSquareExperienceSeed(runQuery, "production", true),
-    ).resolves.toEqual({ users: 5, posts: 12, likes: 20, comments: 8 });
+      runSquareExperienceSeed(runQuery, "development", false),
+    ).resolves.toEqual({ users: 5, posts: 12, likes: 20, comments: 0 });
 
     const userWrites = statements.filter(({ sql }) =>
       sql.includes("INSERT INTO users"),
@@ -76,11 +78,7 @@ describe("square experience seed", () => {
     const commentWrites = statements.filter(({ sql }) =>
       sql.includes("INSERT INTO comments"),
     );
-    expect(commentWrites).toHaveLength(8);
-    for (const { sql } of commentWrites) {
-      const conflictUpdate = sql.split("ON CONFLICT(id) DO UPDATE SET")[1];
-      expect(conflictUpdate).not.toContain("moderation_status='approved'");
-    }
+    expect(commentWrites).toHaveLength(0);
     expect(
       statements.every(({ sql }) => sql.includes("ON CONFLICT")),
     ).toBe(true);
@@ -98,7 +96,7 @@ describe("square experience seed", () => {
       SquareExperienceSeedQuery;
 
     await expect(
-      runSquareExperienceSeed(runQuery, "production", true),
+      runSquareExperienceSeed(runQuery, "development", false),
     ).rejects.toThrow("fixture namespace conflict");
     expect(runQuery).toHaveBeenCalledTimes(1);
   });

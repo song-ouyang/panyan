@@ -14,6 +14,7 @@ import '../../core/repositories/profile_repository.dart';
 import '../auth/application/session_controller.dart';
 import '../../shared/app_assets.dart';
 import '../../shared/motion/milestone_grade_sequence.dart';
+import '../../shared/motion/wanpan_motion_sound.dart';
 import '../../shared/widgets/wanpan_card.dart';
 import '../../shared/widgets/wanpan_lottie_stage.dart';
 import '../../shared/widgets/wanpan_mascot.dart';
@@ -27,6 +28,7 @@ class CheckinScreen extends StatefulWidget {
     required this.routeId,
     super.key,
     this.grade,
+    this.motionSoundPlayer,
     this.routeName,
     this.repository,
   });
@@ -35,6 +37,7 @@ class CheckinScreen extends StatefulWidget {
   final SessionController session;
   final String routeId;
   final String? grade;
+  final WanpanMotionSoundPlayer? motionSoundPlayer;
   final String? routeName;
   final CheckinRepository? repository;
 
@@ -61,10 +64,15 @@ class _CheckinScreenState extends State<CheckinScreen> {
   CheckinResult? _result;
   MonthDashboard? _currentMonthDashboard;
   bool _motionPreloadStarted = false;
+  late final WanpanMotionSoundPlayer _motionSoundPlayer;
+  late final bool _ownsMotionSoundPlayer;
 
   @override
   void initState() {
     super.initState();
+    _ownsMotionSoundPlayer = widget.motionSoundPlayer == null;
+    _motionSoundPlayer =
+        widget.motionSoundPlayer ?? WanpanAssetMotionSoundPlayer();
     if (widget.session.isAuthenticated) {
       unawaited(_prefetchCurrentMonthDashboard());
     }
@@ -90,11 +98,22 @@ class _CheckinScreenState extends State<CheckinScreen> {
     _motionPreloadStarted = true;
     unawaited(preloadWanpanLottie(context, AppAssets.sendSuccessAnimation));
     unawaited(preloadWanpanLottie(context, AppAssets.gradeMilestoneAnimation));
+    unawaited(
+      _motionSoundPlayer.preload(const [
+        WanpanMotionSoundCue.sendSuccess,
+        WanpanMotionSoundCue.gradeMilestone,
+      ]),
+    );
   }
 
   @override
   void dispose() {
     _captionController.dispose();
+    if (_ownsMotionSoundPlayer) {
+      unawaited(_motionSoundPlayer.dispose());
+    } else {
+      unawaited(_motionSoundPlayer.stop());
+    }
     super.dispose();
   }
 
@@ -237,6 +256,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
               grade: widget.grade,
               attempts: _attempts,
               hasVideo: _video != null,
+              motionSoundPlayer: _motionSoundPlayer,
               milestoneSequence: MilestoneGradeSequenceResolver.resolve(
                 currentMonth: _currentMonthDashboard,
                 latestGrade: _result!.milestone?.grade,
@@ -489,6 +509,7 @@ class _SuccessView extends StatefulWidget {
     required this.grade,
     required this.attempts,
     required this.hasVideo,
+    required this.motionSoundPlayer,
     required this.milestoneSequence,
   });
 
@@ -497,6 +518,7 @@ class _SuccessView extends StatefulWidget {
   final String? grade;
   final int attempts;
   final bool hasVideo;
+  final WanpanMotionSoundPlayer motionSoundPlayer;
   final MilestoneGradeSequence milestoneSequence;
 
   @override
@@ -511,8 +533,17 @@ class _SuccessViewState extends State<_SuccessView> {
     if (_feedbackScheduled) return;
     _feedbackScheduled = true;
     final milestone = widget.result.milestone;
+    unawaited(
+      widget.motionSoundPlayer.play(
+        milestone == null
+            ? WanpanMotionSoundCue.sendSuccess
+            : WanpanMotionSoundCue.gradeMilestone,
+        animated: animated,
+      ),
+    );
+    // The cat lands near frame 12; the final grade lands at frame 38 (60 fps).
     final hapticDelay = animated
-        ? Duration(milliseconds: milestone == null ? 180 : 330)
+        ? Duration(milliseconds: milestone == null ? 180 : 633)
         : Duration.zero;
     if (hapticDelay == Duration.zero) {
       unawaited(_playSuccessHaptic(milestone: milestone != null));

@@ -14,9 +14,12 @@ import 'package:wanpan_diary/features/auth/data/session_token_store.dart';
 import 'package:wanpan_diary/features/auth/domain/auth_session.dart';
 import 'package:wanpan_diary/features/gyms/checkin_screen.dart';
 import 'package:wanpan_diary/shared/app_assets.dart';
+import 'package:wanpan_diary/shared/motion/wanpan_motion_sound.dart';
 import 'package:wanpan_diary/shared/widgets/wanpan_lottie_stage.dart';
 import 'package:wanpan_diary/shared/widgets/wanpan_milestone_stage.dart';
 import 'package:wanpan_diary/shared/widgets/wanpan_pressable.dart';
+
+import 'support/fake_motion_sound_player.dart';
 
 const _config = AppConfig(
   environment: AppEnvironment.development,
@@ -93,6 +96,7 @@ Widget _host({
   required ApiClient api,
   required SessionController session,
   required bool reduceMotion,
+  required WanpanMotionSoundPlayer motionSoundPlayer,
 }) {
   return MaterialApp(
     theme: WanpanTheme.light(),
@@ -106,6 +110,7 @@ Widget _host({
       routeId: 'route-1',
       routeName: '橙色月亮线',
       grade: 'V4',
+      motionSoundPlayer: motionSoundPlayer,
     ),
   );
 }
@@ -149,9 +154,15 @@ void main() {
     addTearDown(session.dispose);
     final dashboardRequest = Completer<JsonMap>();
     final api = _CheckinApi(monthDashboardFuture: dashboardRequest.future);
+    final sounds = FakeMotionSoundPlayer();
 
     await tester.pumpWidget(
-      _host(api: api, session: session, reduceMotion: false),
+      _host(
+        api: api,
+        session: session,
+        reduceMotion: false,
+        motionSoundPlayer: sounds,
+      ),
     );
     await tester.tap(
       find.byWidgetPredicate(
@@ -178,6 +189,9 @@ void main() {
       hasLength(1),
     );
     expect(find.text('完攀记录已保存！'), findsOneWidget);
+    expect(sounds.plays, hasLength(1));
+    expect(sounds.plays.single.cue, WanpanMotionSoundCue.sendSuccess);
+    expect(sounds.plays.single.animated, isTrue);
     dashboardRequest.completeError(StateError('offline'));
     await tester.pump();
   });
@@ -210,9 +224,15 @@ void main() {
     final session = await _signedInSession();
     addTearDown(session.dispose);
     final api = _CheckinApi(milestoneGrade: 'V5');
+    final sounds = FakeMotionSoundPlayer();
 
     await tester.pumpWidget(
-      _host(api: api, session: session, reduceMotion: true),
+      _host(
+        api: api,
+        session: session,
+        reduceMotion: true,
+        motionSoundPlayer: sounds,
+      ),
     );
     await tester.tap(
       find.byWidgetPredicate(
@@ -242,6 +262,9 @@ void main() {
       hasLength(1),
     );
     expect(find.text('返回线路'), findsOneWidget);
+    expect(sounds.plays, hasLength(1));
+    expect(sounds.plays.single.cue, WanpanMotionSoundCue.gradeMilestone);
+    expect(sounds.plays.single.animated, isFalse);
   });
 
   testWidgets('milestone uses recent grades from the prefetched current month', (
@@ -281,9 +304,15 @@ void main() {
         'byGym': <Object?>[],
       },
     );
+    final sounds = FakeMotionSoundPlayer();
 
     await tester.pumpWidget(
-      _host(api: api, session: session, reduceMotion: true),
+      _host(
+        api: api,
+        session: session,
+        reduceMotion: true,
+        motionSoundPlayer: sounds,
+      ),
     );
     await tester.pump();
     await tester.tap(

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -20,8 +21,11 @@ import 'package:wanpan_diary/features/auth/data/session_token_store.dart';
 import 'package:wanpan_diary/features/auth/domain/auth_session.dart';
 import 'package:wanpan_diary/features/gyms/route_submission_screen.dart';
 import 'package:wanpan_diary/shared/app_assets.dart';
+import 'package:wanpan_diary/shared/motion/wanpan_motion_sound.dart';
 import 'package:wanpan_diary/shared/widgets/wanpan_lottie_stage.dart';
 import 'package:wanpan_diary/shared/widgets/wanpan_pressable.dart';
+
+import 'support/fake_motion_sound_player.dart';
 
 const _config = AppConfig(
   environment: AppEnvironment.development,
@@ -91,12 +95,16 @@ class _RouteSubmissionRepository extends RouteSubmissionRepository {
   _RouteSubmissionRepository(super.api);
 
   RouteSubmissionDraft? submittedDraft;
+  final coverUploads = <String>[];
+  final videoUploads = <String>[];
+  Completer<String>? videoUploadGate;
 
   @override
   Future<String> uploadCover(
     String filePath, {
     RouteCoverUploadProgress? onProgress,
   }) async {
+    coverUploads.add(filePath);
     onProgress?.call(1);
     return 'https://example.com/route.png';
   }
@@ -109,8 +117,10 @@ class _RouteSubmissionRepository extends RouteSubmissionRepository {
     RouteCoverUploadProgress? onProgress,
     VideoUploadPhaseChanged? onPhaseChanged,
   }) async {
+    videoUploads.add(filePath);
     onProgress?.call(1);
-    return 'https://example.com/first-send.mp4';
+    return await videoUploadGate?.future ??
+        'https://example.com/first-send.mp4';
   }
 
   @override
@@ -129,8 +139,8 @@ class _RouteSubmissionRepository extends RouteSubmissionRepository {
       points: draft.points,
       status: 'approved',
       publishedRouteId: 'published-route-1',
-      sendId: 'send-1',
-      videoModerationStatus: 'approved',
+      sendId: draft.videoUrl == null ? null : 'send-1',
+      videoModerationStatus: draft.videoUrl == null ? null : 'approved',
     );
   }
 }
@@ -167,7 +177,234 @@ Finder _fieldWithLabel(String label) => find.byWidgetPredicate(
   (widget) => widget is TextField && widget.decoration?.labelText == label,
 );
 
+Future<
+  ({
+    SessionController session,
+    _RouteSubmissionRepository submissions,
+    _RouteImagePicker picker,
+  })
+>
+_pumpOptionalPhotoForm(WidgetTester tester) async {
+  // Finish parsing before fake time starts driving the form's background preload.
+  await tester.runAsync(() async {
+    await AssetLottie(AppAssets.routePublishedAnimation).load();
+  });
+  await tester.binding.setSurfaceSize(const Size(430, 2400));
+  addTearDown(() => tester.binding.setSurfaceSize(null));
+  SharedPreferences.setMockInitialValues({});
+  final session = SessionController(
+    preferences: await SharedPreferences.getInstance(),
+    config: _config,
+    tokenStore: MemorySessionTokenStore(),
+  );
+  await session.acceptSession(
+    const AuthSession(
+      token: 'secure-token',
+      user: UserSummary(id: 'me', nickname: '小欧', profileCompleted: true),
+      needsProfile: false,
+    ),
+  );
+  final api = _RouteApiClient();
+  final submissions = _RouteSubmissionRepository(api);
+  final fixturePath = File('assets/logo.png').absolute.path;
+  final picker = _RouteImagePicker(
+    imagePath: fixturePath,
+    videoPath: fixturePath,
+  );
+  final sounds = FakeMotionSoundPlayer();
+  addTearDown(() async {
+    await tester.pumpWidget(const SizedBox.shrink());
+    await sounds.dispose();
+    session.dispose();
+    api.dispose();
+  });
+  await tester.pumpWidget(
+    MaterialApp(
+      theme: WanpanTheme.light(),
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(context).copyWith(disableAnimations: true),
+        child: child!,
+      ),
+      home: RouteSubmissionScreen(
+        api: api,
+        session: session,
+        initialGymId: _gym.id,
+        gymRepository: _RouteGymRepository(api),
+        submissionRepository: submissions,
+        imagePicker: picker,
+        localVideoPreviewBuilder: (_) =>
+            const SizedBox(height: 100, child: Text('测试完攀视频预览')),
+        imageSizeReader: (_) async => const Size(1254, 1254),
+        motionSoundPlayer: sounds,
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+  await tester.enterText(_fieldWithLabel('线路颜色'), '橙');
+  return (session: session, submissions: submissions, picker: picker);
+}
+
+Future<void> _chooseCover(WidgetTester tester) async {
+  await tester.tap(find.text('拍摄或选择线路照片'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('从相册选择'));
+  await tester.pumpAndSettle();
+}
+
+Future<void> _chooseVideo(WidgetTester tester) async {
+  final addVideo = find.text('添加完攀视频');
+  await tester.ensureVisible(addVideo);
+  await tester.tap(addVideo);
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('从相册选择视频'));
+  await tester.pumpAndSettle();
+}
+
+Future<void> _publishForm(WidgetTester tester, {bool settle = true}) async {
+  final publish = find.byWidgetPredicate(
+    (widget) => widget is WanpanButton && widget.label == '发布新线路',
+  );
+  await tester.ensureVisible(publish);
+  await tester.tap(publish);
+  if (settle) {
+    await tester.pumpAndSettle();
+  } else {
+    await tester.pump();
+  }
+}
+
 void main() {
+  testWidgets('无照片和视频也可发布，隐藏标点操作并跳过全部上传', (tester) async {
+    final form = await _pumpOptionalPhotoForm(tester);
+
+    expect(find.text('拍照并标记线路点（选填）'), findsOneWidget);
+    expect(find.widgetWithText(ChoiceChip, '起点'), findsNothing);
+    expect(find.widgetWithText(ChoiceChip, '终点'), findsNothing);
+    expect(find.text('撤销上一步'), findsNothing);
+    expect(find.text('清空标点'), findsNothing);
+    await _publishForm(tester);
+
+    final draft = form.submissions.submittedDraft;
+    expect(draft, isNotNull);
+    expect(draft!.coverUrl, isNull);
+    expect(draft.points, isEmpty);
+    expect(draft.videoUrl, isNull);
+    expect(draft.toJson(), containsPair('name', 'V2 橙线'));
+    expect(draft.toJson().containsKey('coverUrl'), isFalse);
+    expect(draft.toJson().containsKey('videoUrl'), isFalse);
+    expect(form.submissions.coverUploads, isEmpty);
+    expect(form.submissions.videoUploads, isEmpty);
+    expect(find.byType(WanpanLottieStage), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('仅选择完攀视频时只上传视频并保留配文和可见范围', (tester) async {
+    final form = await _pumpOptionalPhotoForm(tester);
+    await _chooseVideo(tester);
+    await tester.enterText(_fieldWithLabel('视频配文（选填）'), '没有线路照片也能分享完攀');
+    await tester.tap(find.text('仅岩友'));
+    await _publishForm(tester);
+
+    final draft = form.submissions.submittedDraft;
+    expect(draft, isNotNull);
+    expect(draft!.coverUrl, isNull);
+    expect(draft.points, isEmpty);
+    expect(draft.videoUrl, 'https://example.com/first-send.mp4');
+    expect(draft.caption, '没有线路照片也能分享完攀');
+    expect(draft.visibility, 'friends');
+    expect(draft.toJson().containsKey('coverUrl'), isFalse);
+    expect(form.picker.videoPickCount, 1);
+    expect(form.submissions.coverUploads, isEmpty);
+    expect(form.submissions.videoUploads, [form.picker.videoPath]);
+    expect(find.byType(WanpanLottieStage), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('线路照片可以不添加标点直接发布', (tester) async {
+    final form = await _pumpOptionalPhotoForm(tester);
+    await _chooseCover(tester);
+    expect(find.widgetWithText(ChoiceChip, '起点'), findsOneWidget);
+    expect(find.widgetWithText(ChoiceChip, '终点'), findsOneWidget);
+    await _publishForm(tester);
+
+    final draft = form.submissions.submittedDraft;
+    expect(draft, isNotNull);
+    expect(draft!.coverUrl, 'https://example.com/route.png');
+    expect(draft.points, isEmpty);
+    expect(form.submissions.coverUploads, [form.picker.imagePath]);
+    expect(form.submissions.videoUploads, isEmpty);
+    expect(find.byType(WanpanLottieStage), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('部分标点仍需起终点，移除照片清空标点后可跳过照片发布', (tester) async {
+    final form = await _pumpOptionalPhotoForm(tester);
+    await _chooseCover(tester);
+    tester
+        .widget<GestureDetector>(
+          find
+              .ancestor(
+                of: find.text('点击添加起点'),
+                matching: find.byType(GestureDetector),
+              )
+              .first,
+        )
+        .onTapDown!(TapDownDetails(localPosition: const Offset(110, 110)));
+    await tester.pump();
+    await _publishForm(tester);
+    expect(find.text('请补充终点，或清空标点后直接发布'), findsOneWidget);
+    expect(form.submissions.submittedDraft, isNull);
+    expect(form.submissions.coverUploads, isEmpty);
+
+    final remove = find.text('移除照片');
+    await tester.ensureVisible(remove);
+    await tester.tap(remove);
+    await tester.pumpAndSettle();
+    expect(find.text('拍摄或选择线路照片'), findsOneWidget);
+    expect(find.widgetWithText(ChoiceChip, '起点'), findsNothing);
+    expect(find.text('清空标点'), findsNothing);
+    await _publishForm(tester);
+
+    final draft = form.submissions.submittedDraft;
+    expect(draft, isNotNull);
+    expect(draft!.coverUrl, isNull);
+    expect(draft.points, isEmpty);
+    expect(form.submissions.coverUploads, isEmpty);
+    expect(form.submissions.videoUploads, isEmpty);
+    expect(find.byType(WanpanLottieStage), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('仅视频上传期间切换账号不会把线路发布到新账号', (tester) async {
+    final form = await _pumpOptionalPhotoForm(tester);
+    await _chooseVideo(tester);
+    final uploading = Completer<String>();
+    form.submissions.videoUploadGate = uploading;
+    await _publishForm(tester, settle: false);
+    expect(form.submissions.coverUploads, isEmpty);
+    expect(form.submissions.videoUploads, hasLength(1));
+    expect(form.submissions.submittedDraft, isNull);
+
+    await form.session.acceptSession(
+      const AuthSession(
+        token: 'another-token',
+        user: UserSummary(
+          id: 'another-user',
+          nickname: '另一个岩友',
+          profileCompleted: true,
+        ),
+        needsProfile: false,
+      ),
+    );
+    uploading.complete('https://example.com/first-send.mp4');
+    await tester.pumpAndSettle();
+
+    expect(form.submissions.submittedDraft, isNull);
+    expect(find.text('登录账号已切换，请重新提交'), findsOneWidget);
+    expect(find.byType(WanpanLottieStage), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('馆内投稿可完成图片标点、视频配文并同步朋友圈', (tester) async {
     tester.view.physicalSize = const Size(430, 5000);
     tester.view.devicePixelRatio = 1;
@@ -176,8 +413,10 @@ void main() {
       tester.view.resetDevicePixelRatio();
     });
     final fixturePath = File('assets/logo.png').absolute.path;
-    Lottie.cache.clear();
-    await AssetLottie(AppAssets.routePublishedAnimation).load();
+    await tester.runAsync(() async {
+      Lottie.cache.clear();
+      await AssetLottie(AppAssets.routePublishedAnimation).load();
+    });
     final haptics = <Object?>[];
     tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
       SystemChannels.platform,
@@ -216,6 +455,7 @@ void main() {
       videoPath: fixturePath,
     );
     final navigatorKey = GlobalKey<NavigatorState>();
+    final sounds = FakeMotionSoundPlayer();
 
     await tester.pumpWidget(
       MaterialApp(
@@ -238,6 +478,7 @@ void main() {
             child: Center(child: Text('视频已选择，可点击画面预览')),
           ),
           imageSizeReader: (_) async => const Size(1254, 1254),
+          motionSoundPlayer: sounds,
         ),
       ),
     );
@@ -250,7 +491,7 @@ void main() {
     expect(find.text('线路墙 / 周期'), findsNothing);
     expect(find.text('先找馆内已有线路'), findsNothing);
     expect(
-      tester.getTopLeft(_fieldWithLabel('线路名称')).dy,
+      tester.getTopLeft(_fieldWithLabel('线路名称（选填）')).dy,
       lessThan(tester.getTopLeft(find.text('拍摄或选择线路照片').first).dy),
     );
 
@@ -329,7 +570,7 @@ void main() {
     await tester.tap(find.text('仅岩友'));
     await tester.pump();
 
-    await tester.enterText(_fieldWithLabel('线路名称'), '测试橙线');
+    await tester.enterText(_fieldWithLabel('线路名称（选填）'), '测试橙线');
     await tester.enterText(_fieldWithLabel('线路颜色'), '橙');
     ScaffoldMessenger.of(tester.element(find.byType(RouteSubmissionScreen)))
         .showSnackBar(const SnackBar(content: Text('旧错误提示')));
@@ -389,6 +630,9 @@ void main() {
     await tester.pump(const Duration(milliseconds: 1));
     await tester.pump();
     expect(find.text('完成并返回'), findsOneWidget);
+    expect(sounds.plays, hasLength(1));
+    expect(sounds.plays.single.cue, WanpanMotionSoundCue.routePublished);
+    expect(sounds.plays.single.animated, isTrue);
     await tester.pumpAndSettle();
 
     final draft = submissionRepository.submittedDraft;

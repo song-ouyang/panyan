@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Static 12% handoff state; Flutter owns subsequent loading progress. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="100dp" android:height="8dp"
+    android:viewportWidth="100" android:viewportHeight="8">
+    <path android:fillColor="#E9DCC7"
+        android:pathData="M4,0H96A4,4 0,0 1,96 8H4A4,4 0,0 1,4 0Z" />
+    <path android:fillColor="#FF6B52"
+        android:pathData="M4,0H8A4,4 0,0 1,8 8H4A4,4 0,0 1,4 0Z" />
+</vector>

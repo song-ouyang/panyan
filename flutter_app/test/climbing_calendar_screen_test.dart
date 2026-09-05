@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -35,6 +37,19 @@ void main() {
 
     expect(repository.requestedMonths, ['2026-08']);
     expect(find.text('2026 年 8 月'), findsOneWidget);
+    final hero = find.byKey(const Key('calendar-month-hero'));
+    expect(
+      find.descendant(of: hero, matching: find.text('积分')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: hero, matching: find.text('55')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: hero, matching: find.text('视频记录')),
+      findsNothing,
+    );
     expect(find.text('香蕉攀岩·南山店'), findsWidgets);
     expect(find.text('8 月 12 日 · 完成 2 条'), findsOneWidget);
     expect(find.text('V3'), findsWidgets);
@@ -52,6 +67,81 @@ void main() {
     expect(repository.requestedMonths, ['2026-08', '2026-07']);
     expect(find.text('2026 年 7 月'), findsOneWidget);
     expect(find.textContaining('这个月还没有记录'), findsOneWidget);
+  });
+
+  testWidgets('积分指标可读可点，窄屏大字下规则可滚动且关闭后保留月份与记录', (tester) async {
+    final api = _api();
+    final repository = _FakeProfileRepository(api);
+    await _pumpCalendar(
+      tester,
+      api,
+      repository,
+      size: const Size(320, 568),
+      textScale: 1.35,
+    );
+    final semantics = tester.ensureSemantics();
+    await tester.pump();
+    final points = find.byKey(const Key('calendar-points-rules'));
+    await tester.ensureVisible(points);
+    await tester.pumpAndSettle();
+    expect(points.hitTestable(), findsOneWidget);
+    expect(tester.getSize(points).shortestSide, greaterThanOrEqualTo(44));
+    try {
+      final pointsSemantics = find.bySemanticsLabel('积分55，查看积分规则');
+      expect(pointsSemantics, findsOneWidget);
+      expect(
+        tester
+            .getSemantics(pointsSemantics)
+            .getSemanticsData()
+            .hasAction(ui.SemanticsAction.tap),
+        isTrue,
+      );
+    } finally {
+      semantics.dispose();
+    }
+
+    await tester.tap(points);
+    await tester.pumpAndSettle();
+    expect(find.text('积分规则'), findsOneWidget);
+    expect(find.text('+10 分'), findsOneWidget);
+    expect(find.text('+V级 × 5 分'), findsOneWidget);
+    expect(find.text('尝试 1 次即完成'), findsOneWidget);
+    expect(find.text('+5 分'), findsOneWidget);
+    expect(find.text('10 + 2 × 5 + 5 = 25 分'), findsOneWidget);
+    expect(find.text('这里仅统计完攀积分，不含排行榜的点赞加分。'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    final sheet = find.byKey(const Key('calendar-points-rules-sheet'));
+    final scrollable = tester.state<ScrollableState>(
+      find.descendant(of: sheet, matching: find.byType(Scrollable)),
+    );
+    expect(scrollable.position.maxScrollExtent, greaterThan(0));
+    final dismiss = find.byKey(const Key('calendar-points-rules-dismiss'));
+    await tester.ensureVisible(dismiss);
+    await tester.pumpAndSettle();
+    expect(dismiss.hitTestable(), findsOneWidget);
+    expect(tester.getSize(dismiss).shortestSide, greaterThanOrEqualTo(44));
+    await tester.tap(dismiss);
+    await tester.pumpAndSettle();
+
+    expect(sheet, findsNothing);
+    expect(repository.requestedMonths, ['2026-08']);
+    expect(find.text('2026 年 8 月'), findsOneWidget);
+    final dayDetails = find.text('8 月 12 日 · 完成 2 条');
+    await tester.scrollUntilVisible(
+      dayDetails,
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    expect(dayDetails, findsOneWidget);
+    expect(
+      tester
+          .widget<IconButton>(find.byKey(const Key('calendar-share-month')))
+          .onPressed,
+      isNotNull,
+    );
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('每天合计所有岩馆的完攀数并按数值展示最高难度', (tester) async {
@@ -92,7 +182,41 @@ void main() {
     expect(find.textContaining('这个月还没有记录'), findsNothing);
   });
 
-  testWidgets('窄屏和大字号下日期下方的数量和最高难度不裁切', (tester) async {
+  testWidgets('每日数量按区间分色且 V0 到 V17 各有独立色条', (tester) async {
+    final api = _api();
+    const counts = [1, 2, 3, 4, 6, 7, 9, 10];
+    final repository = _FakeProfileRepository(api)
+      ..records = [
+        for (var grade = 0; grade <= 17; grade++)
+          _record(grade + 1, 'V$grade', counts[grade % counts.length]),
+      ];
+    await _pumpCalendar(tester, api, repository);
+
+    expect({
+      for (var day = 1; day <= 18; day++) _barColor(tester, 'grade', day),
+    }, hasLength(18));
+    expect({
+      for (final day in [1, 2, 4, 6, 8]) _barColor(tester, 'count', day),
+    }, hasLength(5));
+    expect(_barColor(tester, 'count', 2), _barColor(tester, 'count', 3));
+    expect(_barColor(tester, 'count', 4), _barColor(tester, 'count', 5));
+    expect(_barColor(tester, 'count', 6), _barColor(tester, 'count', 7));
+    for (var day = 1; day <= 18; day++) {
+      for (final kind in ['count', 'grade']) {
+        final contrast =
+            (_barColor(tester, kind, day).computeLuminance() + .05) /
+            (WanpanColors.ink.computeLuminance() + .05);
+        expect(contrast, greaterThanOrEqualTo(4.5));
+      }
+    }
+    expect(
+      find.byKey(const Key('calendar-day-count-bar-2026-08-19')),
+      findsNothing,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('窄屏和大字号下两条色条铺满日期格且文字不裁切', (tester) async {
     final api = _api();
     final repository = _FakeProfileRepository(api)
       ..records = [_record(12, 'V10', 12)];
@@ -109,10 +233,26 @@ void main() {
 
     final count = find.byKey(const Key('calendar-day-count-2026-08-12'));
     final grade = find.byKey(const Key('calendar-day-grade-2026-08-12'));
+    final countBar = find.byKey(const Key('calendar-day-count-bar-2026-08-12'));
+    final gradeBar = find.byKey(const Key('calendar-day-grade-bar-2026-08-12'));
     final countParagraph = tester.renderObject<RenderParagraph>(count);
     final gradeParagraph = tester.renderObject<RenderParagraph>(grade);
     expect(countParagraph.didExceedMaxLines, isFalse);
     expect(gradeParagraph.didExceedMaxLines, isFalse);
+    expect(tester.getSize(countBar).width, tester.getSize(day).width);
+    expect(tester.getSize(gradeBar).width, tester.getSize(day).width);
+    expect(
+      tester.getRect(countBar).bottom,
+      lessThan(tester.getRect(gradeBar).top),
+    );
+    expect(
+      tester.getRect(count).center.dx,
+      closeTo(tester.getRect(countBar).center.dx, .01),
+    );
+    expect(
+      tester.getRect(grade).center.dx,
+      closeTo(tester.getRect(gradeBar).center.dx, .01),
+    );
     expect(
       tester.getRect(count).bottom,
       lessThan(tester.getRect(grade).bottom),
@@ -157,6 +297,17 @@ void main() {
     expect(repository.requestedMonths, ['2026-08', '2026-08']);
     expect(tester.takeException(), isNull);
   });
+}
+
+Color _barColor(WidgetTester tester, String kind, int day) {
+  final date = '2026-08-${day.toString().padLeft(2, '0')}';
+  final container = tester.widget<Container>(
+    find.descendant(
+      of: find.byKey(Key('calendar-day-$kind-bar-$date')),
+      matching: find.byType(Container),
+    ),
+  );
+  return (container.decoration! as BoxDecoration).color!;
 }
 
 ApiClient _api() => ApiClient(

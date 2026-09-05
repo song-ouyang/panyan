@@ -22,6 +22,7 @@ class LoginScreen extends StatefulWidget {
     required this.repository,
     required this.nativeAuth,
     required this.returnTo,
+    this.now = DateTime.now,
     super.key,
   });
 
@@ -29,28 +30,86 @@ class LoginScreen extends StatefulWidget {
   final AuthRepository repository;
   final NativeAuthService nativeAuth;
   final String returnTo;
+  final DateTime Function() now;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
   final _phoneController = TextEditingController();
   final _codeController = TextEditingController();
   Timer? _countdownTimer;
   DateTime? _resendAvailableAt;
+  final _retryAvailableAt = <String, DateTime>{};
   String? _busyProvider;
   String? _inlineMessage;
   String? _retryProvider;
   var _inlineIsError = true;
-  var _secondsUntilResend = 0;
+  var _inlineIsRateLimited = false;
   var _agreedToTerms = false;
 
   bool get _busy => _busyProvider != null;
 
+  int _secondsRemaining(DateTime? deadline) {
+    if (deadline == null) return 0;
+    final remaining = deadline.difference(widget.now()).inMilliseconds;
+    return remaining <= 0 ? 0 : (remaining / 1000).ceil();
+  }
+
+  int _cooldownSeconds(String provider) {
+    final rateLimit = _secondsRemaining(_retryAvailableAt[provider]);
+    if (provider != 'sms-send') return rateLimit;
+    final resend = _secondsRemaining(_resendAvailableAt);
+    return resend > rateLimit ? resend : rateLimit;
+  }
+
+  bool _disabled(String provider) => _busy || _cooldownSeconds(provider) > 0;
+
+  String get _visibleInlineMessage {
+    final provider = _retryProvider;
+    if (!_inlineIsRateLimited || provider == null) return _inlineMessage!;
+    final seconds = _cooldownSeconds(provider);
+    final action = provider == 'sms-send' ? '获取验证码' : '登录';
+    if (seconds == 0) return '现在可以重新尝试$action。';
+    final wait = seconds < 60
+        ? '$seconds 秒'
+        : '${seconds ~/ 60} 分 ${seconds % 60} 秒';
+    return '请求太频繁，请等待 $wait 后再$action。';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _refreshCountdown();
+  }
+
+  void _startCountdown() {
+    _countdownTimer?.cancel();
+    _countdownTimer = Timer.periodic(
+      const Duration(seconds: 1),
+      (_) => _refreshCountdown(),
+    );
+  }
+
+  void _refreshCountdown() {
+    if (!mounted) return;
+    if (_secondsRemaining(_resendAvailableAt) == 0 &&
+        !_retryAvailableAt.values.any((date) => _secondsRemaining(date) > 0)) {
+      _countdownTimer?.cancel();
+    }
+    setState(() {});
+  }
+
   @override
   void dispose() {
     _countdownTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     _phoneController.dispose();
     _codeController.dispose();
     super.dispose();
@@ -61,12 +120,13 @@ class _LoginScreenState extends State<LoginScreen> {
     Future<void> Function() authenticate, {
     bool navigateAfterSuccess = true,
   }) async {
-    if (_busy) return;
+    if (_disabled(provider)) return;
     setState(() {
       _busyProvider = provider;
       _inlineMessage = null;
       _retryProvider = null;
       _inlineIsError = true;
+      _inlineIsRateLimited = false;
     });
     try {
       await authenticate();
@@ -96,11 +156,16 @@ class _LoginScreenState extends State<LoginScreen> {
       if (error.isUnauthorized) await widget.session.handleUnauthorized();
       if (!mounted) return;
       setState(() {
+        if (error.statusCode == 429 && error.retryAt != null) {
+          _retryAvailableAt[provider] = error.retryAt!;
+          _inlineIsRateLimited = true;
+          _startCountdown();
+        }
         _inlineMessage = _friendlyApiMessage(provider, error);
-        _retryProvider = provider;
+        _retryProvider = _inlineMessage == null ? null : provider;
         _inlineIsError = true;
       });
-      HapticFeedback.heavyImpact();
+      if (_inlineMessage != null) HapticFeedback.heavyImpact();
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -114,7 +179,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  String _friendlyApiMessage(String provider, ApiException error) {
+  String? _friendlyApiMessage(String provider, ApiException error) {
     final normalizedCode = error.code.toUpperCase();
     final normalizedMessage = error.message.toLowerCase();
     final isValidationFailure =
@@ -137,7 +202,7 @@ class _LoginScreenState extends State<LoginScreen> {
       429 => '请求太频繁，请稍后再试。',
       500 => '登录服务处理失败，请稍后重试。',
       502 || 503 || 504 when provider == 'sms-send' => '短信服务暂时不可用，请稍后重试。',
-      502 || 503 || 504 => '登录服务暂时不可用，请稍后重试。',
+      502 || 503 || 504 => null,
       null when normalizedMessage.contains('超时') => '连接登录服务超时，请检查网络后重试。',
       null => '网络连接失败，请检查网络后重试。',
       _ => '登录没有完成，请稍后重试。',
@@ -184,41 +249,24 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _sendSmsCode() async {
-    if (_busy || _secondsUntilResend > 0 || !_checkTerms()) return;
+    if (_disabled('sms-send') || !_checkTerms()) return;
     final phone = _validatedPhone();
     if (phone == null) return;
     await _run('sms-send', () async {
       await widget.repository.sendSmsCode(phone: phone);
       if (!mounted) return;
       setState(() {
-        _secondsUntilResend = 60;
-        _resendAvailableAt = DateTime.now().add(const Duration(seconds: 60));
+        _resendAvailableAt = widget.now().add(const Duration(seconds: 60));
         _inlineMessage = '验证码已发送，请注意查收。';
         _retryProvider = null;
         _inlineIsError = false;
       });
-      _countdownTimer?.cancel();
-      _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-        final remainingMilliseconds =
-            _resendAvailableAt?.difference(DateTime.now()).inMilliseconds ?? 0;
-        final remaining = (remainingMilliseconds / 1000).ceil();
-        if (!mounted || remaining <= 0) {
-          timer.cancel();
-          if (mounted) {
-            setState(() {
-              _secondsUntilResend = 0;
-              _resendAvailableAt = null;
-            });
-          }
-          return;
-        }
-        setState(() => _secondsUntilResend = remaining);
-      });
+      _startCountdown();
     }, navigateAfterSuccess: false);
   }
 
   Future<void> _smsLogin() async {
-    if (_busy || !_checkTerms()) return;
+    if (_disabled('sms-login') || !_checkTerms()) return;
     final phone = _validatedPhone();
     if (phone == null) return;
     final code = _codeController.text.trim();
@@ -267,7 +315,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final reduceMotion = WanpanMotion.reduceMotion(context);
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -284,310 +331,290 @@ class _LoginScreenState extends State<LoginScreen> {
             padding: const EdgeInsets.fromLTRB(24, 4, 24, 36),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 460),
-              child: TweenAnimationBuilder<double>(
-                tween: Tween(begin: reduceMotion ? 1 : .97, end: 1),
-                duration: WanpanMotion.duration(context, WanpanMotion.enter),
-                curve: WanpanMotion.curve(context),
-                builder: (context, value, child) => Transform.scale(
-                  scale: value,
-                  child: Opacity(opacity: value, child: child),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    RepaintBoundary(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(30),
-                        child: SizedBox(
-                          height: 326,
-                          width: double.infinity,
-                          child: Image.asset(
-                            AppAssets.loginGardenHero,
-                            cacheWidth: 1200,
-                            fit: BoxFit.cover,
-                            alignment: Alignment.center,
-                            filterQuality: FilterQuality.high,
-                          ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  RepaintBoundary(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(30),
+                      child: SizedBox(
+                        height: 326,
+                        width: double.infinity,
+                        child: Image.asset(
+                          AppAssets.loginGardenHero,
+                          cacheWidth: 1200,
+                          fit: BoxFit.cover,
+                          alignment: Alignment.center,
+                          filterQuality: FilterQuality.high,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 24),
-                    Text(
-                      '每一次上墙都有记录',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.headlineMedium
-                          ?.copyWith(fontSize: 26, letterSpacing: -.6),
-                    ),
-                    const SizedBox(height: 24),
-                    SizedBox(
-                      height: 62,
-                      child: TextField(
-                        key: const Key('sms-phone'),
-                        controller: _phoneController,
-                        enabled: !_busy,
-                        keyboardType: TextInputType.phone,
-                        autofillHints: const [AutofillHints.telephoneNumber],
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                        ],
-                        maxLength: 11,
-                        style: Theme.of(context).textTheme.bodyLarge,
-                        decoration: const InputDecoration(
-                          hintText: '手机号',
-                          prefixIcon: Icon(Icons.phone_iphone_rounded),
-                          counterText: '',
-                          fillColor: WanpanColors.surface,
-                        ),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    '每一次上墙都有记录',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.headlineMedium
+                        ?.copyWith(fontSize: 26, letterSpacing: -.6),
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    height: 62,
+                    child: TextField(
+                      key: const Key('sms-phone'),
+                      controller: _phoneController,
+                      enabled: !_busy,
+                      keyboardType: TextInputType.phone,
+                      autofillHints: const [AutofillHints.telephoneNumber],
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      maxLength: 11,
+                      style: Theme.of(context).textTheme.bodyLarge,
+                      decoration: const InputDecoration(
+                        hintText: '手机号',
+                        prefixIcon: Icon(Icons.phone_iphone_rounded),
+                        counterText: '',
+                        fillColor: WanpanColors.surface,
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    Container(
-                      height: 62,
-                      decoration: BoxDecoration(
-                        color: WanpanColors.surface,
-                        borderRadius: BorderRadius.circular(WanpanRadii.medium),
-                        border: Border.all(color: WanpanColors.border),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              key: const Key('sms-code'),
-                              controller: _codeController,
-                              enabled: !_busy,
-                              keyboardType: TextInputType.number,
-                              autofillHints: const [AutofillHints.oneTimeCode],
-                              inputFormatters: [
-                                FilteringTextInputFormatter.digitsOnly,
-                              ],
-                              maxLength: 6,
-                              style: Theme.of(context).textTheme.bodyLarge,
-                              decoration: const InputDecoration(
-                                hintText: '验证码',
-                                counterText: '',
-                                filled: false,
-                                border: InputBorder.none,
-                                enabledBorder: InputBorder.none,
-                                focusedBorder: InputBorder.none,
-                              ),
-                            ),
-                          ),
-                          TextButton(
-                            key: const Key('sms-send-code'),
-                            onPressed: _busy || _secondsUntilResend > 0
-                                ? null
-                                : _sendSmsCode,
-                            style: TextButton.styleFrom(
-                              foregroundColor: WanpanColors.coral,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                              ),
-                              textStyle: const TextStyle(
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                            child: Text(
-                              _busyProvider == 'sms-send'
-                                  ? '发送中…'
-                                  : _secondsUntilResend > 0
-                                  ? '${_secondsUntilResend}s 后重发'
-                                  : '获取验证码',
-                            ),
-                          ),
-                        ],
-                      ),
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    height: 62,
+                    decoration: BoxDecoration(
+                      color: WanpanColors.surface,
+                      borderRadius: BorderRadius.circular(WanpanRadii.medium),
+                      border: Border.all(color: WanpanColors.border),
                     ),
-                    const SizedBox(height: 4),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Row(
                       children: [
-                        Checkbox(
-                          value: _agreedToTerms,
-                          onChanged: _busy
-                              ? null
-                              : (value) => setState(
-                                  () => _agreedToTerms = value ?? false,
-                                ),
-                        ),
                         Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.only(top: 4),
-                            child: Wrap(
-                              crossAxisAlignment: WrapCrossAlignment.center,
-                              children: [
-                                Text(
-                                  '我已阅读并同意',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .labelMedium,
-                                ),
-                                TextButton(
-                                  key: const Key('open-terms'),
-                                  onPressed: () => _openLegalPage('/terms'),
-                                  style: TextButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 2,
-                                    ),
-                                    minimumSize: const Size(0, 40),
-                                    tapTargetSize:
-                                        MaterialTapTargetSize.shrinkWrap,
-                                    textStyle: Theme.of(context)
-                                        .textTheme
-                                        .labelMedium,
-                                  ),
-                                  child: const Text('《用户协议》'),
-                                ),
-                                Text(
-                                  '与',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .labelMedium,
-                                ),
-                                TextButton(
-                                  key: const Key('open-privacy'),
-                                  onPressed: () => _openLegalPage('/privacy'),
-                                  style: TextButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 2,
-                                    ),
-                                    minimumSize: const Size(0, 40),
-                                    tapTargetSize:
-                                        MaterialTapTargetSize.shrinkWrap,
-                                    textStyle: Theme.of(context)
-                                        .textTheme
-                                        .labelMedium,
-                                  ),
-                                  child: const Text('《隐私政策》'),
-                                ),
-                                Text(
-                                  '。',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .labelMedium,
-                                ),
-                              ],
+                          child: TextField(
+                            key: const Key('sms-code'),
+                            controller: _codeController,
+                            enabled: !_busy,
+                            keyboardType: TextInputType.number,
+                            autofillHints: const [AutofillHints.oneTimeCode],
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                            ],
+                            maxLength: 6,
+                            style: Theme.of(context).textTheme.bodyLarge,
+                            decoration: const InputDecoration(
+                              hintText: '验证码',
+                              counterText: '',
+                              filled: false,
+                              border: InputBorder.none,
+                              enabledBorder: InputBorder.none,
+                              focusedBorder: InputBorder.none,
                             ),
+                          ),
+                        ),
+                        TextButton(
+                          key: const Key('sms-send-code'),
+                          onPressed: _disabled('sms-send')
+                              ? null
+                              : _sendSmsCode,
+                          style: TextButton.styleFrom(
+                            foregroundColor: WanpanColors.coral,
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            textStyle: const TextStyle(
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          child: Text(
+                            _busyProvider == 'sms-send'
+                                ? '发送中…'
+                                : _cooldownSeconds('sms-send') > 0
+                                ? '${_cooldownSeconds('sms-send')} 秒后重发'
+                                : '获取验证码',
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 2),
-                    WanpanButton(
-                      key: const Key('sms-login'),
-                      label: '验证码登录',
-                      loading: _busyProvider == 'sms-login',
-                      onPressed: _busy ? null : _smsLogin,
-                      icon: const Icon(Icons.login_rounded),
-                    ),
-                    if (widget.nativeAuth.canAttemptApple) ...[
-                      const SizedBox(height: 20),
-                      Text(
-                        '其他登录方式',
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.labelMedium,
-                      ),
-                      const SizedBox(height: 13),
-                      IgnorePointer(
-                        ignoring: _busy,
-                        child: AnimatedOpacity(
-                          opacity: _busy ? .46 : 1,
-                          duration: WanpanMotion.duration(
-                            context,
-                            WanpanMotion.press,
-                          ),
-                          child: SizedBox(
-                            height: 54,
-                            child: SignInWithAppleButton(
-                              key: const Key('apple-login'),
-                              text: 'Apple 登录',
-                              borderRadius: const BorderRadius.all(
-                                Radius.circular(WanpanRadii.medium),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Checkbox(
+                        value: _agreedToTerms,
+                        onChanged: _busy
+                            ? null
+                            : (value) => setState(
+                                () => _agreedToTerms = value ?? false,
                               ),
-                              onPressed: _appleLogin,
-                            ),
+                      ),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Wrap(
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              Text(
+                                '我已阅读并同意',
+                                style: Theme.of(context).textTheme.labelMedium,
+                              ),
+                              TextButton(
+                                key: const Key('open-terms'),
+                                onPressed: () => _openLegalPage('/terms'),
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 2,
+                                  ),
+                                  minimumSize: const Size(0, 40),
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                  textStyle: Theme.of(context)
+                                      .textTheme
+                                      .labelMedium,
+                                ),
+                                child: const Text('《用户协议》'),
+                              ),
+                              Text(
+                                '与',
+                                style: Theme.of(context).textTheme.labelMedium,
+                              ),
+                              TextButton(
+                                key: const Key('open-privacy'),
+                                onPressed: () => _openLegalPage('/privacy'),
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 2,
+                                  ),
+                                  minimumSize: const Size(0, 40),
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                  textStyle: Theme.of(context)
+                                      .textTheme
+                                      .labelMedium,
+                                ),
+                                child: const Text('《隐私政策》'),
+                              ),
+                              Text(
+                                '。',
+                                style: Theme.of(context).textTheme.labelMedium,
+                              ),
+                            ],
                           ),
                         ),
                       ),
                     ],
-                    if (widget.session.canUseDevelopmentLogin) ...[
-                      const SizedBox(height: 13),
-                      WanpanButton(
-                        key: const Key('development-login'),
-                        label: '开发账号登录',
-                        loading: _busyProvider == 'development',
-                        style: WanpanButtonStyle.secondary,
-                        onPressed: _busy ? null : _developmentLogin,
-                      ),
-                      const SizedBox(height: 7),
-                      Text(
-                        '仅在 development + ENABLE_DEV_LOGIN=true 时显示',
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.labelMedium,
-                      ),
-                    ],
-                    AnimatedSize(
-                      duration: WanpanMotion.duration(
-                        context,
-                        WanpanMotion.exit,
-                      ),
-                      child: _inlineMessage == null
-                          ? const SizedBox(height: 18)
-                          : Container(
-                              key: Key(
-                                _inlineIsError
-                                    ? 'login-error'
-                                    : 'login-success',
-                              ),
-                              margin: const EdgeInsets.only(top: 16),
-                              padding: const EdgeInsets.all(13),
-                              decoration: BoxDecoration(
-                                color: _inlineIsError
-                                    ? const Color(0xFFFFF1EF)
-                                    : const Color(0xFFEAF8EF),
-                                borderRadius: BorderRadius.circular(
-                                  WanpanRadii.small,
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      _inlineMessage!,
-                                      textAlign: _retryProvider == null
-                                          ? TextAlign.center
-                                          : TextAlign.start,
-                                      style: TextStyle(
-                                        color: _inlineIsError
-                                            ? WanpanColors.danger
-                                            : const Color(0xFF2E7D4F),
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ),
-                                  if (_inlineIsError &&
-                                      _retryProvider != null) ...[
-                                    const SizedBox(width: 8),
-                                    TextButton(
-                                      key: const Key('login-retry'),
-                                      onPressed: _busy
-                                          ? null
-                                          : _retryLastFailure,
-                                      style: TextButton.styleFrom(
-                                        foregroundColor: WanpanColors.coral,
-                                        minimumSize: const Size(48, 44),
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 8,
-                                        ),
-                                      ),
-                                      child: const Text('重试'),
-                                    ),
-                                  ],
-                                ],
-                              ),
+                  ),
+                  const SizedBox(height: 2),
+                  WanpanButton(
+                    key: const Key('sms-login'),
+                    label: _cooldownSeconds('sms-login') > 0
+                        ? '${_cooldownSeconds('sms-login')} 秒后可登录'
+                        : '验证码登录',
+                    loading: _busyProvider == 'sms-login',
+                    onPressed: _disabled('sms-login') ? null : _smsLogin,
+                    icon: const Icon(Icons.login_rounded),
+                  ),
+                  if (widget.nativeAuth.canAttemptApple) ...[
+                    const SizedBox(height: 20),
+                    Text(
+                      '其他登录方式',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.labelMedium,
+                    ),
+                    const SizedBox(height: 13),
+                    IgnorePointer(
+                      ignoring: _disabled('apple'),
+                      child: AnimatedOpacity(
+                        opacity: _disabled('apple') ? .46 : 1,
+                        duration: WanpanMotion.duration(
+                          context,
+                          WanpanMotion.press,
+                        ),
+                        child: SizedBox(
+                          height: 54,
+                          child: SignInWithAppleButton(
+                            key: const Key('apple-login'),
+                            text: 'Apple 登录',
+                            borderRadius: const BorderRadius.all(
+                              Radius.circular(WanpanRadii.medium),
                             ),
+                            onPressed: _appleLogin,
+                          ),
+                        ),
+                      ),
                     ),
                   ],
-                ),
+                  if (widget.session.canUseDevelopmentLogin) ...[
+                    const SizedBox(height: 13),
+                    WanpanButton(
+                      key: const Key('development-login'),
+                      label: '开发账号登录',
+                      loading: _busyProvider == 'development',
+                      style: WanpanButtonStyle.secondary,
+                      onPressed: _disabled('development')
+                          ? null
+                          : _developmentLogin,
+                    ),
+                    const SizedBox(height: 7),
+                    Text(
+                      '仅在 development + ENABLE_DEV_LOGIN=true 时显示',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.labelMedium,
+                    ),
+                  ],
+                  AnimatedSize(
+                    duration: WanpanMotion.duration(context, WanpanMotion.exit),
+                    child: _inlineMessage == null
+                        ? const SizedBox(height: 18)
+                        : Container(
+                            key: Key(
+                              _inlineIsError ? 'login-error' : 'login-success',
+                            ),
+                            margin: const EdgeInsets.only(top: 16),
+                            padding: const EdgeInsets.all(13),
+                            decoration: BoxDecoration(
+                              color: _inlineIsError
+                                  ? const Color(0xFFFFF1EF)
+                                  : const Color(0xFFEAF8EF),
+                              borderRadius: BorderRadius.circular(
+                                WanpanRadii.small,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    _visibleInlineMessage,
+                                    textAlign: _retryProvider == null
+                                        ? TextAlign.center
+                                        : TextAlign.start,
+                                    style: TextStyle(
+                                      color: _inlineIsError
+                                          ? WanpanColors.danger
+                                          : const Color(0xFF2E7D4F),
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                                if (_inlineIsError &&
+                                    _retryProvider != null) ...[
+                                  const SizedBox(width: 8),
+                                  TextButton(
+                                    key: const Key('login-retry'),
+                                    onPressed: _disabled(_retryProvider!)
+                                        ? null
+                                        : _retryLastFailure,
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: WanpanColors.coral,
+                                      minimumSize: const Size(48, 44),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                      ),
+                                    ),
+                                    child: const Text('重试'),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                  ),
+                ],
               ),
             ),
           ),

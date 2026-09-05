@@ -41,10 +41,18 @@ export async function buildApp() {
   await app.register(staticPlugin, { root: resolve(config.UPLOAD_DIR), prefix: '/uploads/' });
   // Fastify error handlers are encapsulated. Register the root handler before
   // route plugins so every child context inherits the same safe error mapping.
-  app.setErrorHandler((error: unknown, _request, reply) => {
+  app.setErrorHandler((error: unknown, request, reply) => {
     if (error instanceof ZodError) return reply.status(400).send({ code: 'VALIDATION_ERROR', message: error.issues[0]?.message, issues: error.issues });
-    const known = error instanceof Error ? error as Error & { statusCode?: number; code?: string } : null;
+    const known = error instanceof Error ? error as Error & { statusCode?: number; code?: string; headers?: Record<string, unknown> } : null;
     const status = known?.statusCode ?? 500;
+    // Static-file errors carry the actual file length in this header so video
+    // clients can recover after requesting a range beyond the end of the file.
+    if (status === 416 && request.routeOptions.url === '/uploads/*') {
+      const contentRange = known?.headers?.['Content-Range'];
+      if (typeof contentRange === 'string' && /^bytes \*\/\d+$/.test(contentRange)) {
+        reply.header('content-range', contentRange);
+      }
+    }
     if (status >= 500) app.log.error(error);
     return reply.status(status).send({ code: known?.code ?? 'INTERNAL_ERROR', message: status >= 500 ? '服务暂时不可用' : known?.message ?? '请求失败' });
   });

@@ -6,6 +6,8 @@ import '../../core/models/feed_models.dart';
 import '../../core/models/gym_models.dart';
 import '../../core/network/api_client.dart';
 import '../../core/repositories/gym_repository.dart';
+import '../../core/repositories/share_repository.dart';
+import '../sharing/share_sheet.dart';
 import '../auth/application/session_controller.dart';
 import '../../shared/widgets/wanpan_card.dart';
 import '../../shared/widgets/wanpan_pressable.dart';
@@ -76,7 +78,22 @@ class _RouteScreenState extends State<RouteScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(_route?.name ?? '线路详情')),
+    appBar: AppBar(
+      title: Text(_route?.name ?? '线路详情'),
+      actions: [
+        IconButton(
+          tooltip: '分享线路',
+          onPressed: _route?.published != true
+              ? null
+              : () => showWanpanShareSheet(
+                  context: context,
+                  preview: SharePreview.route(_route!),
+                  repository: ShareRepository(widget.api),
+                ),
+          icon: const Icon(Icons.ios_share_rounded),
+        ),
+      ],
+    ),
     body: _body(),
     bottomNavigationBar: _route == null
         ? null
@@ -119,14 +136,17 @@ class _RouteScreenState extends State<RouteScreen> {
       return WanpanErrorState(title: '线路详情没有加载出来', onRetry: _load);
     }
     final route = _route!;
+    final coverUrl = route.coverUrl?.trim();
     return RefreshIndicator(
       onRefresh: _load,
       color: WanpanColors.coral,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
         children: [
-          _RouteHero(route: route),
-          const SizedBox(height: 18),
+          if (coverUrl != null && coverUrl.isNotEmpty) ...[
+            _RouteHero(routeId: route.id, coverUrl: coverUrl),
+            const SizedBox(height: 18),
+          ],
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -375,38 +395,30 @@ class RouteFeaturedVideo extends StatelessWidget {
 }
 
 class _RouteHero extends StatelessWidget {
-  const _RouteHero({required this.route});
+  const _RouteHero({required this.routeId, required this.coverUrl});
 
-  final ClimbingRoute route;
+  final String routeId;
+  final String coverUrl;
 
   @override
   Widget build(BuildContext context) => Hero(
-    tag: 'route-${route.id}',
+    tag: 'route-$routeId',
     child: ClipRRect(
       borderRadius: BorderRadius.circular(26),
       child: AspectRatio(
         aspectRatio: 4 / 3,
-        child: route.coverUrl == null
-            ? const ColoredBox(
-                color: WanpanColors.coralSoft,
-                child: Icon(
-                  Icons.landscape_rounded,
-                  size: 74,
-                  color: WanpanColors.coral,
-                ),
-              )
-            : Image.network(
-                route.coverUrl!,
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => const ColoredBox(
-                  color: WanpanColors.coralSoft,
-                  child: Icon(
-                    Icons.landscape_rounded,
-                    size: 74,
-                    color: WanpanColors.coral,
-                  ),
-                ),
-              ),
+        child: Image.network(
+          coverUrl,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => const ColoredBox(
+            color: WanpanColors.coralSoft,
+            child: Icon(
+              Icons.landscape_rounded,
+              size: 74,
+              color: WanpanColors.coral,
+            ),
+          ),
+        ),
       ),
     ),
   );

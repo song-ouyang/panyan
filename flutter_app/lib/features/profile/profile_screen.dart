@@ -97,6 +97,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
       appBar: AppBar(
         title: const Text('我的'),
         actions: [
+          if (widget.session.isAuthenticated)
+            IconButton(
+              key: const Key('profile-friends-button'),
+              tooltip: '我的岩友',
+              onPressed: () => context.push('/friends'),
+              icon: const Icon(Icons.people_outline_rounded),
+            ),
           Semantics(
             key: const Key('profile-settings-button'),
             button: true,
@@ -284,11 +291,39 @@ class _ProfileHeader extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      user.nickname,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleLarge,
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            user.nickname,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                        ),
+                        Tooltip(
+                          message: '编辑个人资料',
+                          excludeFromSemantics: true,
+                          child: WanpanPressable(
+                            key: const Key('profile-edit-button'),
+                            semanticLabel: '编辑个人资料',
+                            onTap: onEdit,
+                            pressedScale: .97,
+                            borderRadius: BorderRadius.circular(
+                              WanpanRadii.pill,
+                            ),
+                            child: const SizedBox.square(
+                              dimension: 44,
+                              child: Icon(
+                                Icons.edit_outlined,
+                                size: 18,
+                                color: WanpanColors.inkSecondary,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 3),
                     Text(
@@ -296,42 +331,6 @@ class _ProfileHeader extends StatelessWidget {
                       maxLines: compact ? 1 : 2,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                    const SizedBox(height: 9),
-                    WanpanPressable(
-                      key: const Key('profile-edit-button'),
-                      semanticLabel: '编辑个人资料',
-                      onTap: onEdit,
-                      pressedScale: .97,
-                      borderRadius: BorderRadius.circular(WanpanRadii.pill),
-                      child: Container(
-                        constraints: const BoxConstraints(minHeight: 44),
-                        padding: const EdgeInsets.symmetric(horizontal: 13),
-                        decoration: BoxDecoration(
-                          color: WanpanColors.surfaceSoft,
-                          borderRadius: BorderRadius.circular(WanpanRadii.pill),
-                          border: Border.all(color: WanpanColors.border),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.edit_outlined,
-                              size: 18,
-                              color: WanpanColors.inkSecondary,
-                            ),
-                            const SizedBox(width: 6),
-                            Flexible(
-                              child: Text(
-                                '编辑资料',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context).textTheme.labelLarge,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
                     ),
                   ],
                 ),
@@ -353,29 +352,18 @@ class _ProfileHeader extends StatelessWidget {
   }
 }
 
-enum _GrowthPeriod { month, lifetime }
-
-class _GrowthCard extends StatefulWidget {
+class _GrowthCard extends StatelessWidget {
   const _GrowthCard({required this.stats, required this.onTap});
 
   final UserStats stats;
   final VoidCallback onTap;
 
   @override
-  State<_GrowthCard> createState() => _GrowthCardState();
-}
-
-class _GrowthCardState extends State<_GrowthCard> {
-  _GrowthPeriod _period = _GrowthPeriod.month;
-
-  @override
   Widget build(BuildContext context) {
-    final stats = widget.stats;
-    final monthly = _period == _GrowthPeriod.month;
     return WanpanPressable(
       key: const Key('profile-growth-card'),
       semanticLabel: '查看攀岩日历',
-      onTap: widget.onTap,
+      onTap: onTap,
       enableHaptics: true,
       pressedScale: .985,
       borderRadius: BorderRadius.circular(WanpanRadii.large),
@@ -389,127 +377,23 @@ class _GrowthCardState extends State<_GrowthCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final title = Text(
-                  '攀爬进度',
-                  style: Theme.of(context).textTheme.titleMedium,
-                );
-                final selector = _periodSelector(context);
-                if (constraints.maxWidth < 280 ||
-                    MediaQuery.textScalerOf(context).scale(1) > 1.15) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [title, const SizedBox(height: 8), selector],
-                  );
-                }
-                return Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [title, const SizedBox(width: 12), selector],
-                );
-              },
-            ),
+            Text('攀爬进度', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 20),
             Row(
               children: [
                 Expanded(
-                  child: _Stat(
-                    value: '${monthly ? stats.monthlySends : stats.totalSends}',
-                    label: '完攀线路',
-                  ),
+                  child: _Stat(value: '${stats.totalSends}', label: '完攀线路'),
                 ),
                 Expanded(
-                  child: _Stat(
-                    value:
-                        'V${monthly ? stats.monthlyMaxGrade : stats.maxGrade}',
-                    label: '最高难度',
-                  ),
+                  child: _Stat(value: 'V${stats.maxGrade}', label: '最高难度'),
                 ),
-                if (!monthly)
-                  Expanded(
-                    child: _Stat(value: '${stats.gymCount}', label: '去过岩馆'),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            const Divider(),
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                const Icon(
-                  Icons.calendar_month_outlined,
-                  size: 18,
-                  color: WanpanColors.coralStrong,
-                ),
-                const SizedBox(width: 7),
-                Text(
-                  '攀岩日历',
-                  style: Theme.of(context).textTheme.labelMedium
-                      ?.copyWith(color: WanpanColors.coralStrong),
-                ),
-                const Spacer(),
-                const Icon(
-                  Icons.chevron_right_rounded,
-                  size: 18,
-                  color: WanpanColors.muted,
+                Expanded(
+                  child: _Stat(value: '${stats.gymCount}', label: '去过岩馆'),
                 ),
               ],
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _periodSelector(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: WanpanColors.surfaceSoft,
-        borderRadius: BorderRadius.circular(WanpanRadii.pill),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (final period in _GrowthPeriod.values)
-            Semantics(
-              key: Key('profile-growth-period-${period.name}'),
-              container: true,
-              button: true,
-              selected: _period == period,
-              label: period == _GrowthPeriod.month ? '本月统计' : '累计统计',
-              onTap: () => setState(() => _period = period),
-              child: ExcludeSemantics(
-                child: WanpanPressable(
-                  onTap: () => setState(() => _period = period),
-                  pressedScale: .985,
-                  borderRadius: BorderRadius.circular(WanpanRadii.pill),
-                  child: Container(
-                    constraints: const BoxConstraints(
-                      minWidth: 56,
-                      minHeight: 44,
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: _period == period
-                          ? WanpanColors.coralSoft
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(WanpanRadii.pill),
-                    ),
-                    child: Text(
-                      period == _GrowthPeriod.month ? '本月' : '累计',
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: _period == period
-                            ? WanpanColors.coralStrong
-                            : WanpanColors.inkSecondary,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
       ),
     );
   }

@@ -125,13 +125,15 @@ docker compose --env-file .env.production -f docker-compose.server.yml run --rm 
 
 不要把 `ALLOW_PRODUCTION_GYM_IMPORT=true` 长期写入生产配置；开发环境仍直接使用 `npm --workspace server run db:seed`。
 
-广场体验数据使用完全独立的 seed，不会重跑岩馆目录，也不会删除任何数据。它只写入固定 fixture UUID/openid 命名空间下的 5 个「完攀体验」账号、12 条纯文字公开动态及对应点赞/评论；动态不关联真实岩馆或线路。生产脚本会核对当前正在运行的 API 容器与已部署镜像完全一致、校验配置、先备份数据库，导入后同时检查 `/health` 和 `/ready`。只对这一次命令显式授权：
+广场体验数据仅供本地开发使用（`npm --workspace server run db:seed-square-experience`）。生产环境已禁用此 seed，包括旧的 `ALLOW_PRODUCTION_SQUARE_SEED=true` 开关，避免再次向真实广场导入模拟内容。
+
+清理历史导入的 12 条「完攀体验」假动态及关联模拟互动：
 
 ```bash
-ALLOW_PRODUCTION_SQUARE_SEED=true bash deploy/seed-square-experience.sh
+ALLOW_PRODUCTION_SQUARE_POST_CLEANUP=true bash deploy/remove-square-mock-posts.sh
 ```
 
-生产环境未传入 `ALLOW_PRODUCTION_SQUARE_SEED=true` 时命令会在任何写入前拒绝执行。不要把该变量改为生产配置的持久值；需要重跑时，应重新备份后再执行同一条单次命令。本地开发可在 migration 后使用 `npm --workspace server run db:seed-square-experience`。
+清理脚本先备份数据库，再按固定动态 ID、作者 fixture 身份和原文精确删除；有真实账号参与互动时会停止。真实动态和其互动保持原样，完成后刷新广场即可生效。仅清理历史 8 条模拟评论仍可使用 `ALLOW_PRODUCTION_SQUARE_COMMENT_CLEANUP=true bash deploy/remove-square-mock-comments.sh`。
 
 ### Flutter 原生登录人工配置
 
@@ -173,7 +175,7 @@ ON CONFLICT DO NOTHING;
 - `GET /api/admin/moderation`
 - `POST /api/admin/moderation/:id`
 
-线路的 `points` 使用相对坐标（0–1）保存起点、途经点和终点，后续可以直接用于岩壁照片标注功能。
+线路照片和标点均为选填：发布时可省略 `coverUrl`，未标注时 `points` 为 `[]`；有标点时须提供照片并包含起点和终点。线路的 `points` 使用相对坐标（0–1）保存起点、途经点和终点，供岩壁照片标注使用。
 
 ## 上线前外部配置与运营检查
 

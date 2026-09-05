@@ -342,7 +342,10 @@ void main() {
   testWidgets('真实路由保留邀请目标，游客登录后回到配置的官网邀请页', (tester) async {
     await tester.binding.setSurfaceSize(const Size(430, 932));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    SharedPreferences.setMockInitialValues({});
+    SharedPreferences.setMockInitialValues({
+      'home_city_selection': '',
+      'home_city_manual': true,
+    });
     final session = SessionController(
       preferences: await SharedPreferences.getInstance(),
       config: _config,

@@ -37,8 +37,12 @@ dependencies:
   dio: ^5.11.0
   go_router: ^18.0.0
   shared_preferences: ^2.5.5
+  geolocator: ^14.0.3
+  geocoding: ^5.0.0
   image_picker: ^1.2.3
   video_player: 2.11.1
+  video_thumbnail:
+    path: third_party/video_thumbnail
   v_video_compressor: 2.2.1
   path_provider: ^2.1.5
   sign_in_with_apple: ^8.2.0
@@ -49,6 +53,7 @@ dependencies:
   qr_flutter: ^4.1.0
   mobile_scanner: ^7.4.0
   lottie: ^3.5.1
+  audioplayers: ^6.8.1
 
 dev_dependencies:
   flutter_test:

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../app/wanpan_theme.dart';
 import '../../core/models/gym_models.dart';
 import '../../core/network/api_client.dart';
+import '../../core/preferences/gym_selection_store.dart';
 import '../../core/repositories/gym_repository.dart';
 import '../../shared/app_assets.dart';
 import '../../shared/widgets/wanpan_card.dart';
@@ -18,12 +19,14 @@ class GymScreen extends StatefulWidget {
     required this.gymId,
     super.key,
     this.gymRepository,
+    this.selectionStore,
     this.mapNavigationLauncher = const DeviceMapNavigationLauncher(),
   });
 
   final ApiClient api;
   final String gymId;
   final GymRepository? gymRepository;
+  final GymSelectionStore? selectionStore;
   final MapNavigationLauncher mapNavigationLauncher;
 
   @override
@@ -41,6 +44,7 @@ class _GymScreenState extends State<GymScreen> {
   Object? _error;
   bool _loading = true;
   int _requestId = 0;
+  bool _hasLoadedGym = false;
 
   @override
   void initState() {
@@ -99,6 +103,10 @@ class _GymScreenState extends State<GymScreen> {
         _detail = results[0] as GymDetail;
         _routes = results[1] as List<ClimbingRoute>;
       });
+      if (!_hasLoadedGym) {
+        _hasLoadedGym = true;
+        await _rememberOpenedGym(_detail!.gym, requestId);
+      }
     } catch (error) {
       if (!mounted || requestId != _requestId) return;
       setState(() => _error = error);
@@ -106,6 +114,25 @@ class _GymScreenState extends State<GymScreen> {
       if (mounted && requestId == _requestId) {
         setState(() => _loading = false);
       }
+    }
+  }
+
+  Future<void> _rememberOpenedGym(Gym gym, int requestId) async {
+    if (!mounted ||
+        requestId != _requestId ||
+        ModalRoute.of(context)?.isCurrent != true) {
+      return;
+    }
+    try {
+      final store = widget.selectionStore ?? await GymSelectionStore.load();
+      if (!mounted ||
+          requestId != _requestId ||
+          ModalRoute.of(context)?.isCurrent != true) {
+        return;
+      }
+      await store.rememberGym(gym);
+    } catch (_) {
+      // Preference failures must not hide a successfully loaded gym.
     }
   }
 

@@ -109,7 +109,7 @@ class _RouteSubmissionsScreenState extends State<RouteSubmissionsScreen> {
       return WanpanEmptyState(
         key: const ValueKey('empty'),
         title: '还没有发布线路',
-        description: '拍下岩壁，标记起点、途经点和终点，提交后就会成为正式线路。',
+        description: '选择岩馆，填写线路信息，提交后就能打卡。',
         actionLabel: '发布第一条线路',
         onAction: _createSubmission,
       );
@@ -215,6 +215,7 @@ class _SubmissionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final status = _SubmissionStatus.from(submission.status);
+    final coverUrl = submission.coverUrl?.trim();
     final location = [
       submission.gymName ?? '未知岩馆',
       if (submission.wallZone?.trim().isNotEmpty == true)
@@ -231,28 +232,30 @@ class _SubmissionCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SizedBox(
-                width: 116,
-                height: 190,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(WanpanRadii.medium),
-                  child: Image.network(
-                    submission.coverUrl,
-                    width: 116,
-                    height: 190,
-                    fit: BoxFit.cover,
-                    cacheWidth: 348,
-                    cacheHeight: 570,
-                    errorBuilder: (_, _, _) => Image.asset(
-                      AppAssets.routeReviewCat,
-                      cacheWidth: 420,
+              if (coverUrl != null && coverUrl.isNotEmpty) ...[
+                SizedBox(
+                  width: 116,
+                  height: 190,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(WanpanRadii.medium),
+                    child: Image.network(
+                      coverUrl,
+                      width: 116,
+                      height: 190,
                       fit: BoxFit.cover,
-                      filterQuality: FilterQuality.medium,
+                      cacheWidth: 348,
+                      cacheHeight: 570,
+                      errorBuilder: (_, _, _) => Image.asset(
+                        AppAssets.routeReviewCat,
+                        cacheWidth: 420,
+                        fit: BoxFit.cover,
+                        filterQuality: FilterQuality.medium,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 14),
+                const SizedBox(width: 14),
+              ],
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

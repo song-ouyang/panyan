@@ -251,6 +251,8 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 CREATE INDEX IF NOT EXISTS idx_routes_gym_set ON routes(gym_id, route_set_id);
+CREATE INDEX IF NOT EXISTS idx_routes_published_created
+  ON routes(created_at DESC,id DESC) WHERE published=true;
 CREATE INDEX IF NOT EXISTS idx_gyms_city_district_brand ON gyms(city,district,brand_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_gyms_source_external_identity
   ON gyms(source_name,source_external_id)

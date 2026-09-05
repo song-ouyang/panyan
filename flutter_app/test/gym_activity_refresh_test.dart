@@ -9,6 +9,7 @@ import 'package:wanpan_diary/core/network/api_client.dart';
 import 'package:wanpan_diary/features/auth/application/session_controller.dart';
 import 'package:wanpan_diary/features/auth/data/session_token_store.dart';
 import 'package:wanpan_diary/features/auth/domain/auth_session.dart';
+import 'package:wanpan_diary/features/gyms/application/home_city_controller.dart';
 import 'package:wanpan_diary/features/gyms/gym_screen.dart';
 import 'package:wanpan_diary/features/gyms/gyms_screen.dart';
 
@@ -164,6 +165,8 @@ void main() {
   ) async {
     final api = _ActivityApi();
     final preferences = await SharedPreferences.getInstance();
+    final city = HomeCityController(preferencesLoader: () async => preferences);
+    await city.initialize();
     final session = SessionController(
       preferences: preferences,
       config: _config,
@@ -179,12 +182,21 @@ void main() {
     addTearDown(() async {
       await tester.pumpWidget(const SizedBox.shrink());
       session.dispose();
+      city.dispose();
       api.dispose();
     });
-    await _pumpScreen(tester, GymsScreen(api: api, session: session));
+    await _pumpScreen(
+      tester,
+      GymsScreen(
+        api: api,
+        session: session,
+        cityController: city,
+        useWeeklyRouteMocks: false,
+      ),
+    );
     final mountedState = tester.state(find.byType(GymsScreen));
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('V0'), findsOneWidget);
+    expect(find.text('完攀 0 条', findRichText: true), findsOneWidget);
+    expect(find.text('最高 V0', findRichText: true), findsOneWidget);
     final readsBefore = api.profileReads;
     api.directoryCities.clear();
 
@@ -194,10 +206,11 @@ void main() {
 
     expect(tester.state(find.byType(GymsScreen)), same(mountedState));
     expect(api.profileReads, readsBefore + 1);
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
-    expect(find.text('V2'), findsOneWidget);
-    expect(api.directoryCities, isNotEmpty);
+    expect(find.text('完攀 0 条', findRichText: true), findsNothing);
+    expect(find.text('完攀 1 条', findRichText: true), findsOneWidget);
+    expect(find.text('最高 V2', findRichText: true), findsOneWidget);
+    expect(city.city, '上海');
+    expect(api.directoryCities, contains('上海'));
     expect(tester.takeException(), isNull);
   });
 }

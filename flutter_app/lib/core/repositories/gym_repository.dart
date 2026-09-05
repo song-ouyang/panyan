@@ -53,6 +53,17 @@ class GymRepository {
   Future<ClimbingRoute> getRoute(String routeId) async =>
       ClimbingRoute.fromJson(await _apiClient.getJson('/routes/$routeId'));
 
+  Future<List<ClimbingRoute>> getWeeklyRoutes({
+    String? city,
+    int limit = 10,
+  }) async {
+    final json = await _apiClient.getJson(
+      '/routes/weekly',
+      queryParameters: _withoutNulls({'city': city, 'limit': limit}),
+    );
+    return jsonModelList(json['items'], ClimbingRoute.fromJson);
+  }
+
   Future<RouteLeaderboard> getRouteLeaderboard(String routeId) async =>
       RouteLeaderboard.fromJson(
         await _apiClient.getJson('/routes/$routeId/leaderboard'),

@@ -118,6 +118,21 @@ class MonthDashboard {
   final MonthlySummary summary;
   final List<GradeSummary> byGrade;
   final List<GymSummary> byGym;
+
+  /// Matches the existing send award: 10 + V grade * 5, plus 5 per flash.
+  /// The dashboard counts each approved route once in the selected month.
+  /// Like-based ranking bonuses are not part of completion points.
+  int get completionPoints =>
+      byGrade.fold<int>(0, (total, item) {
+        final grade = int.tryParse(
+          item.grade.replaceFirst(RegExp(r'^[Vv]'), ''),
+        );
+        if (grade == null || grade < 0 || grade > 17 || item.sends <= 0) {
+          return total;
+        }
+        return total + item.sends * (10 + grade * 5);
+      }) +
+      summary.flashes * 5;
 }
 
 class PublicProfile {

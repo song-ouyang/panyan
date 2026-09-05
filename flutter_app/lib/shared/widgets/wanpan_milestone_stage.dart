@@ -104,6 +104,14 @@ class WanpanMilestoneGradeOverlay extends StatefulWidget {
   final bool visible;
   final bool animated;
 
+  /// Normalized centers of the three text-safe areas in the 512×512 Lottie.
+  /// Their y values intentionally decrease so V1 → V2 → V3 always climbs.
+  static const normalizedGradeCenters = <Offset>[
+    Offset(0.21875, 0.8125),
+    Offset(0.5, 0.6875),
+    Offset(0.78125, 0.5625),
+  ];
+
   @override
   State<WanpanMilestoneGradeOverlay> createState() =>
       _WanpanMilestoneGradeOverlayState();
@@ -168,11 +176,6 @@ class _WanpanMilestoneGradeOverlayState
         child: IgnorePointer(
           child: LayoutBuilder(
             builder: (context, constraints) {
-              const positions = <Offset>[
-                Offset(.266, .613),
-                Offset(.5, .559),
-                Offset(.734, .613),
-              ];
               final compositionSize = constraints.biggest.shortestSide;
               final compositionOrigin = Offset(
                 (constraints.maxWidth - compositionSize) / 2,
@@ -184,7 +187,8 @@ class _WanpanMilestoneGradeOverlayState
                   for (var index = 0; index < widget.grades.length; index += 1)
                     _positionedGrade(
                       context: context,
-                      position: positions[index],
+                      position: WanpanMilestoneGradeOverlay
+                          .normalizedGradeCenters[index],
                       compositionSize: compositionSize,
                       compositionOrigin: compositionOrigin,
                       labelSize: labelSize,

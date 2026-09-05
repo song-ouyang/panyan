@@ -212,6 +212,8 @@ class ClimbingRoute {
     this.sendCount = 0,
     this.gymName,
     this.gymAddress,
+    this.gymCity,
+    this.createdAt,
     this.routeSetName,
     this.featuredSend,
   });
@@ -233,6 +235,8 @@ class ClimbingRoute {
       sendCount: jsonInt(json['send_count']),
       gymName: jsonNullableString(json['gym_name']),
       gymAddress: jsonNullableString(json['gym_address']),
+      gymCity: jsonNullableString(json['gym_city']),
+      createdAt: jsonDateTime(json['created_at']),
       routeSetName: jsonNullableString(json['route_set_name']),
       featuredSend: featured == null
           ? null
@@ -254,6 +258,8 @@ class ClimbingRoute {
   final int sendCount;
   final String? gymName;
   final String? gymAddress;
+  final String? gymCity;
+  final DateTime? createdAt;
   final String? routeSetName;
   final FeedPost? featuredSend;
 }

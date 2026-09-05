@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import '../../app/wanpan_theme.dart';
 import '../../core/models/gym_models.dart';
 import '../../core/network/api_client.dart';
+import '../../core/network/api_exception.dart';
+import '../../core/preferences/gym_selection_store.dart';
 import '../../core/repositories/gym_repository.dart';
 import '../../shared/widgets/wanpan_card.dart';
 import '../../shared/widgets/wanpan_gym_picker.dart';
@@ -19,12 +21,14 @@ class RoutePickerScreen extends StatefulWidget {
     super.key,
     this.initialGymId,
     this.gymRepository,
+    this.selectionStore,
   });
 
   final ApiClient api;
   final SessionController session;
   final String? initialGymId;
   final GymRepository? gymRepository;
+  final GymSelectionStore? selectionStore;
 
   @override
   State<RoutePickerScreen> createState() => _RoutePickerScreenState();
@@ -46,17 +50,32 @@ class _RoutePickerScreenState extends State<RoutePickerScreen> {
   bool _loadingGyms = true;
   bool _loadingRoutes = false;
   int _requestId = 0;
+  GymSelectionStore? _selectionStore;
+  bool _restoringSelection = true;
 
   @override
   void initState() {
     super.initState();
     _repository = widget.gymRepository ?? GymRepository(widget.api);
-    final initialGymId = widget.initialGymId?.trim();
-    if (initialGymId != null && initialGymId.isNotEmpty) {
-      _gymId = initialGymId;
-      _loadGym(initialGymId);
-    }
+    _restoreSelection();
     _loadGyms();
+  }
+
+  Future<void> _restoreSelection() async {
+    final requestId = _requestId;
+    try {
+      _selectionStore = widget.selectionStore ?? await GymSelectionStore.load();
+    } catch (_) {
+      // A local preference failure must not prevent choosing a gym.
+    }
+    if (!mounted || requestId != _requestId) return;
+    setState(() => _restoringSelection = false);
+    final initialGymId = widget.initialGymId?.trim();
+    final hasExplicitGym = initialGymId != null && initialGymId.isNotEmpty;
+    final gymId = hasExplicitGym ? initialGymId : _selectionStore?.gymId;
+    if (gymId != null) {
+      await _selectGym(gymId, rememberSelection: hasExplicitGym);
+    }
   }
 
   @override
@@ -109,8 +128,14 @@ class _RoutePickerScreenState extends State<RoutePickerScreen> {
     }
   }
 
-  Future<void> _loadGym(String gymId, {bool resetFilters = true}) async {
+  Future<void> _loadGym(
+    String gymId, {
+    bool resetFilters = true,
+    bool rememberSelection = false,
+  }) async {
     final requestId = ++_requestId;
+    final previousSavedGymId = _selectionStore?.gymId;
+    var missingGym = false;
     setState(() {
       _loadingRoutes = true;
       _routesError = null;
@@ -123,7 +148,10 @@ class _RoutePickerScreenState extends State<RoutePickerScreen> {
     });
     try {
       final results = await Future.wait<Object>([
-        _repository.getGym(gymId),
+        _repository.getGym(gymId).onError<Object>((error, stackTrace) {
+          missingGym = error is ApiException && error.statusCode == 404;
+          Error.throwWithStackTrace(error, stackTrace);
+        }),
         _repository.getRoutes(gymId),
       ]);
       if (!mounted || requestId != _requestId || _gymId != gymId) return;
@@ -134,9 +162,34 @@ class _RoutePickerScreenState extends State<RoutePickerScreen> {
         _routes = results[1] as List<ClimbingRoute>;
         if (resetFilters) _routeSetId = activeSet?.id;
       });
+      if (rememberSelection &&
+          ModalRoute.of(context)?.isCurrent == true &&
+          _selectionStore?.gymId == previousSavedGymId) {
+        try {
+          await _selectionStore?.rememberGym(detail.gym);
+        } catch (_) {
+          // Keep a usable selection even when preferences cannot be written.
+        }
+      }
     } catch (error) {
       if (!mounted || requestId != _requestId || _gymId != gymId) return;
-      setState(() => _routesError = error);
+      if (missingGym) {
+        setState(() {
+          _gymId = null;
+          _gymDetail = null;
+          _routes = const [];
+          _loadingRoutes = false;
+        });
+        if (_selectionStore?.gymId == gymId) {
+          try {
+            await _selectionStore?.clearGym();
+          } catch (_) {
+            // The missing gym is still cleared from this screen.
+          }
+        }
+      } else {
+        setState(() => _routesError = error);
+      }
     } finally {
       if (mounted && requestId == _requestId && _gymId == gymId) {
         setState(() => _loadingRoutes = false);
@@ -144,14 +197,18 @@ class _RoutePickerScreenState extends State<RoutePickerScreen> {
     }
   }
 
-  Future<void> _selectGym(String gymId) async {
+  Future<void> _selectGym(
+    String gymId, {
+    bool rememberSelection = false,
+  }) async {
     if (_gymId == gymId && _gymDetail != null) return;
     setState(() {
       _gymId = gymId;
       _gymDetail = null;
       _routes = const [];
+      _restoringSelection = false;
     });
-    await _loadGym(gymId);
+    await _loadGym(gymId, rememberSelection: rememberSelection);
   }
 
   Future<void> _openGymPicker() async {
@@ -166,7 +223,11 @@ class _RoutePickerScreenState extends State<RoutePickerScreen> {
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      builder: (_) => WanpanGymPickerSheet(gyms: _gyms, selectedGymId: _gymId),
+      builder: (_) => WanpanGymPickerSheet(
+        gyms: _gyms,
+        selectedGymId: _gymId,
+        selectionStore: _selectionStore ?? widget.selectionStore,
+      ),
     );
     if (gymId != null && mounted) await _selectGym(gymId);
   }
@@ -221,7 +282,9 @@ class _RoutePickerScreenState extends State<RoutePickerScreen> {
               children: [
                 _GymField(
                   gym: _selectedGym,
-                  loading: _loadingGyms && _selectedGym == null,
+                  loading:
+                      (_loadingGyms || _restoringSelection || _loadingRoutes) &&
+                      _selectedGym == null,
                   onTap: _openGymPicker,
                 ),
                 if (_gymId != null) ...[
@@ -558,7 +621,7 @@ class _RouteChoiceCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           child: SizedBox.square(
             dimension: 64,
-            child: route.coverUrl == null
+            child: route.coverUrl?.trim().isNotEmpty != true
                 ? ColoredBox(
                     color: WanpanColors.coralSoft,
                     child: Center(
@@ -570,7 +633,7 @@ class _RouteChoiceCard extends StatelessWidget {
                     ),
                   )
                 : Image.network(
-                    route.coverUrl!,
+                    route.coverUrl!.trim(),
                     fit: BoxFit.cover,
                     errorBuilder: (_, _, _) => const ColoredBox(
                       color: WanpanColors.coralSoft,

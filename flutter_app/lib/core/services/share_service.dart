@@ -22,6 +22,24 @@ class ShareService {
     return result.status;
   }
 
+  Future<ShareResultStatus> shareImage({
+    required Uint8List bytes,
+    required String title,
+    required String fileName,
+    required Rect origin,
+  }) async {
+    final result = await SharePlus.instance.share(
+      ShareParams(
+        files: [XFile.fromData(bytes, mimeType: 'image/png')],
+        fileNameOverrides: [fileName],
+        title: title,
+        subject: title,
+        sharePositionOrigin: origin,
+      ),
+    );
+    return result.status;
+  }
+
   Future<void> copy(Uri url) => Clipboard.setData(ClipboardData(text: '$url'));
 
   Future<void> preview(Uri url) async {

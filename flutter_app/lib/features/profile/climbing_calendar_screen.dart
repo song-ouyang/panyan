@@ -4,8 +4,13 @@ import '../../app/wanpan_theme.dart';
 import '../../core/models/profile_models.dart';
 import '../../core/network/api_client.dart';
 import '../../core/repositories/profile_repository.dart';
+import '../../core/repositories/share_repository.dart';
+import '../../core/services/share_service.dart';
 import '../../shared/app_assets.dart';
 import '../../shared/motion/wanpan_motion.dart';
+import '../../shared/widgets/wanpan_calendar_badge.dart';
+import '../../shared/widgets/wanpan_pressable.dart';
+import '../sharing/share_sheet.dart';
 
 class ClimbingCalendarScreen extends StatefulWidget {
   const ClimbingCalendarScreen({
@@ -13,11 +18,15 @@ class ClimbingCalendarScreen extends StatefulWidget {
     required this.api,
     this.repository,
     this.initialMonth,
+    this.shareRepository,
+    this.shareService = const ShareService(),
   });
 
   final ApiClient api;
   final ProfileRepository? repository;
   final DateTime? initialMonth;
+  final ShareRepository? shareRepository;
+  final ShareService shareService;
 
   @override
   State<ClimbingCalendarScreen> createState() => _ClimbingCalendarScreenState();
@@ -113,13 +122,52 @@ class _ClimbingCalendarScreenState extends State<ClimbingCalendarScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('攀岩日历')),
+      appBar: AppBar(
+        title: const Text('攀岩日历'),
+        actions: [
+          IconButton(
+            key: const Key('calendar-share-month'),
+            tooltip: '分享这个月',
+            onPressed: !_loading && _error == null && _dashboard != null
+                ? _shareMonth
+                : null,
+            icon: const Icon(Icons.ios_share_rounded),
+          ),
+        ],
+      ),
       body: AnimatedSwitcher(
         duration: WanpanMotion.duration(context, WanpanMotion.enter),
         switchInCurve: WanpanMotion.curve(context),
         switchOutCurve: WanpanMotion.curve(context),
         child: _body(),
       ),
+    );
+  }
+
+  void _shareMonth() {
+    final dashboard = _dashboard;
+    if (_loading ||
+        _error != null ||
+        dashboard == null ||
+        dashboard.month != _monthKey(_visibleMonth)) {
+      return;
+    }
+    showWanpanShareSheet(
+      context: context,
+      preview: SharePreview.monthly(dashboard),
+      repository: widget.shareRepository ?? ShareRepository(widget.api),
+      service: widget.shareService,
+    );
+  }
+
+  void _showPointsRules() {
+    showModalBottomSheet<void>(
+      context: context,
+      useSafeArea: true,
+      isScrollControlled: true,
+      showDragHandle: true,
+      backgroundColor: WanpanColors.surface,
+      builder: (_) => const _PointsRulesSheet(),
     );
   }
 
@@ -160,7 +208,9 @@ class _ClimbingCalendarScreenState extends State<ClimbingCalendarScreen> {
         children: [
           _MonthHero(
             summary: dashboard.summary,
+            completionPoints: dashboard.completionPoints,
             monthHasRecords: recordsByDay.isNotEmpty,
+            onPointsTap: _showPointsRules,
           ),
           const SizedBox(height: 14),
           _CalendarCard(
@@ -187,10 +237,17 @@ class _ClimbingCalendarScreenState extends State<ClimbingCalendarScreen> {
 }
 
 class _MonthHero extends StatelessWidget {
-  const _MonthHero({required this.summary, required this.monthHasRecords});
+  const _MonthHero({
+    required this.summary,
+    required this.completionPoints,
+    required this.monthHasRecords,
+    required this.onPointsTap,
+  });
 
   final MonthlySummary summary;
+  final int completionPoints;
   final bool monthHasRecords;
+  final VoidCallback onPointsTap;
 
   @override
   Widget build(BuildContext context) {
@@ -285,7 +342,12 @@ class _MonthHero extends StatelessWidget {
                     _HeroStat(value: '${summary.climbingDays}', label: '攀爬天数'),
                     _HeroStat(value: '${summary.sends}', label: '完成线路'),
                     _HeroStat(value: 'V${summary.maxGrade}', label: '最高难度'),
-                    _HeroStat(value: '${summary.videos}', label: '视频记录'),
+                    _HeroStat(
+                      key: const Key('calendar-points-rules'),
+                      value: '$completionPoints',
+                      label: '积分',
+                      onTap: onPointsTap,
+                    ),
                   ])
                     SizedBox(
                       width: constraints.maxWidth / columns,
@@ -302,14 +364,20 @@ class _MonthHero extends StatelessWidget {
 }
 
 class _HeroStat extends StatelessWidget {
-  const _HeroStat({required this.value, required this.label});
+  const _HeroStat({
+    required this.value,
+    required this.label,
+    this.onTap,
+    super.key,
+  });
 
   final String value;
   final String label;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    final content = Column(
       children: [
         Text(
           value,
@@ -317,14 +385,183 @@ class _HeroStat extends StatelessWidget {
               ?.copyWith(color: WanpanColors.coralStrong),
         ),
         const SizedBox(height: 3),
-        Text(
-          label,
-          maxLines: 1,
-          style: Theme.of(context).textTheme.labelMedium,
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              maxLines: 1,
+              style: Theme.of(context).textTheme.labelMedium,
+            ),
+            if (onTap != null) ...[
+              const SizedBox(width: 3),
+              const Icon(
+                Icons.info_outline_rounded,
+                size: 14,
+                color: WanpanColors.inkSecondary,
+              ),
+            ],
+          ],
         ),
       ],
     );
+    if (onTap == null) return content;
+    return Semantics(
+      container: true,
+      child: Tooltip(
+        message: '查看积分规则',
+        excludeFromSemantics: true,
+        child: WanpanPressable(
+          semanticLabel: '积分$value，查看积分规则',
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(WanpanRadii.medium),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+            child: ExcludeSemantics(child: content),
+          ),
+        ),
+      ),
+    );
   }
+}
+
+class _PointsRulesSheet extends StatelessWidget {
+  const _PointsRulesSheet();
+
+  @override
+  Widget build(BuildContext context) => ConstrainedBox(
+    constraints: BoxConstraints(
+      maxHeight: MediaQuery.sizeOf(context).height * .85,
+    ),
+    child: SafeArea(
+      top: false,
+      child: SingleChildScrollView(
+        key: const Key('calendar-points-rules-sheet'),
+        padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '积分规则',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                ),
+                IconButton(
+                  tooltip: '关闭积分规则',
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.close_rounded),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '按当前所选月份的完攀记录统计。',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 20),
+            const _PointsRule(
+              title: '基础积分',
+              description: '每完成一条线路',
+              value: '+10 分',
+            ),
+            const SizedBox(height: 16),
+            const _PointsRule(
+              title: '难度加分',
+              description: '按线路的 V 级计算',
+              value: '+V级 × 5 分',
+            ),
+            const SizedBox(height: 16),
+            const _PointsRule(
+              title: '闪攀加分',
+              description: '尝试 1 次即完成',
+              value: '+5 分',
+            ),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: WanpanColors.coralSoft,
+                borderRadius: BorderRadius.circular(WanpanRadii.medium),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '例如：V2 一次完成',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    '10 + 2 × 5 + 5 = 25 分',
+                    style: Theme.of(context).textTheme.bodyLarge
+                        ?.copyWith(color: WanpanColors.coralStrong),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              '同一条线路按当前保存的记录计算，重复打卡不会叠加。',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '这里仅统计完攀积分，不含排行榜的点赞加分。',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 24),
+            WanpanButton(
+              key: const Key('calendar-points-rules-dismiss'),
+              label: '知道了',
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+class _PointsRule extends StatelessWidget {
+  const _PointsRule({
+    required this.title,
+    required this.description,
+    required this.value,
+  });
+
+  final String title;
+  final String description;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 3),
+            Text(description, style: Theme.of(context).textTheme.bodyMedium),
+          ],
+        ),
+      ),
+      const SizedBox(width: 12),
+      Flexible(
+        child: Text(
+          value,
+          textAlign: TextAlign.end,
+          style: Theme.of(context).textTheme.titleMedium
+              ?.copyWith(color: WanpanColors.coralStrong),
+        ),
+      ),
+    ],
+  );
 }
 
 class _CalendarCard extends StatelessWidget {
@@ -404,7 +641,7 @@ class _CalendarCard extends StatelessWidget {
               physics: const NeverScrollableScrollPhysics(),
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 7,
-                mainAxisExtent: 44 + MediaQuery.textScalerOf(context).scale(26),
+                mainAxisExtent: 44 + 2 * WanpanCalendarBadge.heightOf(context),
                 mainAxisSpacing: 4,
                 crossAxisSpacing: 2,
               ),
@@ -502,33 +739,17 @@ class _CalendarDay extends StatelessWidget {
                 ),
               ),
               if (hasRecord) ...[
-                const SizedBox(height: 3),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    '$sends条',
-                    key: Key('calendar-day-count-${_dateKey(day)}'),
-                    maxLines: 1,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      fontSize: 10,
-                      height: 1.2,
-                      color: WanpanColors.inkSecondary,
-                    ),
-                  ),
+                const SizedBox(height: 4),
+                WanpanCalendarBadge.count(
+                  key: Key('calendar-day-count-bar-${_dateKey(day)}'),
+                  count: sends,
+                  textKey: Key('calendar-day-count-${_dateKey(day)}'),
                 ),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    'V$maxGrade',
-                    key: Key('calendar-day-grade-${_dateKey(day)}'),
-                    maxLines: 1,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      fontSize: 10,
-                      height: 1.2,
-                      fontWeight: FontWeight.w800,
-                      color: WanpanColors.coralStrong,
-                    ),
-                  ),
+                const SizedBox(height: 3),
+                WanpanCalendarBadge.grade(
+                  key: Key('calendar-day-grade-bar-${_dateKey(day)}'),
+                  grade: maxGrade,
+                  textKey: Key('calendar-day-grade-${_dateKey(day)}'),
                 ),
               ],
             ],

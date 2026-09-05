@@ -41,10 +41,7 @@ class StartupSplashScreen extends StatelessWidget {
               WanpanButton(label: '重新加载', onPressed: onRetry),
             ],
           )
-        : _StartupProgress(
-            key: const ValueKey('bootstrap-progress'),
-            progress: progress,
-          ),
+        : _StartupProgress(progress: progress),
   );
 }
 
@@ -108,7 +105,6 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final progress = widget.session.isInitializing ? .86 : 1.0;
     return _SplashFrame(
       action: AnimatedSwitcher(
         duration: WanpanMotion.duration(context, WanpanMotion.enter),
@@ -118,80 +114,16 @@ class _SplashScreenState extends State<SplashScreen> {
         child: _ready
             ? WanpanButton(
                 key: const ValueKey('splash-continue'),
-                label: '进入完攀日记',
+                label: '立即开爬',
                 onPressed: widget.onContinue,
               )
             : _StartupProgress(
                 key: const ValueKey('session-progress'),
-                progress: progress,
+                progress: widget.session.isInitializing ? .72 : 1,
               ),
       ),
     );
   }
-}
-
-class _SplashFrame extends StatelessWidget {
-  const _SplashFrame({required this.action});
-
-  static const _background = Color(0xFFFFF8EF);
-
-  final Widget action;
-
-  @override
-  Widget build(BuildContext context) => AnnotatedRegion<SystemUiOverlayStyle>(
-    value: SystemUiOverlayStyle.dark.copyWith(
-      statusBarColor: Colors.transparent,
-      systemNavigationBarColor: Colors.transparent,
-      systemNavigationBarDividerColor: Colors.transparent,
-    ),
-    child: Scaffold(
-      backgroundColor: _background,
-      resizeToAvoidBottomInset: false,
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final compact = constraints.maxHeight < 650;
-          final actionWidth = math.min(
-            constraints.maxWidth - (compact ? 32 : 40),
-            560.0,
-          );
-
-          return Stack(
-            fit: StackFit.expand,
-            children: [
-              SizedBox.expand(
-                key: const Key('splash-hero'),
-                child: Image.asset(
-                  AppAssets.launchBackground,
-                  key: const Key('splash-background'),
-                  fit: BoxFit.cover,
-                  alignment: Alignment.center,
-                  gaplessPlayback: true,
-                  errorBuilder: (_, _, _) => const _SplashFallback(),
-                ),
-              ),
-              const IgnorePointer(child: _BottomLegibilityGradient()),
-              SafeArea(
-                top: false,
-                minimum: EdgeInsets.only(
-                  left: compact ? 16 : 20,
-                  right: compact ? 16 : 20,
-                  bottom: compact ? 12 : 20,
-                ),
-                child: Align(
-                  alignment: Alignment.bottomCenter,
-                  child: SizedBox(
-                    key: const Key('splash-actions'),
-                    width: actionWidth,
-                    child: action,
-                  ),
-                ),
-              ),
-            ],
-          );
-        },
-      ),
-    ),
-  );
 }
 
 class _StartupProgress extends StatelessWidget {
@@ -206,18 +138,26 @@ class _StartupProgress extends StatelessWidget {
       label: '启动进度',
       value: '${(target * 100).round()}%',
       liveRegion: true,
-      child: TweenAnimationBuilder<double>(
-        tween: Tween(end: target),
-        duration: WanpanMotion.duration(context, WanpanMotion.progress),
-        curve: WanpanMotion.curve(context),
-        builder: (context, value, _) => ClipRRect(
-          key: const Key('splash-progress'),
-          borderRadius: BorderRadius.circular(WanpanRadii.pill),
-          child: LinearProgressIndicator(
-            value: value,
-            minHeight: 10,
-            backgroundColor: const Color(0xE6FFFDF7),
-            color: WanpanColors.coral,
+      child: SizedBox(
+        height: 66,
+        child: Center(
+          child: TweenAnimationBuilder<double>(
+            tween: Tween(begin: math.min(.12, target), end: target),
+            duration: WanpanMotion.duration(context, WanpanMotion.progress),
+            curve: WanpanMotion.curve(context),
+            builder: (context, value, _) => ClipRRect(
+              key: const Key('splash-progress'),
+              borderRadius: BorderRadius.circular(WanpanRadii.pill),
+              child: LinearProgressIndicator(
+                value: value,
+                minHeight: 8,
+                backgroundColor: WanpanColors.border,
+                color: WanpanColors.coral,
+                // Keep the bar identical to the native launch placeholder.
+                stopIndicatorRadius: 0,
+                trackGap: 0,
+              ),
+            ),
           ),
         ),
       ),
@@ -225,39 +165,177 @@ class _StartupProgress extends StatelessWidget {
   }
 }
 
-class _BottomLegibilityGradient extends StatelessWidget {
-  const _BottomLegibilityGradient();
+class _SplashFrame extends StatelessWidget {
+  const _SplashFrame({required this.action});
+
+  final Widget action;
 
   @override
-  Widget build(BuildContext context) => const DecoratedBox(
-    decoration: BoxDecoration(
-      gradient: LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [
-          Colors.transparent,
-          Colors.transparent,
-          Color(0x24FFF8EF),
-          Color(0xB8FFF8EF),
-        ],
-        stops: [0, .68, .84, 1],
+  Widget build(BuildContext context) => AnnotatedRegion<SystemUiOverlayStyle>(
+    value: SystemUiOverlayStyle.dark.copyWith(
+      statusBarColor: Colors.transparent,
+      systemNavigationBarColor: Colors.transparent,
+      systemNavigationBarDividerColor: Colors.transparent,
+    ),
+    child: Scaffold(
+      backgroundColor: WanpanColors.canvas,
+      resizeToAvoidBottomInset: false,
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxHeight < 650;
+          final gutter = compact ? 20.0 : 28.0;
+
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              const ColoredBox(
+                key: Key('splash-background'),
+                color: WanpanColors.canvas,
+              ),
+              SafeArea(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    gutter,
+                    compact ? 12 : 28,
+                    gutter,
+                    compact ? 12 : 20,
+                  ),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 460),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            '今天也去\n上墙吧！',
+                            style: TextStyle(
+                              color: WanpanColors.catBlack,
+                              fontSize: compact ? 36 : 50,
+                              fontWeight: FontWeight.w900,
+                              height: 1.12,
+                              letterSpacing: -1.2,
+                            ),
+                          ),
+                          SizedBox(height: compact ? 12 : 18),
+                          Text(
+                            '找条喜欢的线路，\n记录一次新完攀',
+                            style: TextStyle(
+                              color: WanpanColors.ink,
+                              fontSize: compact ? 15 : 18,
+                              fontWeight: FontWeight.w600,
+                              height: 1.5,
+                            ),
+                          ),
+                          SizedBox(height: compact ? 8 : 16),
+                          const Expanded(child: _SplashIllustration()),
+                          SizedBox(height: compact ? 12 : 24),
+                          ConstrainedBox(
+                            key: const Key('splash-actions'),
+                            constraints: const BoxConstraints(minHeight: 66),
+                            child: action,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
       ),
     ),
   );
 }
 
-class _SplashFallback extends StatelessWidget {
-  const _SplashFallback();
+class _SplashIllustration extends StatelessWidget {
+  const _SplashIllustration();
 
   @override
-  Widget build(BuildContext context) => const DecoratedBox(
-    decoration: BoxDecoration(color: Color(0xFFFFF8EF)),
-    child: Center(
-      child: Icon(
-        Icons.landscape_rounded,
-        size: 132,
-        color: WanpanColors.coral,
-      ),
-    ),
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      const aspectRatio = 1230 / 1278;
+      final width = math.min(
+        constraints.maxWidth,
+        constraints.maxHeight * aspectRatio,
+      );
+      final height = width / aspectRatio;
+
+      return Center(
+        child: SizedBox(
+          width: width,
+          height: height,
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: Image.asset(
+                  AppAssets.homeHeroCat,
+                  key: const Key('splash-hero'),
+                  fit: BoxFit.contain,
+                  excludeFromSemantics: true,
+                  gaplessPlayback: true,
+                ),
+              ),
+              Positioned(
+                top: height * .045,
+                right: 8,
+                child: Transform.rotate(
+                  angle: -.065,
+                  child: CustomPaint(
+                    painter: const _SpeechBubblePainter(),
+                    child: const Padding(
+                      padding: EdgeInsets.fromLTRB(17, 10, 17, 19),
+                      child: Text(
+                        '出发喵！',
+                        style: TextStyle(
+                          color: WanpanColors.catBlack,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          height: 1.3,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
   );
+}
+
+class _SpeechBubblePainter extends CustomPainter {
+  const _SpeechBubblePainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final bottom = size.height - 9;
+    final body = Path()
+      ..addRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(1, 1, size.width - 2, bottom - 1),
+          const Radius.circular(22),
+        ),
+      );
+    final tail = Path()
+      ..moveTo(24, bottom - 3)
+      ..lineTo(18, size.height - 1)
+      ..quadraticBezierTo(31, size.height - 3, 39, bottom - 3)
+      ..close();
+    final bubble = Path.combine(PathOperation.union, body, tail);
+    canvas.drawPath(bubble, Paint()..color = WanpanColors.surface);
+    canvas.drawPath(
+      bubble,
+      Paint()
+        ..color = WanpanColors.catBlack
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2
+        ..strokeJoin = StrokeJoin.round,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_SpeechBubblePainter oldDelegate) => false;
 }

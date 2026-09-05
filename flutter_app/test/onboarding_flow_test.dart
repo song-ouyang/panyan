@@ -2,6 +2,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wanpan_diary/app/wanpan_app.dart';
 import 'package:wanpan_diary/app/wanpan_router.dart';
@@ -20,6 +21,11 @@ const _config = AppConfig(
   apiBaseUrl: 'http://127.0.0.1:3000/api',
   enableDevelopmentLogin: false,
 );
+
+class _DisabledLocationPlatform extends GeolocatorPlatform {
+  @override
+  Future<bool> isLocationServiceEnabled() async => false;
+}
 
 Future<SharedPreferences> _preferences([
   Map<String, Object> values = const {},
@@ -478,7 +484,7 @@ void main() {
     await tester.tap(
       find.descendant(
         of: find.byKey(const Key('splash-actions')),
-        matching: find.text('进入完攀日记'),
+        matching: find.text('立即开爬'),
       ),
     );
     await tester.pumpAndSettle();
@@ -490,6 +496,9 @@ void main() {
   testWidgets('completed onboarding continues from splash to the gyms tab', (
     tester,
   ) async {
+    final locationPlatform = GeolocatorPlatform.instance;
+    GeolocatorPlatform.instance = _DisabledLocationPlatform();
+    addTearDown(() => GeolocatorPlatform.instance = locationPlatform);
     final preferences = await _preferences({
       'onboarding.completed_version': OnboardingController.currentVersion,
     });
@@ -524,7 +533,7 @@ void main() {
     await tester.tap(
       find.descendant(
         of: find.byKey(const Key('splash-actions')),
-        matching: find.text('进入完攀日记'),
+        matching: find.text('立即开爬'),
       ),
     );
     await tester.pumpAndSettle();

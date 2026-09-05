@@ -28,13 +28,13 @@ void main() {
       MaterialApp(
         theme: WanpanTheme.light(),
         home: Scaffold(
-          body: WanpanButton(label: '进入完攀日记', onPressed: () => pressed = true),
+          body: WanpanButton(label: '立即开爬', onPressed: () => pressed = true),
         ),
       ),
     );
 
-    expect(find.text('进入完攀日记'), findsOneWidget);
-    final semanticButton = find.bySemanticsLabel('进入完攀日记');
+    expect(find.text('立即开爬'), findsOneWidget);
+    final semanticButton = find.bySemanticsLabel('立即开爬');
     expect(semanticButton, findsOneWidget);
     expect(
       tester
@@ -43,7 +43,7 @@ void main() {
           .hasAction(ui.SemanticsAction.tap),
       isTrue,
     );
-    await tester.tap(find.text('进入完攀日记'));
+    await tester.tap(find.text('立即开爬'));
     await tester.pump();
     expect(pressed, isTrue);
     semantics.dispose();
@@ -131,8 +131,58 @@ void main() {
       tester.getRect(find.byKey(const Key('splash-background'))),
       const Offset(0, 0) & const Size(390, 844),
     );
-    expect(find.byKey(const Key('splash-progress')), findsOneWidget);
+    expect(find.text('今天也去\n上墙吧！'), findsOneWidget);
+    expect(find.byKey(const Key('splash-hero')), findsOneWidget);
+    expect(find.byType(LinearProgressIndicator), findsOneWidget);
+    expect(find.text('立即开爬'), findsNothing);
     expect(find.text('记录每一次上墙，看见每一步成长'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('bootstrap failure keeps welcome artwork and retries loading', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(320, 568));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final retryPreferences = Completer<SharedPreferences>();
+    var attempts = 0;
+
+    await tester.pumpWidget(
+      WanpanBootstrap(
+        config: const AppConfig(
+          environment: AppEnvironment.development,
+          apiBaseUrl: 'http://127.0.0.1:3000/api',
+          enableDevelopmentLogin: false,
+        ),
+        preferencesLoader: () {
+          attempts++;
+          if (attempts == 1) {
+            return Future<SharedPreferences>.error(
+              StateError('Preferences unavailable'),
+            );
+          }
+          return retryPreferences.future;
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('今天也去\n上墙吧！'), findsOneWidget);
+    expect(find.byKey(const Key('splash-hero')), findsOneWidget);
+    expect(find.text('启动没有完成，请再试一次'), findsOneWidget);
+    expect(find.byType(LinearProgressIndicator), findsNothing);
+    expect(find.text('立即开爬'), findsNothing);
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.text('重新加载'));
+    await tester.pump(const Duration(milliseconds: 350));
+
+    expect(attempts, 2);
+    expect(find.text('今天也去\n上墙吧！'), findsOneWidget);
+    expect(find.byKey(const Key('splash-hero')), findsOneWidget);
+    expect(find.text('启动没有完成，请再试一次'), findsNothing);
+    expect(find.byType(LinearProgressIndicator), findsOneWidget);
+    expect(find.byType(WanpanButton), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -181,25 +231,26 @@ void main() {
         find.byKey(const Key('splash-background')),
       );
       final actions = tester.getRect(find.byKey(const Key('splash-actions')));
-      final progress = tester.getRect(find.byKey(const Key('splash-progress')));
-      final image = tester.widget<Image>(
-        find.byKey(const Key('splash-background')),
-      );
+      final hero = tester.getRect(find.byKey(const Key('splash-hero')));
+      final image = tester.widget<Image>(find.byKey(const Key('splash-hero')));
 
       expect(background, Offset.zero & size);
-      expect(image.fit, BoxFit.cover);
-      expect((image.image as AssetImage).assetName, AppAssets.launchBackground);
+      expect(image.fit, BoxFit.contain);
+      expect((image.image as AssetImage).assetName, AppAssets.homeHeroCat);
+      expect(hero.width, greaterThan(0));
+      expect(hero.height, greaterThan(0));
+      expect(hero.left, greaterThanOrEqualTo(0));
+      expect(hero.right, lessThanOrEqualTo(size.width));
+      expect(hero.top, greaterThanOrEqualTo(0));
+      expect(hero.bottom, lessThanOrEqualTo(actions.top));
       expect(actions.left, greaterThanOrEqualTo(0));
       expect(actions.right, lessThanOrEqualTo(size.width));
       expect(
         actions.bottom,
         lessThanOrEqualTo(size.height - device.padding.bottom),
       );
-      expect(progress.left, greaterThanOrEqualTo(0));
-      expect(progress.right, lessThanOrEqualTo(size.width));
-      expect(progress.top, greaterThan(size.height * .75));
-      expect(progress.height, 10);
-      expect(find.bySemanticsLabel('启动进度'), findsOneWidget);
+      expect(find.text('今天也去\n上墙吧！'), findsOneWidget);
+      expect(find.byType(LinearProgressIndicator), findsOneWidget);
       expect(find.text('记录每一次上墙，看见每一步成长'), findsNothing);
       expect(find.byType(WanpanButton), findsNothing);
       expect(tester.takeException(), isNull);
@@ -209,14 +260,24 @@ void main() {
         accessTokenProvider: () => session.token,
       );
       await session.initialize(AuthRepository(api));
-      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 350));
       await tester.pumpAndSettle();
 
       final button = tester.getRect(find.byType(WanpanButton));
-      expect(find.text('进入完攀日记'), findsOneWidget);
-      expect(find.byKey(const Key('splash-progress')), findsNothing);
+      final readyHero = tester.getRect(find.byKey(const Key('splash-hero')));
+      expect(find.text('立即开爬'), findsOneWidget);
+      expect(find.byType(LinearProgressIndicator), findsNothing);
+      expect(readyHero.width, greaterThan(0));
+      expect(readyHero.height, greaterThan(0));
+      expect(readyHero.left, greaterThanOrEqualTo(0));
+      expect(readyHero.right, lessThanOrEqualTo(size.width));
+      expect(readyHero.top, greaterThanOrEqualTo(0));
+      expect(readyHero.bottom, lessThanOrEqualTo(button.top));
       expect(button.height, greaterThanOrEqualTo(52));
-      expect(button.bottom, lessThanOrEqualTo(size.height));
+      expect(
+        button.bottom,
+        lessThanOrEqualTo(size.height - device.padding.bottom),
+      );
       expect(tester.takeException(), isNull);
     });
   }

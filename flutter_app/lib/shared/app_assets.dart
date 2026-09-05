@@ -15,6 +15,13 @@ abstract final class AppAssets {
   static const routePublishedAnimation = 'assets/lottie/route-published.json';
   static const rankingEncouragementAnimation =
       'assets/lottie/ranking-encouragement.json';
-  static const successSound = 'assets/sounds/success.wav';
-  static const milestoneSound = 'assets/sounds/milestone.wav';
+  static const sendSuccessSound = 'assets/sounds/send-success.wav';
+  static const routePublishedSound = 'assets/sounds/route-published.wav';
+  static const gradeMilestoneSound = 'assets/sounds/grade-milestone.wav';
+  static const rankingEncouragementSound =
+      'assets/sounds/ranking-encouragement.wav';
+
+  // Compatibility aliases for callers predating the four-scene sound set.
+  static const successSound = sendSuccessSound;
+  static const milestoneSound = gradeMilestoneSound;
 }

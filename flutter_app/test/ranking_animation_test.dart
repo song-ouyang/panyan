@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lottie/lottie.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wanpan_diary/app/wanpan_theme.dart';
 import 'package:wanpan_diary/core/config/app_config.dart';
@@ -10,7 +11,11 @@ import 'package:wanpan_diary/features/auth/application/session_controller.dart';
 import 'package:wanpan_diary/features/auth/data/session_token_store.dart';
 import 'package:wanpan_diary/features/auth/domain/auth_session.dart';
 import 'package:wanpan_diary/features/ranking/ranking_screen.dart';
+import 'package:wanpan_diary/shared/app_assets.dart';
+import 'package:wanpan_diary/shared/motion/wanpan_motion_sound.dart';
 import 'package:wanpan_diary/shared/widgets/wanpan_lottie_stage.dart';
+
+import 'support/fake_motion_sound_player.dart';
 
 const _config = AppConfig(
   environment: AppEnvironment.development,
@@ -43,6 +48,11 @@ class _EmptyRankingApi extends ApiClient {
 }
 
 void main() {
+  setUp(() async {
+    Lottie.cache.clear();
+    await AssetLottie(AppAssets.rankingEncouragementAnimation).load();
+  });
+
   testWidgets('热门线路入口会直接打开公开线路榜', (tester) async {
     SharedPreferences.setMockInitialValues({});
     final session = SessionController(
@@ -51,6 +61,7 @@ void main() {
       tokenStore: MemorySessionTokenStore(),
     );
     addTearDown(session.dispose);
+    final sounds = FakeMotionSoundPlayer();
 
     await tester.pumpWidget(
       MaterialApp(
@@ -59,6 +70,7 @@ void main() {
           api: _EmptyRankingApi(),
           session: session,
           initialSegment: 1,
+          motionSoundPlayer: sounds,
         ),
       ),
     );
@@ -76,11 +88,16 @@ void main() {
       tokenStore: MemorySessionTokenStore(),
     );
     addTearDown(session.dispose);
+    final sounds = FakeMotionSoundPlayer();
 
     await tester.pumpWidget(
       MaterialApp(
         theme: WanpanTheme.light(),
-        home: RankingScreen(api: _EmptyRankingApi(), session: session),
+        home: RankingScreen(
+          api: _EmptyRankingApi(),
+          session: session,
+          motionSoundPlayer: sounds,
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -97,6 +114,15 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('本月榜单刚刚开始'), findsOneWidget);
     expect(_lottieStage(tester).play, isFalse);
+    expect(sounds.plays, hasLength(2));
+    expect(
+      sounds.plays.map((playback) => playback.cue),
+      everyElement(WanpanMotionSoundCue.rankingEncouragement),
+    );
+    expect(
+      sounds.plays.map((playback) => playback.animated),
+      everyElement(isTrue),
+    );
 
     await tester.tap(find.text('热门线路'));
     await tester.pumpAndSettle();
@@ -112,6 +138,7 @@ void main() {
       tokenStore: MemorySessionTokenStore(),
     );
     addTearDown(session.dispose);
+    final sounds = FakeMotionSoundPlayer();
     await session.acceptSession(
       const AuthSession(
         token: 'test-token',
@@ -123,7 +150,11 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: WanpanTheme.light(),
-        home: RankingScreen(api: _EmptyRankingApi(), session: session),
+        home: RankingScreen(
+          api: _EmptyRankingApi(),
+          session: session,
+          motionSoundPlayer: sounds,
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -151,11 +182,16 @@ void main() {
     );
     addTearDown(session.dispose);
     final api = _EmptyRankingApi();
+    final sounds = FakeMotionSoundPlayer();
 
     await tester.pumpWidget(
       MaterialApp(
         theme: WanpanTheme.light(),
-        home: RankingScreen(api: api, session: session),
+        home: RankingScreen(
+          api: api,
+          session: session,
+          motionSoundPlayer: sounds,
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -182,6 +218,45 @@ void main() {
     expect(find.text('本月榜单刚刚开始'), findsOneWidget);
     expect(find.text('登录后加入'), findsOneWidget);
     expect(api.rankingRequests, 3);
+  });
+
+  testWidgets('不可见的保活排行页不会发声，离开时会停止声音', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final session = SessionController(
+      preferences: await SharedPreferences.getInstance(),
+      config: _config,
+      tokenStore: MemorySessionTokenStore(),
+    );
+    addTearDown(session.dispose);
+    final api = _EmptyRankingApi();
+    final sounds = FakeMotionSoundPlayer();
+
+    Widget host({required bool visible}) => MaterialApp(
+      theme: WanpanTheme.light(),
+      home: TickerMode(
+        enabled: visible,
+        child: RankingScreen(
+          key: const ValueKey('kept-alive-ranking'),
+          api: api,
+          session: session,
+          motionSoundPlayer: sounds,
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(host(visible: false));
+    await tester.pumpAndSettle();
+    expect(find.text('本月榜单刚刚开始'), findsOneWidget);
+    expect(sounds.plays, isEmpty);
+
+    await tester.pumpWidget(host(visible: true));
+    await tester.pumpAndSettle();
+    expect(sounds.plays, hasLength(1));
+
+    final stopsBeforeLeaving = sounds.stopCount;
+    await tester.pumpWidget(host(visible: false));
+    await tester.pump();
+    expect(sounds.stopCount, greaterThan(stopsBeforeLeaving));
   });
 }
 

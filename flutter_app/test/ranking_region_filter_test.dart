@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -10,6 +11,7 @@ import 'package:wanpan_diary/core/json/json_helpers.dart';
 import 'package:wanpan_diary/core/network/api_client.dart';
 import 'package:wanpan_diary/features/auth/application/session_controller.dart';
 import 'package:wanpan_diary/features/auth/data/session_token_store.dart';
+import 'package:wanpan_diary/features/gyms/application/home_city_controller.dart';
 import 'package:wanpan_diary/features/ranking/ranking_screen.dart';
 
 const _config = AppConfig(
@@ -26,8 +28,10 @@ class _CapturedRequest {
 }
 
 class _RegionRankingApi extends ApiClient {
-  _RegionRankingApi() : super(config: _config, accessTokenProvider: () => null);
+  _RegionRankingApi({this.regionsResponse})
+    : super(config: _config, accessTokenProvider: () => null);
 
+  final Future<JsonMap>? regionsResponse;
   final requests = <_CapturedRequest>[];
 
   @override
@@ -39,6 +43,7 @@ class _RegionRankingApi extends ApiClient {
       _CapturedRequest(path, Map<String, dynamic>.of(queryParameters ?? {})),
     );
     if (path == '/rankings/regions') {
+      if (regionsResponse != null) return regionsResponse!;
       return {
         'items': [
           {'province': '四川省', 'city': '成都'},
@@ -105,32 +110,54 @@ GoRouter _createRouter({
   required _RegionRankingApi api,
   required SessionController session,
   bool compactShell = false,
-}) => GoRouter(
-  initialLocation: '/ranking',
-  routes: [
-    GoRoute(
-      path: '/ranking',
-      builder: (_, _) {
-        final ranking = RankingScreen(
-          api: api,
-          session: session,
-          initialSegment: 1,
-        );
-        if (!compactShell) return ranking;
-        return Scaffold(
-          body: ranking,
-          bottomNavigationBar: const SizedBox(height: 76),
-        );
-      },
-    ),
-    GoRoute(
-      path: '/routes/:routeId',
-      builder: (_, state) => Scaffold(
-        body: Center(child: Text('线路详情 ${state.pathParameters['routeId']}')),
+  HomeCityController? cityController,
+  bool retainedTabs = false,
+}) {
+  final rankingRoute = GoRoute(
+    path: '/ranking',
+    builder: (_, _) {
+      final ranking = RankingScreen(
+        api: api,
+        session: session,
+        initialSegment: 1,
+        cityController: cityController,
+      );
+      if (!compactShell) return ranking;
+      return Scaffold(
+        body: ranking,
+        bottomNavigationBar: const SizedBox(height: 76),
+      );
+    },
+  );
+  return GoRouter(
+    initialLocation: '/ranking',
+    routes: [
+      if (retainedTabs)
+        StatefulShellRoute.indexedStack(
+          builder: (_, _, navigationShell) => navigationShell,
+          branches: [
+            StatefulShellBranch(routes: [rankingRoute]),
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/home',
+                  builder: (_, _) => const Scaffold(body: Text('首页')),
+                ),
+              ],
+            ),
+          ],
+        )
+      else
+        rankingRoute,
+      GoRoute(
+        path: '/routes/:routeId',
+        builder: (_, state) => Scaffold(
+          body: Center(child: Text('线路详情 ${state.pathParameters['routeId']}')),
+        ),
       ),
-    ),
-  ],
-);
+    ],
+  );
+}
 
 Future<void> _pumpRanking(
   WidgetTester tester, {
@@ -159,6 +186,168 @@ Future<void> _pumpRanking(
 }
 
 void main() {
+  testWidgets('首次进入跟随首页成都，两种榜单均使用匹配省市且兼容市后缀', (tester) async {
+    final api = _RegionRankingApi();
+    final session = await _createSession();
+    final cityController = HomeCityController();
+    await cityController.selectManually('成都市');
+    final router = _createRouter(
+      api: api,
+      session: session,
+      cityController: cityController,
+    );
+    addTearDown(router.dispose);
+    addTearDown(session.dispose);
+    addTearDown(cityController.dispose);
+
+    await _pumpRanking(tester, router: router);
+
+    expect(find.text('成都热门线路'), findsOneWidget);
+    expect(api.latest('/rankings/routes').queryParameters, {
+      'province': '四川省',
+      'city': '成都',
+    });
+
+    await tester.tap(find.byKey(const Key('ranking-segment-0')));
+    await tester.pumpAndSettle();
+    expect(api.latest('/rankings').queryParameters, {
+      'scope': 'city',
+      'province': '四川省',
+      'city': '成都',
+    });
+    expect(
+      api.requests.where((request) => request.path != '/rankings/regions'),
+      everyElement(
+        predicate<_CapturedRequest>(
+          (request) => request.queryParameters['city'] == '成都',
+        ),
+      ),
+      reason: '首页城市已知时不应先请求并展示全国数据',
+    );
+  });
+
+  testWidgets('保留的排行榜页面随首页切换深圳及全国，返回时不保留旧城市', (tester) async {
+    final api = _RegionRankingApi();
+    final session = await _createSession();
+    final cityController = HomeCityController();
+    await cityController.selectManually('成都');
+    final router = _createRouter(
+      api: api,
+      session: session,
+      cityController: cityController,
+      retainedTabs: true,
+    );
+    addTearDown(router.dispose);
+    addTearDown(session.dispose);
+    addTearDown(cityController.dispose);
+
+    await _pumpRanking(tester, router: router);
+    final retainedState = tester.state(find.byType(RankingScreen));
+    router.go('/home');
+    await tester.pumpAndSettle();
+    expect(find.text('首页'), findsOneWidget);
+    expect(find.byType(RankingScreen), findsNothing);
+
+    await cityController.selectManually('深圳');
+    await tester.pumpAndSettle();
+    expect(api.latest('/rankings/routes').queryParameters, {
+      'province': '广东省',
+      'city': '深圳',
+    });
+    router.go('/ranking');
+    await tester.pumpAndSettle();
+    expect(tester.state(find.byType(RankingScreen)), same(retainedState));
+    expect(find.text('深圳热门线路'), findsOneWidget);
+
+    router.go('/home');
+    await tester.pumpAndSettle();
+    await cityController.selectManually(null);
+    await tester.pumpAndSettle();
+    expect(api.latest('/rankings/routes').queryParameters, isEmpty);
+    router.go('/ranking');
+    await tester.pumpAndSettle();
+    expect(tester.state(find.byType(RankingScreen)), same(retainedState));
+    expect(find.text('全国榜'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('ranking-segment-0')));
+    await tester.pumpAndSettle();
+    expect(api.latest('/rankings').queryParameters, {'scope': 'national'});
+  });
+
+  testWidgets('榜内手选全国保持到首页城市变化，同城通知不会覆盖或重新请求', (tester) async {
+    final api = _RegionRankingApi();
+    final session = await _createSession();
+    final cityController = HomeCityController();
+    await cityController.selectManually('成都');
+    final router = _createRouter(
+      api: api,
+      session: session,
+      cityController: cityController,
+    );
+    addTearDown(router.dispose);
+    addTearDown(session.dispose);
+    addTearDown(cityController.dispose);
+
+    await _pumpRanking(tester, router: router);
+    await tester.tap(find.byKey(const Key('ranking-region-button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('ranking-region-national')));
+    await tester.pumpAndSettle();
+    expect(api.latest('/rankings/routes').queryParameters, isEmpty);
+    final requestCount = api.requests.length;
+
+    await cityController.selectManually('成都');
+    await tester.pumpAndSettle();
+    expect(find.text('全国榜'), findsOneWidget);
+    expect(api.requests, hasLength(requestCount));
+
+    await cityController.selectManually('深圳');
+    await tester.pumpAndSettle();
+    expect(find.text('深圳榜'), findsOneWidget);
+    expect(api.latest('/rankings/routes').queryParameters, {
+      'province': '广东省',
+      'city': '深圳',
+    });
+  });
+
+  testWidgets('地区列表迟到时保留最新未知城市，两种榜单显示该城空态且不发错误请求', (tester) async {
+    final regions = Completer<JsonMap>();
+    final api = _RegionRankingApi(regionsResponse: regions.future);
+    final session = await _createSession();
+    final cityController = HomeCityController();
+    await cityController.selectManually('成都');
+    final router = _createRouter(
+      api: api,
+      session: session,
+      cityController: cityController,
+    );
+    addTearDown(router.dispose);
+    addTearDown(session.dispose);
+    addTearDown(cityController.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp.router(theme: WanpanTheme.light(), routerConfig: router),
+    );
+    await tester.pump();
+    await cityController.selectManually('拉萨');
+    await tester.pump();
+    expect(api.requests.map((request) => request.path), ['/rankings/regions']);
+
+    regions.complete({
+      'items': [
+        {'province': '四川省', 'city': '成都'},
+        {'province': '广东省', 'city': '深圳'},
+      ],
+    });
+    await tester.pumpAndSettle();
+    expect(find.text('拉萨还没有热门线路'), findsOneWidget);
+    expect(find.textContaining('天府彩虹连动挑战线'), findsNothing);
+    await tester.tap(find.byKey(const Key('ranking-segment-0')));
+    await tester.pumpAndSettle();
+    expect(find.text('拉萨榜正在等第一位岩友'), findsOneWidget);
+    expect(api.requests.map((request) => request.path), ['/rankings/regions']);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('成都筛选同时驱动线路榜和岩友榜并可进入线路详情', (tester) async {
     final semantics = tester.ensureSemantics();
     final api = _RegionRankingApi();

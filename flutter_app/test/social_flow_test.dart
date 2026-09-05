@@ -6,6 +6,7 @@ import 'package:wanpan_diary/app/wanpan_theme.dart';
 import 'package:wanpan_diary/core/config/app_config.dart';
 import 'package:wanpan_diary/core/models/user_models.dart';
 import 'package:wanpan_diary/core/network/api_client.dart';
+import 'package:wanpan_diary/core/repositories/profile_repository.dart';
 import 'package:wanpan_diary/features/auth/application/session_controller.dart';
 import 'package:wanpan_diary/features/auth/data/session_token_store.dart';
 import 'package:wanpan_diary/features/auth/domain/auth_session.dart';
@@ -65,7 +66,11 @@ class _SocialApiClient extends ApiClient {
         'items': [
           _post(
             id: friends ? 'friends-post' : 'square-post',
-            caption: friends ? '朋友圈动态' : '广场动态',
+            caption: friends
+                ? friendAccepted
+                      ? '新岩友的朋友圈动态'
+                      : '朋友圈动态'
+                : '广场动态',
             visibility: friends ? 'friends' : 'public',
           ),
         ],
@@ -212,6 +217,65 @@ void main() {
       ),
       isTrue,
     );
+  });
+
+  testWidgets('在其他页面接受岩友申请后，保留的朋友圈页面自动刷新', (tester) async {
+    final api = _SocialApiClient();
+    final session = await _signedInSession();
+    final feedVisible = ValueNotifier(true);
+    addTearDown(api.dispose);
+    addTearDown(session.dispose);
+    addTearDown(feedVisible.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: WanpanTheme.light(),
+        home: ValueListenableBuilder<bool>(
+          valueListenable: feedVisible,
+          child: FeedScreen(api: api, session: session),
+          builder: (_, visible, child) => TickerMode(
+            enabled: visible,
+            child: Offstage(offstage: !visible, child: child),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('朋友圈'));
+    await tester.pumpAndSettle();
+    expect(find.text('朋友圈动态'), findsOneWidget);
+    final retainedFeed = tester.state(find.byType(FeedScreen));
+    final friendsRequestsBefore = api.calls
+        .where(
+          (call) =>
+              call.startsWith('GET /sends/feed') && call.contains('friends'),
+        )
+        .length;
+
+    // StatefulShell keeps a previous tab mounted while another tab is visible.
+    feedVisible.value = false;
+    await tester.pumpAndSettle();
+    expect(find.byType(FeedScreen), findsNothing);
+    await ProfileRepository(api).acceptFriendRequest('incoming');
+    await tester.pumpAndSettle();
+    expect(
+      api.calls
+          .where(
+            (call) =>
+                call.startsWith('GET /sends/feed') && call.contains('friends'),
+          )
+          .length,
+      friendsRequestsBefore + 1,
+    );
+
+    feedVisible.value = true;
+    await tester.pumpAndSettle();
+    expect(tester.state(find.byType(FeedScreen)), same(retainedFeed));
+    expect(find.text('新岩友的朋友圈动态'), findsOneWidget);
+    expect(find.text('朋友圈动态'), findsNothing);
+    expect(find.text('广场动态'), findsNothing);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
   });
 
   testWidgets('动态详情可以点赞并提交评论', (tester) async {

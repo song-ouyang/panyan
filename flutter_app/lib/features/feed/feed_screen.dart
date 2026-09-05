@@ -12,6 +12,7 @@ import '../../shared/app_assets.dart';
 import '../../shared/widgets/wanpan_card.dart';
 import '../../shared/widgets/wanpan_mascot.dart';
 import '../../shared/widgets/wanpan_pressable.dart';
+import '../../shared/widgets/wanpan_video_cover.dart';
 import '../auth/application/session_controller.dart';
 import '../../shared/motion/wanpan_motion.dart';
 
@@ -39,7 +40,20 @@ class _FeedScreenState extends State<FeedScreen> {
   @override
   void initState() {
     super.initState();
+    widget.api.socialActivity.addListener(_handleSocialChanged);
     _load();
+  }
+
+  @override
+  void dispose() {
+    widget.api.socialActivity.removeListener(_handleSocialChanged);
+    super.dispose();
+  }
+
+  void _handleSocialChanged() {
+    if (!mounted) return;
+    _scopeCache.clear();
+    _load(showLoading: true);
   }
 
   Future<void> _load({bool showLoading = false}) async {
@@ -189,11 +203,6 @@ class _FeedScreenState extends State<FeedScreen> {
         title: const Text('广场'),
         actions: [
           if (widget.session.isAuthenticated) ...[
-            IconButton(
-              tooltip: '我的岩友',
-              onPressed: _openFriends,
-              icon: const Icon(Icons.people_outline_rounded),
-            ),
             Padding(
               padding: const EdgeInsets.only(right: 12),
               child: IconButton.filled(
@@ -539,30 +548,7 @@ class _PostCard extends StatelessWidget {
             _ImageGrid(urls: post.imageUrls),
           ] else if (post.videoUrl != null) ...[
             const SizedBox(height: 14),
-            Container(
-              height: 176,
-              decoration: BoxDecoration(
-                color: WanpanColors.surfaceSoft,
-                borderRadius: BorderRadius.circular(WanpanRadii.medium),
-              ),
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.play_circle_fill_rounded,
-                      size: 52,
-                      color: WanpanColors.coral,
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      '点击查看完攀视频',
-                      style: Theme.of(context).textTheme.labelMedium,
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            WanpanVideoCover(url: post.videoUrl!),
           ],
           const SizedBox(height: 12),
           Row(

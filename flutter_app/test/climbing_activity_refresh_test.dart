@@ -191,57 +191,34 @@ Finder _growthText(String text) => find.descendant(
 );
 
 void main() {
-  testWidgets(
-    'cached profile refreshes monthly and lifetime stats after a send',
-    (tester) async {
-      final api = _ActivityApi();
-      final selectedTab = await _showCachedProfile(tester, api);
-      final originalState = tester.state(find.byType(ProfileScreen));
-      expect(_growthText('0'), findsOneWidget);
-      expect(_growthText('V0'), findsOneWidget);
-      expect(api.profileRequests, 1);
-      await tester.tap(find.byKey(const Key('profile-growth-period-lifetime')));
-      await tester.pumpAndSettle();
-      expect(_growthText('0'), findsNWidgets(2));
+  testWidgets('cached profile refreshes lifetime totals after a send', (
+    tester,
+  ) async {
+    final api = _ActivityApi();
+    final selectedTab = await _showCachedProfile(tester, api);
+    final originalState = tester.state(find.byType(ProfileScreen));
+    expect(_growthText('0'), findsNWidgets(2));
+    expect(_growthText('V0'), findsOneWidget);
+    expect(api.profileRequests, 1);
 
-      selectedTab.value = 1;
-      await tester.pumpAndSettle();
-      final result = await CheckinRepository(api).createCheckin(
-        routeId: 'route-1',
-        videoUrl: 'https://example.com/send.mp4',
-      );
-      expect(result.moderationStatus, 'approved');
-      await tester.pumpAndSettle();
-      selectedTab.value = 0;
-      await tester.pumpAndSettle();
+    selectedTab.value = 1;
+    await tester.pumpAndSettle();
+    final result = await CheckinRepository(api).createCheckin(
+      routeId: 'route-1',
+      videoUrl: 'https://example.com/send.mp4',
+    );
+    expect(result.moderationStatus, 'approved');
+    await tester.pumpAndSettle();
+    selectedTab.value = 0;
+    await tester.pumpAndSettle();
 
-      expect(tester.state(find.byType(ProfileScreen)), same(originalState));
-      expect(api.profileRequests, 2);
-      expect(_growthText('1'), findsNWidgets(2));
-      expect(
-        _growthText('去过岩馆'),
-        findsOneWidget,
-        reason: 'Refreshing must keep the selected growth period',
-      );
-
-      await tester.tap(find.byKey(const Key('profile-growth-period-month')));
-      await tester.pumpAndSettle();
-      expect(_growthText('1'), findsOneWidget);
-      expect(_growthText('V2'), findsOneWidget);
-
-      await tester.tap(find.byKey(const Key('profile-growth-period-lifetime')));
-      await tester.pumpAndSettle();
-      expect(_growthText('1'), findsNWidgets(2));
-      expect(_growthText('V2'), findsOneWidget);
-      expect(_growthText('去过岩馆'), findsOneWidget);
-      expect(
-        api.profileRequests,
-        2,
-        reason: 'Changing periods uses refreshed stats',
-      );
-      expect(tester.takeException(), isNull);
-    },
-  );
+    expect(tester.state(find.byType(ProfileScreen)), same(originalState));
+    expect(api.profileRequests, 2);
+    expect(_growthText('1'), findsNWidgets(2));
+    expect(_growthText('V2'), findsOneWidget);
+    expect(_growthText('去过岩馆'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets(
     'failed or malformed sends do not invalidate the mounted profile',
@@ -271,7 +248,7 @@ void main() {
 
       expect(notifications, 0);
       expect(api.profileRequests, 1);
-      expect(_growthText('0'), findsOneWidget);
+      expect(_growthText('0'), findsNWidgets(2));
       expect(_growthText('V0'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
@@ -323,7 +300,7 @@ void main() {
       await CheckinRepository(unrelatedApi).createCheckin(routeId: 'route-1');
       await tester.pumpAndSettle();
       expect(api.profileRequests, 1);
-      expect(_growthText('0'), findsOneWidget);
+      expect(_growthText('0'), findsNWidgets(2));
 
       await tester.pumpWidget(const SizedBox.shrink());
       api.climbingActivity.recordChanged();

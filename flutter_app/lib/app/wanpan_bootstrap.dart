@@ -9,6 +9,8 @@ import '../core/network/api_client.dart';
 import '../features/auth/application/session_controller.dart';
 import '../features/auth/data/auth_repository.dart';
 import '../features/auth/data/native_auth_service.dart';
+import '../features/gyms/application/home_city_controller.dart';
+import '../features/notifications/application/notifications_controller.dart';
 import '../features/onboarding/application/onboarding_controller.dart';
 import '../features/splash/splash_screen.dart';
 import 'wanpan_app.dart';
@@ -64,11 +66,16 @@ class _WanpanBootstrapState extends State<WanpanBootstrap> {
         config: widget.config,
       );
       final onboarding = OnboardingController(preferences: preferences);
+      final cityController = HomeCityController(
+        preferencesLoader: () async => preferences,
+      );
       final api = ApiClient(
         config: widget.config,
         accessTokenProvider: () => session.token,
       );
       api.onUnauthorized = session.handleUnauthorizedResponse;
+      final notifications = NotificationsController(api: api, session: session);
+      notifications.start();
       final authRepository = AuthRepository(api);
       final router = createWanpanRouter(
         api: api,
@@ -78,6 +85,8 @@ class _WanpanBootstrapState extends State<WanpanBootstrap> {
           appleLoginEnabled: widget.config.enableAppleLogin,
         ),
         onboarding: onboarding,
+        cityController: cityController,
+        notificationsController: notifications,
       );
       final dependencies = _WanpanDependencies(
         api: api,
@@ -85,6 +94,8 @@ class _WanpanBootstrapState extends State<WanpanBootstrap> {
         onboarding: onboarding,
         authRepository: authRepository,
         router: router,
+        cityController: cityController,
+        notifications: notifications,
       );
 
       if (!mounted || attempt != _attempt) {
@@ -160,6 +171,8 @@ class _WanpanDependencies {
     required this.onboarding,
     required this.authRepository,
     required this.router,
+    required this.cityController,
+    required this.notifications,
   });
 
   final ApiClient api;
@@ -167,9 +180,13 @@ class _WanpanDependencies {
   final OnboardingController onboarding;
   final AuthRepository authRepository;
   final GoRouter router;
+  final HomeCityController cityController;
+  final NotificationsController notifications;
 
   void dispose() {
     router.dispose();
+    notifications.dispose();
+    cityController.dispose();
     api.dispose();
     onboarding.dispose();
     session.dispose();

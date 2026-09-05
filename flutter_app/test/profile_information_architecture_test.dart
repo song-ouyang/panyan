@@ -29,7 +29,10 @@ const _user = UserSummary(
 );
 
 class _ProfileApi extends ApiClient {
-  _ProfileApi() : super(config: _config, accessTokenProvider: () => 'token');
+  _ProfileApi({this.user = _user})
+    : super(config: _config, accessTokenProvider: () => 'token');
+
+  final UserSummary user;
 
   @override
   Future<JsonMap> getJson(
@@ -40,7 +43,7 @@ class _ProfileApi extends ApiClient {
       throw StateError('Unexpected profile request: $path');
     }
     return {
-      ..._user.toJson(),
+      ...user.toJson(),
       'stats': {
         'total_sends': 18,
         'gym_count': 4,
@@ -130,7 +133,7 @@ Future<void> _withSemantics(
 }
 
 void main() {
-  testWidgets('编辑资料收入个人卡，本月和累计统计切换且不重复', (tester) async {
+  testWidgets('昵称旁编辑图标可进入资料页，攀爬进度只显示累计统计', (tester) async {
     final api = _ProfileApi();
     final session = await _createSession();
     final router = _createRouter(api: api, session: session);
@@ -150,39 +153,30 @@ void main() {
       findsOneWidget,
       reason: '编辑资料应是顶部个人卡的内部操作',
     );
+    final nickname = find.text(_user.nickname);
+    expect(
+      tester.getRect(edit).left,
+      greaterThanOrEqualTo(tester.getRect(nickname).right),
+    );
+    expect(
+      tester.getCenter(edit).dy,
+      closeTo(tester.getCenter(nickname).dy, 1),
+    );
+    expect(find.byTooltip('编辑个人资料'), findsOneWidget);
+    expect(find.text('编辑资料'), findsNothing);
     expect(growth, findsOneWidget);
-    for (final label in ['攀爬进度', '完攀线路', '最高难度', '攀岩日历', '7', 'V4']) {
+    for (final label in ['攀爬进度', '完攀线路', '最高难度', '去过岩馆', '18', 'V5', '4']) {
       expect(
         find.descendant(of: growth, matching: find.text(label)),
         findsOneWidget,
         reason: '$label 应展示在同一张成长卡中',
       );
     }
-    expect(find.text('18'), findsNothing);
-    expect(find.text('V5'), findsNothing);
-    expect(find.text('去过岩馆'), findsNothing);
-
-    await tester.tap(find.byKey(const Key('profile-growth-period-lifetime')));
-    await tester.pumpAndSettle();
-    expect(router.state.uri.path, '/profile');
-    for (final value in ['18', 'V5', '4', '去过岩馆']) {
-      expect(
-        find.descendant(of: growth, matching: find.text(value)),
-        findsOneWidget,
-      );
-    }
     expect(find.text('7'), findsNothing);
     expect(find.text('V4'), findsNothing);
-    expect(find.text('完攀线路'), findsOneWidget);
-    expect(find.text('最高难度'), findsOneWidget);
-
-    await tester.tap(find.byKey(const Key('profile-growth-period-month')));
-    await tester.pumpAndSettle();
-    expect(router.state.uri.path, '/profile');
-    expect(find.text('7'), findsOneWidget);
-    expect(find.text('V4'), findsOneWidget);
-    expect(find.text('18'), findsNothing);
-    expect(find.text('去过岩馆'), findsNothing);
+    expect(find.text('本月'), findsNothing);
+    expect(find.text('累计'), findsNothing);
+    expect(find.text('攀岩日历'), findsNothing);
 
     expect(find.text('成长入口'), findsNothing);
     expect(find.text('难度成长'), findsNothing);
@@ -271,10 +265,17 @@ void main() {
     expect(find.text('邀请好友页'), findsOneWidget);
   });
 
-  testWidgets('320px 紧凑屏与最大字号下主要入口可用且无溢出', (tester) async {
+  testWidgets('320px 长中文昵称与最大字号下编辑图标及主要入口可用且无溢出', (tester) async {
     await tester.binding.setSurfaceSize(const Size(320, 568));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    final api = _ProfileApi();
+    const longNameUser = UserSummary(
+      id: 'profile-user',
+      nickname: '每个周末都在认真攀爬的小熊',
+      bio: '和朋友一起探索每一面岩壁',
+      role: 'user',
+      profileCompleted: true,
+    );
+    final api = _ProfileApi(user: longNameUser);
     final session = await _createSession();
     final router = _createRouter(api: api, session: session);
     addTearDown(router.dispose);
@@ -290,6 +291,13 @@ void main() {
       final edit = find.byKey(const Key('profile-edit-button'));
       expect(edit.hitTestable(), findsOneWidget);
       expect(tester.getSize(edit).shortestSide, greaterThanOrEqualTo(44));
+      final nickname = find.text(longNameUser.nickname);
+      final nicknameRect = tester.getRect(nickname);
+      final editRect = tester.getRect(edit);
+      expect(nicknameRect.width, greaterThan(0));
+      expect(editRect.left, greaterThanOrEqualTo(nicknameRect.right));
+      expect(editRect.center.dy, closeTo(nicknameRect.center.dy, 1));
+      expect(editRect.right, lessThanOrEqualTo(300));
       final editSemantics = find.bySemanticsLabel(RegExp('编辑个人资料'));
       expect(editSemantics, findsOneWidget);
       expect(
@@ -317,25 +325,16 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('邀请好友').hitTestable(), findsOneWidget);
       expect(tester.takeException(), isNull);
+      // The list can dispose the header after scrolling through menu entries.
       await tester.scrollUntilVisible(
-        find.byKey(const Key('profile-growth-period-lifetime')),
+        edit,
         -180,
         scrollable: find.byType(Scrollable).first,
       );
       await tester.pumpAndSettle();
-      for (final period in ['lifetime', 'month']) {
-        final selector = find.byKey(Key('profile-growth-period-$period'));
-        await tester.ensureVisible(selector);
-        await tester.pumpAndSettle();
-        expect(tester.getSize(selector).shortestSide, greaterThanOrEqualTo(44));
-        await tester.tap(selector);
-        await tester.pumpAndSettle();
-        expect(router.state.uri.path, '/profile');
-        expect(tester.takeException(), isNull);
-        final semantics = tester.getSemantics(selector).getSemanticsData();
-        expect(semantics.flagsCollection.isSelected, ui.Tristate.isTrue);
-        expect(semantics.hasAction(ui.SemanticsAction.tap), isTrue);
-      }
+      await tester.tap(edit);
+      await tester.pumpAndSettle();
+      expect(router.state.uri.path, '/profile/setup');
       expect(tester.takeException(), isNull);
     });
   });

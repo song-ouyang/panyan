@@ -40,10 +40,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _CurrentAccount(nickname: user.nickname, avatarUrl: user.avatarUrl),
             const SizedBox(height: 26),
           ],
-          Text('通用', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 10),
-          const _SystemPreferenceTile(),
-          const SizedBox(height: 26),
           Text('账号', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 10),
           _SettingsTile(
@@ -89,9 +85,9 @@ class _CurrentAccount extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: WanpanColors.skySoft,
+        color: WanpanColors.surface,
         borderRadius: BorderRadius.circular(WanpanRadii.large),
-        border: Border.all(color: WanpanColors.sky.withValues(alpha: .42)),
+        border: Border.all(color: WanpanColors.border),
       ),
       child: Row(
         children: [
@@ -125,58 +121,9 @@ class _CurrentAccount extends StatelessWidget {
               ],
             ),
           ),
-          const Icon(Icons.verified_user_outlined, color: WanpanColors.sky),
-        ],
-      ),
-    );
-  }
-}
-
-class _SystemPreferenceTile extends StatelessWidget {
-  const _SystemPreferenceTile();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(minHeight: 72),
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: WanpanColors.surface,
-        borderRadius: BorderRadius.circular(WanpanRadii.medium),
-        border: Border.all(color: WanpanColors.border),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: WanpanColors.skySoft,
-              borderRadius: BorderRadius.circular(13),
-            ),
-            child: const Icon(
-              Icons.accessibility_new_rounded,
-              color: WanpanColors.inkSecondary,
-            ),
-          ),
-          const SizedBox(width: 13),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('显示与动效', style: Theme.of(context).textTheme.titleMedium),
-                Text(
-                  '字体大小与减少动态效果跟随手机设置',
-                  style: Theme.of(context).textTheme.labelMedium,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            '跟随系统',
-            style: Theme.of(context).textTheme.labelMedium
-                ?.copyWith(color: WanpanColors.inkSecondary),
+          const Icon(
+            Icons.verified_user_outlined,
+            color: WanpanColors.inkSecondary,
           ),
         ],
       ),

@@ -6,7 +6,9 @@ function playFeedback(type = 'success') {
     currentAudio = wx.createInnerAudioContext({ useWebAudioImplement: true });
     currentAudio.obeyMuteSwitch = true;
     currentAudio.volume = 0.72;
-    currentAudio.src = type === 'milestone' ? '/assets/sounds/milestone.wav' : '/assets/sounds/success.wav';
+    currentAudio.src = type === 'milestone'
+      ? '/assets/sounds/grade-milestone.wav'
+      : '/assets/sounds/send-success.wav';
     currentAudio.onEnded(() => { currentAudio.destroy(); currentAudio = null; });
     currentAudio.onError(() => { if (currentAudio) currentAudio.destroy(); currentAudio = null; });
     currentAudio.play();

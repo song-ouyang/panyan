@@ -1,8 +1,39 @@
 import type { FastifyPluginAsync } from 'fastify';
+import { z } from 'zod';
 import { query } from '../db.js';
 import { idParams } from '../schemas.js';
 
+const weeklyQuery = z.object({
+  city: z.string().trim().max(40).optional().transform((city) => city || undefined),
+  limit: z.coerce.number().int().min(1).max(20).default(10)
+});
+
 export const routeRoutes: FastifyPluginAsync = async (app) => {
+  app.get('/weekly', { preHandler: app.authenticateOptional }, async (request) => {
+    const { city, limit } = weeklyQuery.parse(request.query);
+    const weekEnd = new Date().toISOString();
+    const result = await query(
+      `WITH bounds AS (
+         SELECT date_trunc('week',$1::timestamptz AT TIME ZONE 'Asia/Shanghai')
+                  AT TIME ZONE 'Asia/Shanghai' week_start,
+                $1::timestamptz week_end
+       ), weekly AS (
+         SELECT r.*,g.name gym_name,g.address gym_address,g.city gym_city
+         FROM routes r JOIN gyms g ON g.id=r.gym_id CROSS JOIN bounds b
+         WHERE r.published=true AND r.created_at>=b.week_start AND r.created_at<=b.week_end
+           AND ($2::text IS NULL OR g.city=$2)
+         ORDER BY r.created_at DESC,r.id DESC
+         LIMIT $3
+       )
+       SELECT b.week_start "weekStart",b.week_end "weekEnd",
+              coalesce((SELECT jsonb_agg(to_jsonb(w) ORDER BY w.created_at DESC,w.id DESC)
+                        FROM weekly w),'[]'::jsonb) items
+       FROM bounds b`,
+      [weekEnd, city ?? null, limit]
+    );
+    return result.rows[0];
+  });
+
   app.get('/:id', { preHandler: app.authenticateOptional }, async (request) => {
     const { id } = idParams.parse(request.params);
     const viewerId = request.user?.sub ?? null;

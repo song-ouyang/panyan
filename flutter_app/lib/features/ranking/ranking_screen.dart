@@ -8,8 +8,10 @@ import '../../core/models/ranking_models.dart';
 import '../../core/network/api_client.dart';
 import '../../core/repositories/ranking_repository.dart';
 import '../auth/application/session_controller.dart';
+import '../gyms/application/home_city_controller.dart';
 import '../../shared/app_assets.dart';
 import '../../shared/motion/wanpan_motion.dart';
+import '../../shared/motion/wanpan_motion_sound.dart';
 import '../../shared/widgets/wanpan_lottie_stage.dart';
 import '../../shared/widgets/wanpan_mascot.dart';
 import '../../shared/widgets/wanpan_pressable.dart';
@@ -21,10 +23,14 @@ class RankingScreen extends StatefulWidget {
     required this.api,
     required this.session,
     this.initialSegment = 0,
+    this.motionSoundPlayer,
+    this.cityController,
   });
   final ApiClient api;
   final SessionController session;
   final int initialSegment;
+  final WanpanMotionSoundPlayer? motionSoundPlayer;
+  final HomeCityController? cityController;
 
   @override
   State<RankingScreen> createState() => _RankingScreenState();
@@ -39,30 +45,54 @@ class _RankingScreenState extends State<RankingScreen> {
   List<RankedRoute> _routes = const [];
   List<RankingRegion> _regions = const [];
   RankingRegion? _selectedRegion;
+  String? _homeCity;
+  bool _followsHomeCity = true;
   bool _regionsLoading = true;
   bool _regionsFailed = false;
   final Set<String> _shownEmptyAnimations = <String>{};
   String? _visibleEmptyAnimationKey;
   bool _visibleEmptyShouldPlay = false;
+  int _emptyVisibilityReplayVersion = 0;
   int _loadRequestId = 0;
   bool _motionPreloadStarted = false;
   String? _observedSessionToken;
+  late final WanpanMotionSoundPlayer _motionSoundPlayer;
+  late final bool _ownsMotionSoundPlayer;
+  bool _motionIsVisible = true;
 
   @override
   void initState() {
     super.initState();
     _repository = RankingRepository(widget.api);
+    _ownsMotionSoundPlayer = widget.motionSoundPlayer == null;
+    _motionSoundPlayer =
+        widget.motionSoundPlayer ?? WanpanAssetMotionSoundPlayer();
     _segment = _normalizedSegment(widget.initialSegment);
     _observedSessionToken = widget.session.token;
     widget.session.addListener(_handleSessionChanged);
+    _homeCity = widget.cityController?.city;
+    _selectedRegion = _regionForCity(_homeCity);
+    widget.cityController?.addListener(_handleHomeCityChanged);
     unawaited(_loadRegions());
-    _load();
+    if (widget.cityController == null) _load();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) unawaited(widget.cityController?.initialize());
+    });
   }
 
   @override
   void didUpdateWidget(covariant RankingScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     var shouldReload = false;
+    if (oldWidget.cityController != widget.cityController) {
+      oldWidget.cityController?.removeListener(_handleHomeCityChanged);
+      widget.cityController?.addListener(_handleHomeCityChanged);
+      _homeCity = widget.cityController?.city;
+      _followsHomeCity = true;
+      _selectedRegion = _regionForCity(_homeCity);
+      shouldReload = true;
+      unawaited(widget.cityController?.initialize());
+    }
     if (oldWidget.session != widget.session) {
       oldWidget.session.removeListener(_handleSessionChanged);
       _observedSessionToken = widget.session.token;
@@ -82,16 +112,56 @@ class _RankingScreenState extends State<RankingScreen> {
   void dispose() {
     _loadRequestId++;
     widget.session.removeListener(_handleSessionChanged);
+    widget.cityController?.removeListener(_handleHomeCityChanged);
+    if (_ownsMotionSoundPlayer) {
+      unawaited(_motionSoundPlayer.dispose());
+    } else {
+      unawaited(_motionSoundPlayer.stop());
+    }
     super.dispose();
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final wasMotionVisible = _motionIsVisible;
+    final motionIsVisible = TickerMode.of(context);
+    if (wasMotionVisible && !motionIsVisible) {
+      unawaited(_motionSoundPlayer.stop());
+    }
+    _motionIsVisible = motionIsVisible;
+    if (!wasMotionVisible && motionIsVisible) {
+      final emptyKey = _visibleEmptyAnimationKey;
+      if (emptyKey != null) {
+        _visibleEmptyShouldPlay = !_shownEmptyAnimations.contains(emptyKey);
+        if (_visibleEmptyShouldPlay) _emptyVisibilityReplayVersion += 1;
+      }
+    }
     if (_motionPreloadStarted) return;
     _motionPreloadStarted = true;
     unawaited(
       preloadWanpanLottie(context, AppAssets.rankingEncouragementAnimation),
+    );
+    unawaited(
+      _motionSoundPlayer.preload(const [
+        WanpanMotionSoundCue.rankingEncouragement,
+      ]),
+    );
+  }
+
+  void _handleEmptyAnimationPresented(String emptyKey, bool animated) {
+    if (!_motionIsVisible ||
+        !TickerMode.of(context) ||
+        emptyKey != _visibleEmptyAnimationKey) {
+      return;
+    }
+    final firstPresentation = _shownEmptyAnimations.add(emptyKey);
+    if (!animated || !firstPresentation) return;
+    unawaited(
+      _motionSoundPlayer.play(
+        WanpanMotionSoundCue.rankingEncouragement,
+        animated: true,
+      ),
     );
   }
 
@@ -104,6 +174,23 @@ class _RankingScreenState extends State<RankingScreen> {
       _error = null;
       _setVisibleEmptyAnimation(null);
     });
+    if (region != null && region.province.isEmpty) {
+      // A home city outside the directory has no rankings yet. Do not send an
+      // invalid city-only query or silently replace it with the national board.
+      if (_regionsLoading) return;
+      setState(() {
+        _loading = false;
+        _board = null;
+        _routes = const [];
+        _error = _regionsFailed ? '榜单地区没有加载出来' : null;
+        _setVisibleEmptyAnimation(
+          _regionsFailed
+              ? null
+              : '${segment == 0 ? 'people' : 'routes'}-empty-${region.key}',
+        );
+      });
+      return;
+    }
     try {
       if (segment == 0) {
         final board = await _repository.getRanking(
@@ -176,16 +263,45 @@ class _RankingScreenState extends State<RankingScreen> {
         _regions = unique;
         _regionsLoading = false;
         _regionsFailed = false;
-        if (!selectionStillExists) _selectedRegion = null;
+        if (_followsHomeCity) {
+          _selectedRegion = _regionForCity(_homeCity);
+        } else if (!selectionStillExists) {
+          _selectedRegion = null;
+        }
       });
-      if (!selectionStillExists) unawaited(_load());
+      if (widget.cityController != null || !selectionStillExists) {
+        unawaited(_load());
+      }
     } catch (_) {
       if (!mounted) return;
       setState(() {
         _regionsLoading = false;
         _regionsFailed = true;
       });
+      if (widget.cityController != null) unawaited(_load());
     }
+  }
+
+  RankingRegion? _regionForCity(String? city) {
+    if (city == null) return null;
+    final cityKey = city.trim().replaceFirst(RegExp(r'市$'), '');
+    for (final region in _regions) {
+      if (region.city.trim().replaceFirst(RegExp(r'市$'), '') == cityKey) {
+        return region;
+      }
+    }
+    return RankingRegion(province: '', city: city);
+  }
+
+  void _handleHomeCityChanged() {
+    final city = widget.cityController?.city;
+    if (!mounted || city == _homeCity) return;
+    setState(() {
+      _homeCity = city;
+      _followsHomeCity = true;
+      _selectedRegion = _regionForCity(city);
+    });
+    unawaited(_load());
   }
 
   void _handleSessionChanged() {
@@ -202,6 +318,7 @@ class _RankingScreenState extends State<RankingScreen> {
   }
 
   void _changeRegion(RankingRegion? region) {
+    _followsHomeCity = false;
     if (_selectedRegion == region) return;
     setState(() => _selectedRegion = region);
     unawaited(_load());
@@ -284,7 +401,13 @@ class _RankingScreenState extends State<RankingScreen> {
             ),
             const SizedBox(height: 12),
             Text(_error!, style: Theme.of(context).textTheme.titleMedium),
-            TextButton(onPressed: _load, child: const Text('重新加载')),
+            TextButton(
+              onPressed:
+                  _regionsFailed && _selectedRegion?.province.isEmpty == true
+                  ? _loadRegions
+                  : _load,
+              child: const Text('重新加载'),
+            ),
           ],
         ),
       );
@@ -298,13 +421,15 @@ class _RankingScreenState extends State<RankingScreen> {
     if (board == null || board.items.isEmpty) {
       final emptyKey = 'people-empty-$_regionKey';
       return _RankingEmpty(
-        key: ValueKey(emptyKey),
+        key: ValueKey('$emptyKey-$_emptyVisibilityReplayVersion'),
         title: _selectedRegion == null ? '本月榜单刚刚开始' : '$_regionLabel榜正在等第一位岩友',
         description: _selectedRegion == null
             ? '完成一条线路，就能出现在这里。'
             : '在$_regionLabel完成一条线路，就能出现在这里。',
         actionLabel: widget.session.isAuthenticated ? '找线路打卡' : '登录后加入',
         playAnimation: _playsVisibleEmptyAnimation(emptyKey),
+        onAnimationPresented: (animated) =>
+            _handleEmptyAnimationPresented(emptyKey, animated),
         onAction: widget.session.isAuthenticated
             ? () => context.push('/routes/pick')
             : () => context.go('/login?from=/ranking'),
@@ -342,11 +467,13 @@ class _RankingScreenState extends State<RankingScreen> {
     if (_routes.isEmpty) {
       final emptyKey = 'routes-empty-$_regionKey';
       return _RankingEmpty(
-        key: ValueKey(emptyKey),
+        key: ValueKey('$emptyKey-$_emptyVisibilityReplayVersion'),
         title: _selectedRegion == null ? '还没有热门线路' : '$_regionLabel还没有热门线路',
         description: '线路有真实完攀和点赞后，会进入$_regionLabel榜单。',
         actionLabel: _selectedRegion == null ? '去看看线路' : '换个城市看看',
         playAnimation: _playsVisibleEmptyAnimation(emptyKey),
+        onAnimationPresented: (animated) =>
+            _handleEmptyAnimationPresented(emptyKey, animated),
         onAction: _selectedRegion == null
             ? () => context.push('/routes/pick')
             : _openRegionPicker,
@@ -375,7 +502,9 @@ class _RankingScreenState extends State<RankingScreen> {
   }
 
   bool _playsVisibleEmptyAnimation(String key) =>
-      _visibleEmptyAnimationKey == key && _visibleEmptyShouldPlay;
+      _motionIsVisible &&
+      _visibleEmptyAnimationKey == key &&
+      _visibleEmptyShouldPlay;
 
   void _setVisibleEmptyAnimation(String? key) {
     if (key == null) {
@@ -385,7 +514,7 @@ class _RankingScreenState extends State<RankingScreen> {
     }
     if (_visibleEmptyAnimationKey == key) return;
     _visibleEmptyAnimationKey = key;
-    _visibleEmptyShouldPlay = _shownEmptyAnimations.add(key);
+    _visibleEmptyShouldPlay = !_shownEmptyAnimations.contains(key);
   }
 }
 
@@ -769,12 +898,6 @@ class _RankTile extends StatelessWidget {
   final VoidCallback onTap;
   @override
   Widget build(BuildContext context) {
-    final medal = switch (entry.rank) {
-      1 => '🥇',
-      2 => '🥈',
-      3 => '🥉',
-      _ => '${entry.rank}',
-    };
     return WanpanPressable(
       onTap: onTap,
       semanticLabel: '查看${entry.user.nickname}的主页',
@@ -790,17 +913,7 @@ class _RankTile extends StatelessWidget {
         ),
         child: Row(
           children: [
-            SizedBox(
-              width: 34,
-              child: Text(
-                medal,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 19,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
+            _RankBadge(rank: entry.rank),
             const SizedBox(width: 10),
             CircleAvatar(
               radius: 21,
@@ -837,6 +950,46 @@ class _RankTile extends StatelessWidget {
                 ),
                 Text('积分', style: Theme.of(context).textTheme.labelMedium),
               ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RankBadge extends StatelessWidget {
+  const _RankBadge({required this.rank});
+
+  final int rank;
+
+  @override
+  Widget build(BuildContext context) {
+    final medalColor = switch (rank) {
+      1 => WanpanColors.sunflower,
+      2 => const Color(0xFF87969E),
+      3 => const Color(0xFFB8794C),
+      _ => null,
+    };
+    return Semantics(
+      label: '第$rank名',
+      excludeSemantics: true,
+      child: SizedBox(
+        width: 34,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (medalColor != null)
+              Icon(Icons.emoji_events_rounded, size: 24, color: medalColor),
+            Text(
+              '$rank',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: WanpanColors.ink,
+                fontSize: medalColor == null ? 19 : 12,
+                fontWeight: FontWeight.w900,
+                height: 1.2,
+              ),
             ),
           ],
         ),
@@ -1028,12 +1181,14 @@ class _RankingEmpty extends StatelessWidget {
     required this.description,
     required this.actionLabel,
     required this.playAnimation,
+    required this.onAnimationPresented,
     required this.onAction,
   });
   final String title;
   final String description;
   final String actionLabel;
   final bool playAnimation;
+  final WanpanLottiePresented onAnimationPresented;
   final VoidCallback onAction;
 
   @override
@@ -1052,6 +1207,7 @@ class _RankingEmpty extends StatelessWidget {
                 width: 236,
                 height: 210,
                 play: playAnimation,
+                onPresented: onAnimationPresented,
                 fallback: const WanpanMascot(
                   asset: AppAssets.mascotCelebrate,
                   width: 176,

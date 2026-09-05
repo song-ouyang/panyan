@@ -18,6 +18,7 @@ import 'package:wanpan_diary/features/auth/domain/auth_session.dart';
 import 'package:wanpan_diary/features/gyms/checkin_screen.dart';
 import 'package:wanpan_diary/shared/widgets/wanpan_pressable.dart';
 
+import 'support/fake_motion_sound_player.dart';
 
 const _config = AppConfig(
   environment: AppEnvironment.development,
@@ -149,6 +150,7 @@ Future<SessionController> _showCheckin(
         routeId: 'route-1',
         routeName: '红色线路',
         grade: 'V2',
+        motionSoundPlayer: FakeMotionSoundPlayer(),
       ),
     ),
   );

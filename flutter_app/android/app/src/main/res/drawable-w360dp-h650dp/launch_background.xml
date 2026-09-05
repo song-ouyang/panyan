@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Keep the same welcome content visible while Flutter prepares its first frame. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/launch_background" />
+    <item android:width="260dp" android:height="186dp"
+        android:left="28dp" android:top="28dp" android:gravity="top|left">
+        <bitmap android:src="@drawable/launch_welcome_header"
+            android:gravity="fill" android:filter="true" />
+    </item>
+    <item android:width="304dp" android:height="315.8634dp"
+        android:top="228dp" android:bottom="110dp" android:gravity="center">
+        <layer-list>
+            <item>
+                <bitmap android:src="@drawable/launch_cat"
+                    android:gravity="fill" android:filter="true" />
+            </item>
+            <item android:width="106dp" android:height="58dp"
+                android:top="14.2139dp" android:right="8dp" android:gravity="top|right">
+                <bitmap android:src="@drawable/launch_welcome_speech"
+                    android:gravity="fill" android:filter="true" />
+            </item>
+        </layer-list>
+    </item>
+    <item android:height="8dp" android:left="28dp" android:right="28dp"
+        android:bottom="44dp" android:gravity="bottom|fill_horizontal"
+        android:drawable="@drawable/launch_progress" />
+</layer-list>

@@ -12,6 +12,7 @@ import '../features/auth/presentation/profile_setup_screen.dart';
 import '../features/feed/feed_screen.dart';
 import '../features/feed/post_screen.dart';
 import '../features/gyms/brand_screen.dart';
+import '../features/gyms/application/home_city_controller.dart';
 import '../features/gyms/checkin_screen.dart';
 import '../features/gyms/gym_screen.dart';
 import '../features/gyms/gyms_screen.dart';
@@ -19,6 +20,8 @@ import '../features/gyms/route_picker_screen.dart';
 import '../features/gyms/route_screen.dart';
 import '../features/gyms/route_submission_screen.dart';
 import '../features/onboarding/application/onboarding_controller.dart';
+import '../features/notifications/application/notifications_controller.dart';
+import '../features/notifications/notifications_screen.dart';
 import '../features/onboarding/presentation/onboarding_screen.dart';
 import '../features/profile/climbing_calendar_screen.dart';
 import '../features/profile/account_privacy_screen.dart';
@@ -40,6 +43,8 @@ GoRouter createWanpanRouter({
   required AuthRepository authRepository,
   required NativeAuthService nativeAuth,
   OnboardingController? onboarding,
+  HomeCityController? cityController,
+  NotificationsController? notificationsController,
 }) {
   final rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
   final friendCode = FriendCode(shareBaseUrl: api.config.shareBaseUrl);
@@ -109,11 +114,14 @@ GoRouter createWanpanRouter({
       GoRoute(
         parentNavigatorKey: rootNavigatorKey,
         path: '/login',
-        builder: (context, state) => LoginScreen(
-          session: session,
-          repository: authRepository,
-          nativeAuth: nativeAuth,
-          returnTo: safeAuthReturnTo(state.uri.queryParameters['from']),
+        pageBuilder: (context, state) => NoTransitionPage(
+          key: state.pageKey,
+          child: LoginScreen(
+            session: session,
+            repository: authRepository,
+            nativeAuth: nativeAuth,
+            returnTo: safeAuthReturnTo(state.uri.queryParameters['from']),
+          ),
         ),
       ),
       GoRoute(
@@ -160,7 +168,12 @@ GoRouter createWanpanRouter({
               GoRoute(
                 path: '/gyms',
                 pageBuilder: (context, state) => NoTransitionPage(
-                  child: GymsScreen(api: api, session: session),
+                  child: GymsScreen(
+                    api: api,
+                    session: session,
+                    cityController: cityController,
+                    notificationsController: notificationsController,
+                  ),
                 ),
               ),
             ],
@@ -183,6 +196,7 @@ GoRouter createWanpanRouter({
                   child: RankingScreen(
                     api: api,
                     session: session,
+                    cityController: cityController,
                     initialSegment: state.uri.queryParameters['tab'] == 'routes'
                         ? 1
                         : 0,
@@ -291,6 +305,15 @@ GoRouter createWanpanRouter({
       ),
       GoRoute(
         parentNavigatorKey: rootNavigatorKey,
+        path: '/notifications',
+        builder: (context, state) => _NotificationsRoute(
+          api: api,
+          session: session,
+          controller: notificationsController,
+        ),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
         path: '/users/:userId',
         builder: (context, state) => PublicProfileScreen(
           api: api,
@@ -336,6 +359,7 @@ GoRouter createWanpanRouter({
 }
 
 bool _isProtectedPath(String path) {
+  if (path == '/notifications') return true;
   if (path == '/settings') return true;
   if (path == '/profile') return true;
   if (path == '/profile/setup' || path.startsWith('/profile/')) return true;
@@ -357,4 +381,42 @@ class _WaitingForSession extends StatelessWidget {
   Widget build(BuildContext context) => const Scaffold(
     body: Center(child: CircularProgressIndicator(strokeWidth: 3)),
   );
+}
+
+class _NotificationsRoute extends StatefulWidget {
+  const _NotificationsRoute({
+    required this.api,
+    required this.session,
+    this.controller,
+  });
+
+  final ApiClient api;
+  final SessionController session;
+  final NotificationsController? controller;
+
+  @override
+  State<_NotificationsRoute> createState() => _NotificationsRouteState();
+}
+
+class _NotificationsRouteState extends State<_NotificationsRoute> {
+  late final NotificationsController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller =
+        widget.controller ??
+        NotificationsController(api: widget.api, session: widget.session);
+    if (widget.controller == null) _controller.start();
+  }
+
+  @override
+  void dispose() {
+    if (widget.controller == null) _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) =>
+      NotificationsScreen(controller: _controller);
 }

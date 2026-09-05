@@ -10,6 +10,7 @@ import 'package:dio/dio.dart';
 import '../config/app_config.dart';
 import '../json/json_helpers.dart';
 import '../services/climbing_activity_changes.dart';
+import '../services/social_activity_changes.dart';
 import 'api_exception.dart';
 
 typedef AccessTokenProvider = FutureOr<String?> Function();
@@ -65,6 +66,7 @@ class ApiClient {
   final Dio _dio;
   final AppConfig config;
   final climbingActivity = ClimbingActivityChanges();
+  final socialActivity = SocialActivityChanges();
   final AccessTokenProvider _accessTokenProvider;
   UnauthorizedHandler? onUnauthorized;
 
@@ -97,6 +99,7 @@ class ApiClient {
 
   void dispose() {
     climbingActivity.dispose();
+    socialActivity.dispose();
     _dio.close();
   }
 

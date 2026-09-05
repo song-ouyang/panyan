@@ -38,6 +38,7 @@ description: "启动、配置和迭代完攀日记的独立 Flutter 动效实验
 
 - 先读 `design/wanpan-motion/README.md` 和对应的 `design/wanpan-motion/briefs/*.md`。
 - 形状、分层、时序和缓动的唯一作者源是 `design/wanpan-motion/generate_lottie.mjs`。不要手工修改生成的 `lottie.json`、`controls.json` 或 `flutter_app/assets/lottie/*.json`。
+- 四个场景的声音作者源是 `tools/generate_sounds.py`。不要直接编辑生成的 WAV；修改合成参数后在仓库根目录运行 `python3 tools/generate_sounds.py`，它会把同名资产同步写入 Flutter 与小程序。
 - 需要写出生成物时，先确认官方播放器的 `public/projects/wanpan-motion` 路径，再在仓库根目录执行：
 
 ```bash
@@ -54,12 +55,15 @@ node design/wanpan-motion/generate_lottie.mjs \
 
 ```bash
 node --check design/wanpan-motion/generate_lottie.mjs
+python3 tools/generate_sounds.py
+afinfo flutter_app/assets/sounds/send-success.wav
 cd flutter_app
 flutter test \
+  test/motion_sound_assets_test.dart \
   test/wanpan_lottie_stage_test.dart \
   test/checkin_motion_test.dart \
   test/milestone_grade_sequence_test.dart \
   test/motion_preview_test.dart
 ```
 
-最后在实验室中逐个检查相关场景的首帧、主动作、稳定终帧、重播和“减少动效”模式。结束后停止 Flutter 会话，并报告实际检查的设备、场景与未能人工确认的项目。
+最后在实验室中逐个检查相关场景的首帧、主动作、稳定终帧、独立声音、重播和“减少动效”模式。快切场景时确认上一段声音会停止、相邻预加载页面不会误响。结束后停止 Flutter 会话，并报告实际检查的设备、场景与未能人工确认的项目。

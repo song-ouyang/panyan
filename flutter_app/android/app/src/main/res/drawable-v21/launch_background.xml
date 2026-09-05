@@ -1,10 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Modify this file to customize your launch splash screen -->
+<!-- Keep the same welcome content visible while Flutter prepares its first frame. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:drawable="@color/launch_background" />
-    <item>
-        <bitmap
-            android:gravity="fill"
-            android:src="@drawable/launch_background_image" />
+    <item android:width="280dp" android:height="140dp"
+        android:left="20dp" android:top="12dp" android:gravity="top|left">
+        <bitmap android:src="@drawable/launch_welcome_header_compact"
+            android:gravity="fill" android:filter="true" />
     </item>
+    <item android:width="224dp" android:height="232.7415dp"
+        android:top="160dp" android:bottom="106dp" android:gravity="center">
+        <layer-list>
+            <item>
+                <bitmap android:src="@drawable/launch_cat"
+                    android:gravity="fill" android:filter="true" />
+            </item>
+            <item android:width="106dp" android:height="58dp"
+                android:top="10.4734dp" android:right="8dp" android:gravity="top|right">
+                <bitmap android:src="@drawable/launch_welcome_speech"
+                    android:gravity="fill" android:filter="true" />
+            </item>
+        </layer-list>
+    </item>
+    <item android:height="8dp" android:left="20dp" android:right="20dp"
+        android:bottom="44dp" android:gravity="bottom|fill_horizontal"
+        android:drawable="@drawable/launch_progress" />
 </layer-list>

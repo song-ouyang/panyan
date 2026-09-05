@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync, FastifyReply } from 'fastify';
 
 const contactEmail = 'ouyangsong8@gmail.com';
+const contactWechat = '19008208894';
 const developerName = 'guoba';
 const effectiveDate = '2026年9月1日';
 
@@ -101,6 +102,8 @@ const privacyPage: PublicPage = {
       </ul>
       <h3>服务运行信息</h3>
       <p>为保障登录、接口安全和故障排查，服务器可能记录请求时间、IP 地址、接口状态和必要的安全日志。当前版本不会持续获取精确定位；照片、相机和麦克风等系统权限仅在你主动选择图片或视频相关功能时请求。</p>
+      <h3>所在城市与定位</h3>
+      <p>未手动选择城市时，岩馆首页会尝试获取所在城市；你也可以点击“使用当前位置”重新定位。经系统定位权限授权后，应用在前台单次获取位置，并通过系统提供的地理编码服务识别城市。定位坐标不上传至完攀日记服务器，也不在应用中保存；应用仅在本机记住城市选择，并向服务器发送城市名称以筛选岩馆。我们不进行后台定位或轨迹记录。你可以拒绝或关闭定位权限，随时手动选择城市或全国，继续使用浏览功能。</p>
     </section>
     <section>
       <h2>3. 信息的使用目的</h2>
@@ -186,10 +189,11 @@ const supportPage: PublicPage = {
     <section>
       <h2>联系我们</h2>
       <div class="callout"><strong>支持邮箱</strong><br><a href="mailto:${contactEmail}">${contactEmail}</a></div>
-      <p>邮件中请说明问题发生的时间、使用的设备和复现步骤。请勿发送短信验证码、密码、完整身份凭证或其他不必要的敏感信息。</p>
+      <div class="callout"><strong>微信（WeChat）</strong><br>${contactWechat}</div>
+      <p>联系时请说明问题发生的时间、使用的设备和复现步骤。请勿发送短信验证码、密码、完整身份凭证或其他不必要的敏感信息。</p>
     </section>
     <section><h2>账号与隐私</h2><p>如需访问、更正或删除个人信息，请先查看<a href="/privacy-choices">隐私选择与账号删除</a>。无法登录时，可通过支持邮箱申请协助。</p></section>
-    <section><h2>安全提醒</h2><p>完攀日记不会通过邮件索要验证码或密码。攀岩及约爬活动请遵守岩馆规定，并根据自身能力做好安全保护。</p></section>`
+    <section><h2>安全提醒</h2><p>完攀日记不会通过邮件或微信索要验证码或密码。攀岩及约爬活动请遵守岩馆规定，并根据自身能力做好安全保护。</p></section>`
 };
 
 export const publicPageRoutes: FastifyPluginAsync = async (app) => {

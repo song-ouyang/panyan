@@ -8,6 +8,7 @@ import 'package:wanpan_diary/core/models/profile_models.dart';
 import 'package:wanpan_diary/shared/app_assets.dart';
 import 'package:wanpan_diary/shared/motion/milestone_grade_sequence.dart';
 import 'package:wanpan_diary/shared/motion/wanpan_motion.dart';
+import 'package:wanpan_diary/shared/motion/wanpan_motion_sound.dart';
 import 'package:wanpan_diary/shared/widgets/wanpan_lottie_stage.dart';
 import 'package:wanpan_diary/shared/widgets/wanpan_milestone_stage.dart';
 import 'package:wanpan_diary/shared/widgets/wanpan_pressable.dart';
@@ -35,11 +36,13 @@ class MotionPreviewApp extends StatelessWidget {
     super.key,
     this.currentMonthDashboard,
     this.configuredMilestoneGrades = _milestoneGradesFromEnvironment,
+    this.motionSoundPlayer,
     this.referenceDate,
   });
 
   final MonthDashboard? currentMonthDashboard;
   final String? configuredMilestoneGrades;
+  final WanpanMotionSoundPlayer? motionSoundPlayer;
   final DateTime? referenceDate;
 
   @override
@@ -53,7 +56,10 @@ class MotionPreviewApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: '完攀动效实验室',
       theme: WanpanTheme.light(),
-      home: _MotionGalleryScreen(initialMilestoneSequence: milestoneSequence),
+      home: _MotionGalleryScreen(
+        initialMilestoneSequence: milestoneSequence,
+        motionSoundPlayer: motionSoundPlayer,
+      ),
     );
   }
 }
@@ -71,6 +77,7 @@ class _MotionScene {
     required this.accent,
     required this.tint,
     required this.fallbackAsset,
+    required this.soundCue,
   });
 
   final _MotionSceneKind kind;
@@ -82,6 +89,7 @@ class _MotionScene {
   final Color accent;
   final Color tint;
   final String fallbackAsset;
+  final WanpanMotionSoundCue soundCue;
 }
 
 const _scenes = <_MotionScene>[
@@ -95,6 +103,7 @@ const _scenes = <_MotionScene>[
     accent: WanpanColors.coral,
     tint: WanpanColors.coralSoft,
     fallbackAsset: AppAssets.mascotCelebrate,
+    soundCue: WanpanMotionSoundCue.sendSuccess,
   ),
   _MotionScene(
     kind: _MotionSceneKind.record,
@@ -106,6 +115,7 @@ const _scenes = <_MotionScene>[
     accent: WanpanColors.grape,
     tint: WanpanColors.grapeSoft,
     fallbackAsset: AppAssets.routeMapCat,
+    soundCue: WanpanMotionSoundCue.routePublished,
   ),
   _MotionScene(
     kind: _MotionSceneKind.milestone,
@@ -117,6 +127,7 @@ const _scenes = <_MotionScene>[
     accent: WanpanColors.sunflower,
     tint: WanpanColors.sunflowerSoft,
     fallbackAsset: AppAssets.mascotCelebrate,
+    soundCue: WanpanMotionSoundCue.gradeMilestone,
   ),
   _MotionScene(
     kind: _MotionSceneKind.ranking,
@@ -128,13 +139,18 @@ const _scenes = <_MotionScene>[
     accent: WanpanColors.sky,
     tint: WanpanColors.skySoft,
     fallbackAsset: AppAssets.mascotWelcome,
+    soundCue: WanpanMotionSoundCue.rankingEncouragement,
   ),
 ];
 
 class _MotionGalleryScreen extends StatefulWidget {
-  const _MotionGalleryScreen({required this.initialMilestoneSequence});
+  const _MotionGalleryScreen({
+    required this.initialMilestoneSequence,
+    this.motionSoundPlayer,
+  });
 
   final MilestoneGradeSequence initialMilestoneSequence;
+  final WanpanMotionSoundPlayer? motionSoundPlayer;
 
   @override
   State<_MotionGalleryScreen> createState() => _MotionGalleryScreenState();
@@ -155,11 +171,17 @@ class _MotionGalleryScreenState extends State<_MotionGalleryScreen> {
   double _maxBuildMs = 0;
   double _maxRasterMs = 0;
   late MilestoneGradeSequence _milestoneSequence;
+  late final WanpanMotionSoundPlayer _motionSoundPlayer;
+  late final bool _ownsMotionSoundPlayer;
 
   @override
   void initState() {
     super.initState();
+    _ownsMotionSoundPlayer = widget.motionSoundPlayer == null;
+    _motionSoundPlayer =
+        widget.motionSoundPlayer ?? WanpanAssetMotionSoundPlayer();
     _milestoneSequence = widget.initialMilestoneSequence;
+    unawaited(_motionSoundPlayer.preload(WanpanMotionSoundCue.values));
     SchedulerBinding.instance.addTimingsCallback(_handleFrameTimings);
     _armTimingWindow();
   }
@@ -169,6 +191,11 @@ class _MotionGalleryScreenState extends State<_MotionGalleryScreen> {
     _timingWindow?.cancel();
     SchedulerBinding.instance.removeTimingsCallback(_handleFrameTimings);
     _pageController.dispose();
+    if (_ownsMotionSoundPlayer) {
+      unawaited(_motionSoundPlayer.dispose());
+    } else {
+      unawaited(_motionSoundPlayer.stop());
+    }
     super.dispose();
   }
 
@@ -213,6 +240,7 @@ class _MotionGalleryScreenState extends State<_MotionGalleryScreen> {
 
   void _selectScene(int index) {
     if (index == _selectedIndex || !_pageController.hasClients) return;
+    unawaited(_motionSoundPlayer.stop());
     _startTimingWindow();
     if (_reduceMotion) {
       _pageController.jumpToPage(index);
@@ -226,12 +254,14 @@ class _MotionGalleryScreenState extends State<_MotionGalleryScreen> {
   }
 
   void _replay() {
+    unawaited(_motionSoundPlayer.stop());
     _startTimingWindow(notify: false);
     setState(() => _replayVersions[_selectedIndex] += 1);
   }
 
   void _setReduceMotion(bool value) {
     if (value == _reduceMotion) return;
+    unawaited(_motionSoundPlayer.stop());
     _startTimingWindow(notify: false);
     setState(() {
       _reduceMotion = value;
@@ -253,6 +283,7 @@ class _MotionGalleryScreenState extends State<_MotionGalleryScreen> {
     final milestoneIndex = _scenes.indexWhere(
       (scene) => scene.kind == _MotionSceneKind.milestone,
     );
+    unawaited(_motionSoundPlayer.stop());
     _startTimingWindow(notify: false);
     setState(() {
       _milestoneSequence = configured;
@@ -293,6 +324,7 @@ class _MotionGalleryScreenState extends State<_MotionGalleryScreen> {
                     itemCount: _scenes.length,
                     onPageChanged: (index) {
                       if (index == _selectedIndex) return;
+                      unawaited(_motionSoundPlayer.stop());
                       if (!_collectingTimings) {
                         _startTimingWindow(notify: false);
                       }
@@ -310,6 +342,15 @@ class _MotionGalleryScreenState extends State<_MotionGalleryScreen> {
                         reduceMotion: _reduceMotion,
                         milestoneSequence: _milestoneSequence,
                         onConfigureMilestone: _configureMilestoneGrades,
+                        onAnimationPresented: (animated) {
+                          if (index != _selectedIndex) return;
+                          unawaited(
+                            _motionSoundPlayer.play(
+                              scene.soundCue,
+                              animated: animated,
+                            ),
+                          );
+                        },
                       );
                     },
                   ),
@@ -609,6 +650,7 @@ class _ScenePage extends StatelessWidget {
     required this.reduceMotion,
     required this.milestoneSequence,
     required this.onConfigureMilestone,
+    required this.onAnimationPresented,
   });
 
   final _MotionScene scene;
@@ -617,6 +659,7 @@ class _ScenePage extends StatelessWidget {
   final bool reduceMotion;
   final MilestoneGradeSequence milestoneSequence;
   final VoidCallback onConfigureMilestone;
+  final WanpanLottiePresented onAnimationPresented;
 
   @override
   Widget build(BuildContext context) {
@@ -671,6 +714,7 @@ class _ScenePage extends StatelessWidget {
                                   play: selected,
                                   width: stageSize,
                                   height: stageSize,
+                                  onPresented: onAnimationPresented,
                                   fallback: _SceneFallback(scene: scene),
                                 )
                               : WanpanLottieStage(
@@ -683,6 +727,7 @@ class _ScenePage extends StatelessWidget {
                                   play: selected,
                                   width: stageSize,
                                   height: stageSize,
+                                  onPresented: onAnimationPresented,
                                   fallback: _SceneFallback(scene: scene),
                                 ),
                         ),

@@ -21,3 +21,9 @@ design/wanpan-motion/previews/wanpan-motion-lab-*.png
 design/wanpan-motion/previews/record-success-skottie-v2.png
 design/wanpan-motion/previews/skottie/
 data/gym-directory.import.json
+
+# Locally built Android distribution packages.
+/artifacts/android/
+
+# The official website is maintained in its own Sites repository.
+/website/

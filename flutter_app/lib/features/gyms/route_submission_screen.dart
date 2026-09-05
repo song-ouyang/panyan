@@ -13,14 +13,17 @@ import '../../core/models/gym_models.dart';
 import '../../core/models/route_submission_models.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
+import '../../core/preferences/gym_selection_store.dart';
 import '../../core/services/video_preparation_service.dart';
-import '../../core/repositories/checkin_repository.dart';
 import '../../core/repositories/gym_repository.dart';
+import '../../core/repositories/checkin_repository.dart';
 import '../../core/repositories/route_submission_repository.dart';
 import '../auth/application/session_controller.dart';
 import '../../shared/app_assets.dart';
 import '../../shared/motion/wanpan_motion.dart';
+import '../../shared/motion/wanpan_motion_sound.dart';
 import '../../shared/widgets/wanpan_card.dart';
+import '../../shared/widgets/wanpan_grade_picker.dart';
 import '../../shared/widgets/wanpan_gym_picker.dart';
 import '../../shared/widgets/wanpan_lottie_stage.dart';
 import '../../shared/widgets/wanpan_mascot.dart';
@@ -40,6 +43,8 @@ class RouteSubmissionScreen extends StatefulWidget {
     this.imagePicker,
     this.localVideoPreviewBuilder,
     this.imageSizeReader,
+    this.motionSoundPlayer,
+    this.selectionStore,
   });
 
   final ApiClient api;
@@ -50,32 +55,14 @@ class RouteSubmissionScreen extends StatefulWidget {
   final ImagePicker? imagePicker;
   final LocalRouteVideoPreviewBuilder? localVideoPreviewBuilder;
   final RouteImageSizeReader? imageSizeReader;
+  final WanpanMotionSoundPlayer? motionSoundPlayer;
+  final GymSelectionStore? selectionStore;
 
   @override
   State<RouteSubmissionScreen> createState() => _RouteSubmissionScreenState();
 }
 
 class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
-  static const _grades = <String>[
-    'V0',
-    'V1',
-    'V2',
-    'V3',
-    'V4',
-    'V5',
-    'V6',
-    'V7',
-    'V8',
-    'V9',
-    'V10',
-    'V11',
-    'V12',
-    'V13',
-    'V14',
-    'V15',
-    'V16',
-    'V17',
-  ];
   static const _suggestedColors = <String>[
     '红',
     '橙',
@@ -93,7 +80,6 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
   late final String _clientRequestId;
   final _nameController = TextEditingController();
   final _colorController = TextEditingController();
-  final _wallZoneController = TextEditingController();
   final _captionController = TextEditingController();
 
   List<Gym> _gyms = const [];
@@ -105,6 +91,9 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
   bool _loadingGymDetail = false;
   Object? _gymLoadError;
   Object? _gymDetailError;
+  int _gymSelectionRevision = 0;
+  int _gymListRequestId = 0;
+  int _gymDetailRequestId = 0;
 
   XFile? _cover;
   Size? _coverSize;
@@ -120,6 +109,8 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
   bool _successHapticPlayed = false;
   bool _motionPreloadStarted = false;
   Timer? _successHapticTimer;
+  late final WanpanMotionSoundPlayer _motionSoundPlayer;
+  late final bool _ownsMotionSoundPlayer;
 
   @override
   void initState() {
@@ -128,11 +119,14 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
     _submissionRepository =
         widget.submissionRepository ?? RouteSubmissionRepository(widget.api);
     _picker = widget.imagePicker ?? ImagePicker();
+    _ownsMotionSoundPlayer = widget.motionSoundPlayer == null;
+    _motionSoundPlayer =
+        widget.motionSoundPlayer ?? WanpanAssetMotionSoundPlayer();
     _clientRequestId = _newUuidV4();
     final initialGymId = widget.initialGymId?.trim();
     if (initialGymId != null && initialGymId.isNotEmpty) {
       _gymId = initialGymId;
-      _loadGymDetail(initialGymId);
+      _loadGymDetail(initialGymId, rememberSelection: true);
     }
     _loadGyms();
   }
@@ -143,6 +137,9 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
     if (_motionPreloadStarted) return;
     _motionPreloadStarted = true;
     unawaited(preloadWanpanLottie(context, AppAssets.routePublishedAnimation));
+    unawaited(
+      _motionSoundPlayer.preload(const [WanpanMotionSoundCue.routePublished]),
+    );
   }
 
   @override
@@ -150,12 +147,17 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
     _successHapticTimer?.cancel();
     _nameController.dispose();
     _colorController.dispose();
-    _wallZoneController.dispose();
     _captionController.dispose();
+    if (_ownsMotionSoundPlayer) {
+      unawaited(_motionSoundPlayer.dispose());
+    } else {
+      unawaited(_motionSoundPlayer.stop());
+    }
     super.dispose();
   }
 
   Future<void> _loadGyms() async {
+    final requestId = ++_gymListRequestId;
     if (mounted) {
       setState(() {
         _loadingGyms = true;
@@ -164,34 +166,91 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
     }
     try {
       final gyms = await _gymRepository.getGyms();
-      if (!mounted) return;
+      if (!mounted || requestId != _gymListRequestId) return;
       setState(() => _gyms = gyms);
+      await _restoreGymSelection(gyms, requestId);
     } catch (error) {
-      if (mounted) setState(() => _gymLoadError = error);
+      if (mounted && requestId == _gymListRequestId) {
+        setState(() => _gymLoadError = error);
+      }
     } finally {
-      if (mounted) setState(() => _loadingGyms = false);
+      if (mounted && requestId == _gymListRequestId) {
+        setState(() => _loadingGyms = false);
+      }
     }
   }
 
-  Future<void> _loadGymDetail(String gymId) async {
+  Future<GymSelectionStore> _getSelectionStore() async =>
+      widget.selectionStore ?? await GymSelectionStore.load();
+
+  Future<void> _restoreGymSelection(List<Gym> gyms, int requestId) async {
+    if (_gymId != null) return;
+    final revision = _gymSelectionRevision;
+    try {
+      final store = await _getSelectionStore();
+      if (!mounted ||
+          requestId != _gymListRequestId ||
+          revision != _gymSelectionRevision ||
+          _gymId != null) {
+        return;
+      }
+      final rememberedId = store.gymId;
+      if (rememberedId == null) return;
+      if (!gyms.any((gym) => gym.id == rememberedId)) {
+        await store.clearGym();
+        return;
+      }
+      setState(() {
+        _gymId = rememberedId;
+        _gymSelectionRevision++;
+      });
+      unawaited(_loadGymDetail(rememberedId));
+    } catch (_) {
+      debugPrint('Could not restore the selected gym.');
+    }
+  }
+
+  Future<void> _rememberGymSelection(Gym gym, int revision) async {
+    try {
+      final store = await _getSelectionStore();
+      if (!mounted || revision != _gymSelectionRevision || _gymId != gym.id) {
+        return;
+      }
+      await store.rememberGym(gym);
+    } catch (_) {
+      debugPrint('Could not save the selected gym.');
+    }
+  }
+
+  Future<void> _loadGymDetail(
+    String gymId, {
+    bool rememberSelection = false,
+  }) async {
+    final requestId = ++_gymDetailRequestId;
+    final revision = _gymSelectionRevision;
     setState(() {
       _loadingGymDetail = true;
       _gymDetailError = null;
     });
     try {
       final detail = await _gymRepository.getGym(gymId);
-      if (!mounted || _gymId != gymId) return;
+      if (!mounted || _gymId != gymId || requestId != _gymDetailRequestId) {
+        return;
+      }
       final activeSet = detail.routeSets.where((set) => set.active).firstOrNull;
       setState(() {
         _gymDetail = detail;
         _routeSetId = activeSet?.id;
       });
+      if (rememberSelection) {
+        await _rememberGymSelection(detail.gym, revision);
+      }
     } catch (error) {
-      if (mounted && _gymId == gymId) {
+      if (mounted && _gymId == gymId && requestId == _gymDetailRequestId) {
         setState(() => _gymDetailError = error);
       }
     } finally {
-      if (mounted && _gymId == gymId) {
+      if (mounted && _gymId == gymId && requestId == _gymDetailRequestId) {
         setState(() => _loadingGymDetail = false);
       }
     }
@@ -200,6 +259,7 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
   Future<void> _selectGym(String gymId) async {
     if (gymId == _gymId && _gymDetail != null) return;
     setState(() {
+      _gymSelectionRevision++;
       _gymId = gymId;
       _gymDetail = null;
       _routeSetId = null;
@@ -218,8 +278,12 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
     final selected = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
-      builder: (context) =>
-          WanpanGymPickerSheet(gyms: _gyms, selectedGymId: _gymId),
+      useSafeArea: true,
+      builder: (context) => WanpanGymPickerSheet(
+        gyms: _gyms,
+        selectedGymId: _gymId,
+        selectionStore: widget.selectionStore,
+      ),
     );
     if (selected != null && mounted) await _selectGym(selected);
   }
@@ -276,6 +340,17 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
     } catch (_) {
       if (mounted) _notice('这张照片无法打开，请换一张试试');
     }
+  }
+
+  void _removeImage() {
+    if (_cover == null || _submitting) return;
+    HapticFeedback.selectionClick();
+    setState(() {
+      _cover = null;
+      _coverSize = null;
+      _points = const [];
+      _pointType = RoutePointType.start;
+    });
   }
 
   Future<void> _showVideoSourcePicker() async {
@@ -377,15 +452,15 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
     if (_gymId == null) return '先选择这条线路所在的岩馆';
     if (_loadingGymDetail) return '正在读取岩馆信息，请稍候';
     if (_gymDetail == null) return '岩馆信息没有加载出来，请重试';
-    if (_cover == null || _coverSize == null) return '先拍摄或选择线路照片';
-    if (!_points.any((point) => point.type == RoutePointType.start)) {
-      return '请在线路照片上标记起点';
+    if (_cover != null && _coverSize == null) return '线路照片还未读取完成，请稍候';
+    if (_points.isNotEmpty) {
+      if (!_points.any((point) => point.type == RoutePointType.start)) {
+        return '请补充起点，或清空标点后直接发布';
+      }
+      if (!_points.any((point) => point.type == RoutePointType.finish)) {
+        return '请补充终点，或清空标点后直接发布';
+      }
     }
-    if (!_points.any((point) => point.type == RoutePointType.finish)) {
-      return '请在线路照片上标记终点';
-    }
-    if (_points.length < 2) return '请至少标记两个线路点';
-    if (_nameController.text.trim().isEmpty) return '请填写线路名称';
     if (_colorController.text.trim().isEmpty) return '请填写线路颜色';
     return null;
   }
@@ -399,35 +474,46 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
       return;
     }
 
-    final selectedCover = _cover!;
+    final selectedCover = _cover;
     final authorId = widget.session.user?.id;
     final selectedVideo = _video;
     final name = _nameController.text;
     final color = _colorController.text;
-    final wallZone = _wallZoneController.text;
     final caption = _captionController.text.trim();
     final visibility = _visibility;
     final gymId = _gymId!;
     final routeSetId = _routeSetId;
     final grade = _grade;
-    final points = List<RoutePoint>.unmodifiable(_points);
+    final points = selectedCover == null
+        ? const <RoutePoint>[]
+        : List<RoutePoint>.unmodifiable(_points);
+    final videoStart = selectedCover == null ? 0.0 : .44;
+    final videoUploadStart = selectedCover == null ? .18 : .56;
 
     setState(() {
       _submitting = true;
       _progress = 0;
-      _stage = '正在上传线路照片…';
+      _stage = selectedCover != null
+          ? '正在上传线路照片…'
+          : selectedVideo != null
+          ? '正在压缩完攀视频…'
+          : '正在发布线路…';
     });
     try {
-      final coverUrl = await _submissionRepository.uploadCover(
-        selectedCover.path,
-        onProgress: (progress) {
-          if (mounted) {
-            setState(
-              () => _progress = progress * (selectedVideo == null ? .82 : .42),
-            );
-          }
-        },
-      );
+      String? coverUrl;
+      if (selectedCover != null) {
+        coverUrl = await _submissionRepository.uploadCover(
+          selectedCover.path,
+          onProgress: (progress) {
+            if (mounted) {
+              setState(
+                () =>
+                    _progress = progress * (selectedVideo == null ? .82 : .42),
+              );
+            }
+          },
+        );
+      }
       if (!mounted) return;
 
       String? videoUrl;
@@ -440,7 +526,7 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
       if (selectedVideo != null) {
         setState(() {
           _stage = '正在上传首条完攀视频…';
-          _progress = .44;
+          _progress = videoStart;
         });
         videoUrl = await _submissionRepository.uploadVideo(
           selectedVideo.path,
@@ -450,7 +536,9 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
               _stage = phase == VideoUploadPhase.preparing
                   ? '正在压缩完攀视频…'
                   : '正在上传首条完攀视频…';
-              _progress = phase == VideoUploadPhase.preparing ? .44 : .56;
+              _progress = phase == VideoUploadPhase.preparing
+                  ? videoStart
+                  : videoUploadStart;
             });
           },
           onProgress: (progress) {
@@ -458,8 +546,8 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
             final preparing = _stage == '正在压缩完攀视频…';
             setState(
               () => _progress = preparing
-                  ? .44 + progress * .10
-                  : .56 + progress * .34,
+                  ? videoStart + progress * (videoUploadStart - videoStart)
+                  : videoUploadStart + progress * (.90 - videoUploadStart),
             );
           },
         );
@@ -484,7 +572,6 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
           name: name,
           grade: grade,
           color: color,
-          wallZone: wallZone,
           coverUrl: coverUrl,
           points: points,
           videoUrl: videoUrl,
@@ -528,6 +615,12 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
   void _handleSuccessAnimationPresented(bool animated) {
     if (_successHapticPlayed) return;
     _successHapticPlayed = true;
+    unawaited(
+      _motionSoundPlayer.play(
+        WanpanMotionSoundCue.routePublished,
+        animated: animated,
+      ),
+    );
     if (!animated) {
       unawaited(_playSuccessHaptic());
       return;
@@ -579,49 +672,50 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
             MediaQuery.viewInsetsOf(context).bottom + WanpanSpacing.xl,
           ),
           children: [
+            _SelectionField(
+              key: const Key('route-submission-gym'),
+              label: _selectedGym?.name ?? '选择岩馆',
+              description: _selectedGym == null
+                  ? '先确认线路所在门店'
+                  : [
+                      _selectedGym!.city,
+                      ?_selectedGym!.displayDistrict,
+                      _selectedGym!.address,
+                    ].join(' · '),
+              loading: _loadingGyms && _selectedGym == null,
+              onTap: _submitting ? null : _openGymPicker,
+            ),
+            if (_gymLoadError != null && _gyms.isEmpty) ...[
+              const SizedBox(height: 8),
+              _InlineError(message: '岩馆列表没有加载出来', onRetry: _loadGyms),
+            ],
+            if (_loadingGymDetail) ...[
+              const SizedBox(height: 12),
+              const LinearProgressIndicator(minHeight: 2),
+            ] else if (_gymDetailError != null) ...[
+              const SizedBox(height: 8),
+              _InlineError(
+                message: '岩馆信息没有加载出来',
+                onRetry: _gymId == null ? null : () => _loadGymDetail(_gymId!),
+              ),
+            ],
+            const SizedBox(height: 24),
             const _SectionTitle(number: '1', title: '线路信息'),
             const SizedBox(height: 10),
             WanpanCard(
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
-                  TextField(
-                    controller: _nameController,
-                    enabled: !_submitting,
-                    maxLength: 80,
-                    textInputAction: TextInputAction.next,
-                    decoration: const InputDecoration(
-                      labelText: '线路名称',
-                      hintText: '例如：橙色动态线',
-                      counterText: '',
-                    ),
-                  ),
-                  const SizedBox(height: 12),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
                         flex: 3,
-                        child: DropdownButtonFormField<String>(
-                          key: ValueKey(_grade),
-                          initialValue: _grade,
-                          isExpanded: true,
-                          decoration: const InputDecoration(labelText: '难度'),
-                          items: _grades
-                              .map(
-                                (grade) => DropdownMenuItem(
-                                  value: grade,
-                                  child: Text(grade),
-                                ),
-                              )
-                              .toList(growable: false),
+                        child: WanpanGradePicker(
+                          value: _grade,
                           onChanged: _submitting
                               ? null
-                              : (value) {
-                                  if (value != null) {
-                                    setState(() => _grade = value);
-                                  }
-                                },
+                              : (value) => setState(() => _grade = value),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -663,51 +757,24 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
                   ),
                   const SizedBox(height: 12),
                   TextField(
-                    controller: _wallZoneController,
+                    controller: _nameController,
                     enabled: !_submitting,
-                    maxLength: 40,
-                    textInputAction: TextInputAction.next,
+                    maxLength: 80,
+                    textInputAction: TextInputAction.done,
                     decoration: const InputDecoration(
-                      labelText: '墙面区域（选填）',
-                      hintText: '例如：A区斜墙',
+                      labelText: '线路名称（选填）',
+                      hintText: '例如：橙色动态线',
                       counterText: '',
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 12),
-            _SelectionField(
-              label: _selectedGym?.name ?? '选择岩馆',
-              description: _selectedGym == null
-                  ? '先确认线路所在门店'
-                  : [
-                      _selectedGym!.city,
-                      ?_selectedGym!.displayDistrict,
-                      _selectedGym!.address,
-                    ].join(' · '),
-              loading: _loadingGyms && _selectedGym == null,
-              onTap: _submitting ? null : _openGymPicker,
-            ),
-            if (_gymLoadError != null && _gyms.isEmpty) ...[
-              const SizedBox(height: 8),
-              _InlineError(message: '岩馆列表没有加载出来', onRetry: _loadGyms),
-            ],
-            if (_loadingGymDetail) ...[
-              const SizedBox(height: 12),
-              const LinearProgressIndicator(minHeight: 2),
-            ] else if (_gymDetailError != null) ...[
-              const SizedBox(height: 8),
-              _InlineError(
-                message: '岩馆信息没有加载出来',
-                onRetry: _gymId == null ? null : () => _loadGymDetail(_gymId!),
-              ),
-            ],
             const SizedBox(height: 30),
-            const _SectionTitle(number: '2', title: '拍照并标记线路点'),
+            const _SectionTitle(number: '2', title: '拍照并标记线路点（选填）'),
             const SizedBox(height: 6),
             Text(
-              '照片尽量正对岩壁。标点坐标会跟随原图保存。',
+              '可以跳过。添加照片后，也可选择标记线路起点和终点。',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 12),
@@ -725,62 +792,70 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
                 onPointAdded: _addPoint,
               ),
               const SizedBox(height: 12),
-              Row(
+              Wrap(
+                spacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   TextButton.icon(
                     onPressed: _submitting ? null : _showImageSourcePicker,
                     icon: const Icon(Icons.photo_outlined),
                     label: const Text('更换照片'),
                   ),
-                  const Spacer(),
+                  TextButton.icon(
+                    onPressed: _submitting ? null : _removeImage,
+                    icon: const Icon(Icons.close_rounded),
+                    label: const Text('移除照片'),
+                  ),
                   Text(
                     '${_points.length} 个点',
                     style: Theme.of(context).textTheme.labelMedium,
                   ),
                 ],
               ),
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: RoutePointType.values
+                    .map(
+                      (type) => ChoiceChip(
+                        avatar: Icon(type.icon, size: 17),
+                        label: Text(type.label),
+                        selected: _pointType == type,
+                        onSelected: _submitting
+                            ? null
+                            : (_) {
+                                HapticFeedback.selectionClick();
+                                setState(() => _pointType = type);
+                              },
+                      ),
+                    )
+                    .toList(growable: false),
+              ),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  TextButton(
+                    onPressed: _submitting || _points.isEmpty
+                        ? null
+                        : _undoPoint,
+                    child: const Text('撤销上一步'),
+                  ),
+                  const Spacer(),
+                  TextButton(
+                    onPressed: _submitting || _points.isEmpty
+                        ? null
+                        : _clearPoints,
+                    child: const Text('清空标点'),
+                  ),
+                ],
+              ),
             ],
-            const SizedBox(height: 14),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: RoutePointType.values
-                  .map(
-                    (type) => ChoiceChip(
-                      avatar: Icon(type.icon, size: 17),
-                      label: Text(type.label),
-                      selected: _pointType == type,
-                      onSelected: _submitting
-                          ? null
-                          : (_) {
-                              HapticFeedback.selectionClick();
-                              setState(() => _pointType = type);
-                            },
-                    ),
-                  )
-                  .toList(growable: false),
-            ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                TextButton(
-                  onPressed: _submitting || _points.isEmpty ? null : _undoPoint,
-                  child: const Text('撤销上一步'),
-                ),
-                const Spacer(),
-                TextButton(
-                  onPressed: _submitting || _points.isEmpty
-                      ? null
-                      : _clearPoints,
-                  child: const Text('清空标点'),
-                ),
-              ],
-            ),
             const SizedBox(height: 24),
             const _SectionTitle(number: '3', title: '首条完攀（选填）'),
             const SizedBox(height: 6),
             Text(
-              '视频会放在线路图下方，也会成为这条线路的第一条完攀内容。',
+              '可单独添加视频，作为这条线路的第一条完攀内容。',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 12),
@@ -1009,6 +1084,7 @@ class _SectionTitle extends StatelessWidget {
 
 class _SelectionField extends StatelessWidget {
   const _SelectionField({
+    super.key,
     required this.label,
     required this.description,
     required this.loading,
@@ -1078,53 +1154,36 @@ class _PhotoPlaceholder extends StatelessWidget {
     semanticLabel: '拍摄或选择线路照片',
     color: WanpanColors.surface.withValues(alpha: .76),
     borderColor: WanpanColors.coral.withValues(alpha: .28),
-    child: SizedBox(
-      height: 248,
-      child: Stack(
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 200),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Positioned(
-            right: -22,
-            bottom: -30,
-            width: 166,
-            height: 214,
-            child: Image.asset(
-              AppAssets.routeReviewCat,
-              cacheWidth: 420,
-              fit: BoxFit.cover,
-              alignment: Alignment.bottomCenter,
-              filterQuality: FilterQuality.medium,
+          Container(
+            width: 58,
+            height: 58,
+            decoration: const BoxDecoration(
+              color: WanpanColors.grapeSoft,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.add_a_photo_outlined,
+              color: WanpanColors.grape,
+              size: 27,
             ),
           ),
-          Align(
-            alignment: const Alignment(-.42, .02),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 58,
-                  height: 58,
-                  decoration: const BoxDecoration(
-                    color: WanpanColors.grapeSoft,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.add_a_photo_outlined,
-                    color: WanpanColors.grape,
-                    size: 27,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Text(
-                  '拍摄或选择线路照片',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  '支持多张，稍后可标记多个线路点',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-              ],
-            ),
+          const SizedBox(height: 14),
+          Text(
+            '拍摄或选择线路照片',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 5),
+          Text(
+            '选填，不添加照片也可以发布',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyMedium,
           ),
         ],
       ),

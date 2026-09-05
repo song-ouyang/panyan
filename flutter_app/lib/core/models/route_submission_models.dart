@@ -35,11 +35,11 @@ class RouteSubmissionDraft {
   const RouteSubmissionDraft({
     required this.clientRequestId,
     required this.gymId,
-    required this.name,
+    this.name = '',
     required this.grade,
     required this.color,
-    required this.coverUrl,
-    required this.points,
+    this.coverUrl,
+    this.points = const [],
     this.routeSetId,
     this.wallZone,
     this.videoUrl,
@@ -54,14 +54,17 @@ class RouteSubmissionDraft {
   final String grade;
   final String color;
   final String? wallZone;
-  final String coverUrl;
+  final String? coverUrl;
   final List<RoutePoint> points;
   final String? videoUrl;
   final String? caption;
   final String visibility;
 
   JsonMap toJson() {
+    final normalizedName = name.trim();
+    final normalizedColor = color.trim();
     final normalizedWallZone = wallZone?.trim();
+    final normalizedCoverUrl = coverUrl?.trim();
     final normalizedVideoUrl = videoUrl?.trim();
     final normalizedCaption = caption?.trim();
     final hasVideo =
@@ -70,12 +73,15 @@ class RouteSubmissionDraft {
       'clientRequestId': clientRequestId,
       'gymId': gymId,
       'routeSetId': routeSetId,
-      'name': name.trim(),
+      'name': normalizedName.isEmpty
+          ? '$grade $normalizedColor线'
+          : normalizedName,
       'grade': grade,
-      'color': color.trim(),
+      'color': normalizedColor,
       if (normalizedWallZone != null && normalizedWallZone.isNotEmpty)
         'wallZone': normalizedWallZone,
-      'coverUrl': coverUrl,
+      if (normalizedCoverUrl != null && normalizedCoverUrl.isNotEmpty)
+        'coverUrl': normalizedCoverUrl,
       'points': points.map((point) => point.toJson()).toList(growable: false),
       if (hasVideo) 'videoUrl': normalizedVideoUrl,
       if (hasVideo && normalizedCaption != null && normalizedCaption.isNotEmpty)
@@ -93,7 +99,7 @@ class RouteSubmission {
     required this.name,
     required this.grade,
     required this.color,
-    required this.coverUrl,
+    this.coverUrl,
     required this.points,
     required this.status,
     this.routeSetId,
@@ -119,7 +125,7 @@ class RouteSubmission {
       grade: jsonString(json['grade'], field: 'grade'),
       color: jsonString(json['color'], field: 'color'),
       wallZone: jsonNullableString(json['wall_zone']),
-      coverUrl: jsonString(json['cover_url'], field: 'cover_url'),
+      coverUrl: jsonNullableString(json['cover_url']),
       points: jsonModelList(json['points'], RoutePoint.fromJson),
       status: jsonString(json['status'], field: 'status'),
       reviewNote: jsonNullableString(json['review_note']),
@@ -145,7 +151,7 @@ class RouteSubmission {
   final String grade;
   final String color;
   final String? wallZone;
-  final String coverUrl;
+  final String? coverUrl;
   final List<RoutePoint> points;
   final String status;
   final String? reviewNote;

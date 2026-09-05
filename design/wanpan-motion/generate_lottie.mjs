@@ -113,13 +113,20 @@ const transform = ({
     Array.isArray(scale) && scale[0]?.t != null ? animated(scale) : prop(scale),
 });
 
-const groupTransform = ({ position = [0, 0], scale = [100, 100] } = {}) => ({
+const groupTransform = ({
+  position = [0, 0],
+  scale = [100, 100],
+  opacity = 100,
+} = {}) => ({
   ty: 'tr',
   p: prop(position),
   a: prop([0, 0]),
   s: prop(scale),
   r: prop(0),
-  o: prop(100),
+  o:
+    Array.isArray(opacity) && opacity[0]?.t != null
+      ? animated(opacity)
+      : prop(opacity),
   sk: prop(0),
   sa: prop(0),
 });
@@ -193,7 +200,7 @@ const pathGroup = (
   vertices,
   color,
   width,
-  { closed = false, fillColor = null, trim = null } = {},
+  { closed = false, fillColor = null, trim = null, opacity = 100 } = {},
 ) => ({
   ty: 'gr',
   nm: name,
@@ -212,7 +219,7 @@ const pathGroup = (
           },
         ]
       : []),
-    groupTransform(),
+    groupTransform({ opacity }),
   ],
 });
 
@@ -587,8 +594,8 @@ function buildGradeMilestone() {
       index: 1,
       op,
       start: 39,
-      origin: [376, 314],
-      target: [430, 238],
+      origin: [400, 288],
+      target: [454, 212],
       color: 'sunflower',
       size: 15,
       starShape: true,
@@ -601,8 +608,8 @@ function buildGradeMilestone() {
       index: 2,
       op,
       start: 41,
-      origin: [376, 314],
-      target: [452, 306],
+      origin: [400, 288],
+      target: [476, 280],
       color: 'grape',
       size: 11,
       rotation: 34,
@@ -644,7 +651,7 @@ function buildGradeMilestone() {
       ip: 34,
     }),
     shapeLayer('latest grade badge', 5, op, badgeShapes('latest grade', 'coral'), {
-      position: [376, 314, 0],
+      position: [400, 288, 0],
       scale: [
         { t: 30, v: [70, 70, 100], curve: curves.entrance },
         { t: 38, v: [108, 108, 100], curve: curves.settle },
@@ -662,7 +669,7 @@ function buildGradeMilestone() {
       ip: 30,
     }),
     shapeLayer('middle grade badge', 6, op, badgeShapes('middle grade', 'sunflower'), {
-      position: [256, 286, 0],
+      position: [256, 352, 0],
       scale: [
         { t: 17, v: [82, 82, 100], curve: curves.entrance },
         { t: 27, v: [100, 100, 100] },
@@ -674,7 +681,7 @@ function buildGradeMilestone() {
       ip: 17,
     }),
     shapeLayer('starting grade badge', 7, op, badgeShapes('starting grade', 'grape'), {
-      position: [136, 314, 0],
+      position: [112, 416, 0],
       scale: [
         { t: 4, v: [76, 76, 100], curve: curves.entrance },
         { t: 14, v: [100, 100, 100] },
@@ -703,12 +710,19 @@ function buildGradeMilestone() {
     shapeLayer('first grade arrow', 11, op, [
       pathGroup(
         'first arrow head',
-        [[196, 290], [207, 298], [198, 307]],
+        [[194, 371], [210, 372], [200, 385]],
         'coral',
         0,
-        { closed: true, fillColor: 'coral' },
+        {
+          closed: true,
+          fillColor: 'coral',
+          opacity: [
+            { t: 17, v: [0], curve: curves.entrance },
+            { t: 19, v: [100] },
+          ],
+        },
       ),
-      pathGroup('first connector', [[187, 302], [199, 299]], 'coral', 7, {
+      pathGroup('first connector', [[158, 396], [198, 378]], 'coral', 7, {
         trim: [
           { t: 10, v: [0], curve: curves.entrance },
           { t: 19, v: [100] },
@@ -725,12 +739,19 @@ function buildGradeMilestone() {
     shapeLayer('second grade arrow', 12, op, [
       pathGroup(
         'second arrow head',
-        [[316, 293], [327, 302], [316, 310]],
+        [[338, 307], [354, 308], [344, 321]],
         'coral',
         0,
-        { closed: true, fillColor: 'coral' },
+        {
+          closed: true,
+          fillColor: 'coral',
+          opacity: [
+            { t: 30, v: [0], curve: curves.entrance },
+            { t: 32, v: [100] },
+          ],
+        },
       ),
-      pathGroup('second connector', [[307, 298], [319, 301]], 'coral', 7, {
+      pathGroup('second connector', [[302, 332], [342, 314]], 'coral', 7, {
         trim: [
           { t: 23, v: [0], curve: curves.entrance },
           { t: 32, v: [100] },

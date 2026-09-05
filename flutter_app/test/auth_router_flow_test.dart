@@ -11,6 +11,7 @@ import 'package:wanpan_diary/features/auth/data/auth_repository.dart';
 import 'package:wanpan_diary/features/auth/data/native_auth_service.dart';
 import 'package:wanpan_diary/features/auth/data/session_token_store.dart';
 import 'package:wanpan_diary/features/auth/domain/auth_session.dart';
+import 'package:wanpan_diary/features/auth/presentation/login_screen.dart';
 
 const _config = AppConfig(
   environment: AppEnvironment.development,
@@ -125,12 +126,20 @@ class _ProfileAuthRepository extends AuthRepository {
   );
 }
 
+void _resetTestPreferences() {
+  // Routing tests do not request device location when returning to the home.
+  SharedPreferences.setMockInitialValues({
+    'home_city_selection': '',
+    'home_city_manual': true,
+  });
+}
+
 void main() {
   testWidgets('手机号验证码发送并登录后返回原目标页面', (tester) async {
     await tester.binding.setSurfaceSize(const Size(430, 932));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    SharedPreferences.setMockInitialValues({});
+    _resetTestPreferences();
     final session = SessionController(
       preferences: await SharedPreferences.getInstance(),
       config: _config,
@@ -184,11 +193,11 @@ void main() {
     expect(find.text('小欧'), findsOneWidget);
   });
 
-  testWidgets('游客登录后补资料、返回原页面并可退出登录', (tester) async {
+  testWidgets('游客点击我的直接显示登录，补资料后返回原页面并可退出登录', (tester) async {
     await tester.binding.setSurfaceSize(const Size(430, 932));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    SharedPreferences.setMockInitialValues({});
+    _resetTestPreferences();
     final preferences = await SharedPreferences.getInstance();
     final session = SessionController(
       preferences: preferences,
@@ -209,7 +218,24 @@ void main() {
     await tester.pumpWidget(
       WanpanApp(api: api, session: session, router: router),
     );
-    router.go('/profile');
+    router.go('/gyms');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('我的'));
+    await tester.pump();
+    await tester.pump();
+
+    final login = find.byType(LoginScreen);
+    expect(login, findsOneWidget);
+    final loginRoute = ModalRoute.of(tester.element(login))!;
+    expect(loginRoute.transitionDuration, Duration.zero);
+    expect(loginRoute.reverseTransitionDuration, Duration.zero);
+    expect(
+      find.descendant(
+        of: login,
+        matching: find.byType(TweenAnimationBuilder<double>),
+      ),
+      findsNothing,
+    );
     await tester.pumpAndSettle();
 
     expect(router.routeInformationProvider.value.uri.path, '/login');
@@ -254,6 +280,7 @@ void main() {
 
     expect(router.state.uri.path, '/profile/calendar');
     expect(find.text('攀岩日历'), findsOneWidget);
+    expect(find.byKey(const Key('calendar-month-hero')), findsOneWidget);
     expect(find.textContaining('这个月还没有记录'), findsOneWidget);
 
     router.pop();
@@ -272,7 +299,7 @@ void main() {
   });
 
   testWidgets('游客打开馆内投稿入口时完整保留 gymId', (tester) async {
-    SharedPreferences.setMockInitialValues({});
+    _resetTestPreferences();
     final session = SessionController(
       preferences: await SharedPreferences.getInstance(),
       config: _config,
@@ -306,7 +333,7 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(430, 932));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    SharedPreferences.setMockInitialValues({});
+    _resetTestPreferences();
     final session = SessionController(
       preferences: await SharedPreferences.getInstance(),
       config: _config,

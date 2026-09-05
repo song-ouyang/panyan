@@ -99,6 +99,17 @@ cd /www/wwwroot/wanpan-diary && bash deploy/server-deploy-bundle.sh
 /www/server/nginx/sbin/nginx -t && /www/server/nginx/sbin/nginx -s reload
 ```
 
+视频播放还依赖 HTTP 分段读取。宝塔的全局 `proxy.conf` 可能启用了 `proxy_cache cache_one`；站点继承代理缓存时，Nginx 默认不向上游传 `Range` / `If-Range`，即使响应声明 `Accept-Ranges: bytes`，iOS 仍可能因收到整段 `200` 而无法播放。按 `deploy/nginx-panyan.conf.example` 为 `/uploads/` 添加独立 location，显式 `proxy_cache off` 并透传这两个请求头。宝塔已有代理时，将该 location 放入此域名的 `proxy/panyan-api.gblh.cloud/` 下独立 `.conf` 文件，保留原有代理和其他站点配置；操作前备份本站配置，`nginx -t` 通过后再 reload。
+
+用实际已上传的视频 URL 验收（`VIDEO_URL` 仅替换为该条视频地址）：
+
+```bash
+curl -sS --range 0-1 -D - -o /dev/null "$VIDEO_URL"
+curl -sS --range -16 -D - -o /dev/null "$VIDEO_URL"
+```
+
+两次都应返回 `206`，包含准确的 `Content-Range`，且 `Content-Length` 分别为 `2` 和 `16`。不能仅凭 HEAD 的 `Accept-Ranges` 或 `/health` 判断视频可播放。若异常，分别请求本机 `127.0.0.1:3100` 和公网同一 `/uploads/...` 路径以区分 API 与代理问题；最后在真实 App 动态详情中验证播放、暂停和拖动进度。
+
 不要让本项目占用 Crush 直聘的域名或端口。若不用宝塔/Nginx，也可以设置 `WANPAN_COMPOSE_FILE=docker-compose.prod.yml`，由仓库内 Caddy 独立占用 `80/443` 并申请证书。
 
 ## 上线验证
@@ -241,6 +252,8 @@ curl -fsS http://127.0.0.1:3100/ready
 
 ## OSS 与客户端配置
 
+- `OSS_REGION` 必须采用 **Bucket 实际所在地域**，与 ECS 所在地域无关；推荐填写完整 SDK 地域名（如 `oss-cn-beijing`），不要填 URL 或域名。官方 OSS 域名形式的 `OSS_PUBLIC_BASE_URL` 也必须使用同一 Bucket 地域。
+- 2026-09-05 线上上传故障已确认：`cn-chengdu` 缺少 `oss-` 前缀导致 `ENOTFOUND`，且 Bucket 实际位于北京。生产配置已修正为 `OSS_REGION=oss-cn-beijing`，视频地址为 `https://crush-oss.oss-cn-beijing.aliyuncs.com`。保留原 API 镜像重新创建容器后，上传初始化返回 200，诊断上传会话取消返回 204，`/health` 与 `/ready` 均通过。原配置保存在服务器 `.deploy/oss-region-backup-20260905T131003Z/env.production`（仅供受控回滚，不要直接恢复错误地域）。
 - 使用只允许目标 Bucket（推荐进一步限制 `videos/*`）的独立 RAM 用户，不使用阿里云主账号 AccessKey。
 - 客户端上传前压缩视频，使用 5MB 分片、最多三路并发和 15 分钟预签名 URL 直传 OSS；AccessKey Secret 只存在后端。
 - 续传版本需先为 RAM 补充目标 `videos/*` 范围的 `oss:ListParts` / `oss:GetObject`（HEAD）权限，再部署后端，最后发布客户端。完整参数、续传边界和验证步骤见 [`docs/video-uploads.md`](../docs/video-uploads.md)。

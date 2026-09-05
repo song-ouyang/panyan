@@ -12,6 +12,8 @@
 - 系统开启“减少动态效果”时直接展示终帧，去掉位移、回弹和粒子；仍保留一次与结果状态同步的轻量触觉确认。
 - 每场只允许一个主元素使用明显缩放回弹；次要岩点、角色与容器使用无超调的淡入/位移落稳。
 - 角色分层入场必须通过透明度和位置过渡，不依赖中途 `ip` 直接切入；粒子必须在稳定终帧前完全消失。
+- 每场保留同名的独立文件，但统一只使用用户选定的 D 音：`E5 → C6` 轻快上扬双音，总发声约 `119ms`，不叠加其他触点、铺底或持续尾音。
+- 声音文件保留与 Lottie 同步的静音前导；切换或重播时停止上一条，不叠音。iOS 遵守静音键并与用户音乐混音，Android 不抢占其他音频焦点。
 
 动效描述文件：
 
@@ -30,11 +32,20 @@ node design/wanpan-motion/generate_lottie.mjs \
 
 生成器同时写入官方 Text-to-Lottie 播放器项目和 Flutter 运行时目录，保证预览与真机使用的是同一份 JSON。每次修改后，在官方 CanvasKit/Skottie 播放器检查首帧、动作中点与终帧，再运行 Flutter 测试。
 
+四个声音由标准库脚本确定性生成，并同步到 Flutter 和小程序：
+
+```bash
+python3 tools/generate_sounds.py
+```
+
+运行时文件为 `send-success.wav`、`route-published.wav`、`grade-milestone.wav` 和 `ranking-encouragement.wav`，统一为 `44.1kHz / 16-bit / mono WAV`。四个场景在减少动效时都直接定位至各文件中的 D 双音。旧文件名 `success.wav` 和 `milestone.wav` 仅作兼容副本，内容也与 D 完全一致。
+
 工程接入位置：
 
 - 普通完攀与刷新最高难度：`flutter_app/lib/features/gyms/checkin_screen.dart`
 - 线路发布成功：`flutter_app/lib/features/gyms/route_submission_screen.dart`
 - 排行空状态：`flutter_app/lib/features/ranking/ranking_screen.dart`
+- 声音预加载、替换播放与系统音频策略：`flutter_app/lib/shared/motion/wanpan_motion_sound.dart`
 - 一次播放、减少动态效果与静态兜底：`flutter_app/lib/shared/widgets/wanpan_lottie_stage.dart`
 
 官方播放器终帧总览：`previews/wanpan-motion-overview.png`。

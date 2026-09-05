@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -6,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lottie/lottie.dart';
 import 'package:wanpan_diary/shared/app_assets.dart';
 import 'package:wanpan_diary/shared/widgets/wanpan_lottie_stage.dart';
+import 'package:wanpan_diary/shared/widgets/wanpan_milestone_stage.dart';
 
 class _ControlledAssetBundle extends CachingAssetBundle {
   final Completer<ByteData> _asset = Completer<ByteData>();
@@ -39,8 +41,88 @@ Future<void> _settleBackgroundLoad(WidgetTester tester) async {
   await tester.pump();
 }
 
+Map<String, Object?> _jsonObject(Object? value) =>
+    (value! as Map<Object?, Object?>).cast<String, Object?>();
+
+List<Object?> _jsonList(Object? value) => value! as List<Object?>;
+
 void main() {
   setUp(Lottie.cache.clear);
+
+  test(
+    'milestone badges, arrows, and Flutter labels rise through V3',
+    () async {
+      final source = await rootBundle.loadString(
+        AppAssets.gradeMilestoneAnimation,
+      );
+      final animation = _jsonObject(jsonDecode(source));
+      final layers = _jsonList(animation['layers']).map(_jsonObject).toList();
+
+      Offset layerPosition(String name) {
+        final layer = layers.singleWhere(
+          (candidate) => candidate['nm'] == name,
+        );
+        final transform = _jsonObject(layer['ks']);
+        final position = _jsonObject(transform['p']);
+        final values = _jsonList(position['k']);
+        return Offset(
+          (values[0]! as num).toDouble(),
+          (values[1]! as num).toDouble(),
+        );
+      }
+
+      List<Offset> connectorVertices(String layerName, String connectorName) {
+        final layer = layers.singleWhere(
+          (candidate) => candidate['nm'] == layerName,
+        );
+        final groups = _jsonList(layer['shapes']).map(_jsonObject);
+        final connector = groups.singleWhere(
+          (candidate) => candidate['nm'] == connectorName,
+        );
+        final path = _jsonList(connector['it'])
+            .map(_jsonObject)
+            .singleWhere((candidate) => candidate['ty'] == 'sh');
+        final pathProperty = _jsonObject(path['ks']);
+        final pathValue = _jsonObject(pathProperty['k']);
+        return _jsonList(pathValue['v']).map((vertex) {
+          final values = _jsonList(vertex);
+          return Offset(
+            (values[0]! as num).toDouble(),
+            (values[1]! as num).toDouble(),
+          );
+        }).toList();
+      }
+
+      final centers = <Offset>[
+        layerPosition('starting grade badge'),
+        layerPosition('middle grade badge'),
+        layerPosition('latest grade badge'),
+      ];
+      expect(centers, const [
+        Offset(112, 416),
+        Offset(256, 352),
+        Offset(400, 288),
+      ]);
+      expect(centers[0].dx, lessThan(centers[1].dx));
+      expect(centers[1].dx, lessThan(centers[2].dx));
+      expect(centers[0].dy, greaterThan(centers[1].dy));
+      expect(centers[1].dy, greaterThan(centers[2].dy));
+
+      final overlayCenters = WanpanMilestoneGradeOverlay.normalizedGradeCenters
+          .map((position) => position * 512)
+          .toList();
+      expect(overlayCenters, centers);
+
+      for (final (layerName, connectorName) in const [
+        ('first grade arrow', 'first connector'),
+        ('second grade arrow', 'second connector'),
+      ]) {
+        final vertices = connectorVertices(layerName, connectorName);
+        expect(vertices.last.dx, greaterThan(vertices.first.dx));
+        expect(vertices.last.dy, lessThan(vertices.first.dy));
+      }
+    },
+  );
 
   testWidgets('cold load keeps a static fallback until animation is ready', (
     tester,

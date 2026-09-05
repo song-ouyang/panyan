@@ -134,66 +134,14 @@ const experienceLikes = [
   [5, 1], [5, 2], [6, 3], [7, 4], [9, 0],
 ] as const;
 
-const experienceComments = [
-  {
-    id: "00000000-0000-4000-8000-00000000e401",
-    postIndex: 0,
-    profileIndex: 1,
-    content: `${fixtureCopyPrefix}这种稳稳落脚的快乐太懂了！`,
-  },
-  {
-    id: "00000000-0000-4000-8000-00000000e402",
-    postIndex: 1,
-    profileIndex: 3,
-    content: `${fixtureCopyPrefix}慢一点真的会更顺，下次一起练。`,
-  },
-  {
-    id: "00000000-0000-4000-8000-00000000e403",
-    postIndex: 2,
-    profileIndex: 4,
-    content: `${fixtureCopyPrefix}快乐完攀，收工回家！`,
-  },
-  {
-    id: "00000000-0000-4000-8000-00000000e404",
-    postIndex: 3,
-    profileIndex: 0,
-    content: `${fixtureCopyPrefix}找到重心的那一刻特别爽。`,
-  },
-  {
-    id: "00000000-0000-4000-8000-00000000e405",
-    postIndex: 4,
-    profileIndex: 2,
-    content: `${fixtureCopyPrefix}岩友的一句提醒经常就是通关密码。`,
-  },
-  {
-    id: "00000000-0000-4000-8000-00000000e406",
-    postIndex: 5,
-    profileIndex: 4,
-    content: `${fixtureCopyPrefix}再试一把的你太棒啦！`,
-  },
-  {
-    id: "00000000-0000-4000-8000-00000000e407",
-    postIndex: 7,
-    profileIndex: 1,
-    content: `${fixtureCopyPrefix}稳稳升级，一起加油。`,
-  },
-  {
-    id: "00000000-0000-4000-8000-00000000e408",
-    postIndex: 9,
-    profileIndex: 3,
-    content: `${fixtureCopyPrefix}遇到会鼓励人的岩友真好。`,
-  },
-] as const;
-
 export function assertSquareExperienceSeedAllowed(
   nodeEnv: string,
-  allowProductionSquareSeed: boolean,
+  _allowProductionSquareSeed: boolean,
 ): void {
-  if (nodeEnv === "production" && !allowProductionSquareSeed) {
+  if (nodeEnv === "production") {
     throw new Error(
-      "Production square experience seed is disabled. Back up the database " +
-        "and pass ALLOW_PRODUCTION_SQUARE_SEED=true only to the explicit " +
-        "db:seed-square-experience command.",
+      "Production square experience seed is disabled. " +
+        "ALLOW_PRODUCTION_SQUARE_SEED no longer enables production imports.",
     );
   }
 }
@@ -269,35 +217,11 @@ async function seedSquareExperience(
     );
   }
 
-  for (const comment of experienceComments) {
-    const postId = postIds[comment.postIndex];
-    const userId = userIds[comment.profileIndex];
-    if (!postId || !userId) {
-      throw new Error(`Invalid square experience comment ${comment.id}`);
-    }
-    const result = await runQuery<{ id: string }>(
-      `INSERT INTO comments(id,send_id,user_id,content,moderation_status)
-       VALUES($1,$2,$3,$4,'approved')
-       ON CONFLICT(id) DO UPDATE SET
-         content=EXCLUDED.content
-       WHERE comments.send_id=EXCLUDED.send_id
-         AND comments.user_id=EXCLUDED.user_id
-         AND comments.content LIKE '【完攀体验】%'
-       RETURNING id`,
-      [comment.id, postId, userId, comment.content],
-    );
-    if (result.rows[0]?.id !== comment.id) {
-      throw new Error(
-        `Square experience fixture namespace conflict for comment ${comment.id}`,
-      );
-    }
-  }
-
   return {
     users: experienceProfiles.length,
     posts: experiencePosts.length,
     likes: experienceLikes.length,
-    comments: experienceComments.length,
+    comments: 0,
   };
 }
 

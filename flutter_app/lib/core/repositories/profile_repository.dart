@@ -70,24 +70,29 @@ class ProfileRepository {
   Future<String> sendFriendRequest(String userId) async {
     final json = await _apiClient.postJson('/users/$userId/friend-request');
     final status = jsonNullableString(json['status']) ?? 'pending';
+    _apiClient.socialActivity.recordChanged();
     return status == 'pending' ? 'sent' : status;
   }
 
   Future<String> acceptFriendRequest(String userId) async {
     final json = await _apiClient.postJson('/users/$userId/friend-accept');
+    _apiClient.socialActivity.recordChanged();
     return jsonNullableString(json['status']) ?? 'accepted';
   }
 
   Future<void> removeFriend(String userId) async {
     await _apiClient.deleteJson('/users/$userId/friend');
+    _apiClient.socialActivity.recordChanged();
   }
 
   Future<void> blockUser(String userId) async {
     await _apiClient.postJson('/users/$userId/block');
+    _apiClient.socialActivity.recordChanged();
   }
 
   Future<void> unblockUser(String userId) async {
     await _apiClient.deleteJson('/users/$userId/block');
+    _apiClient.socialActivity.recordChanged();
   }
 
   Future<void> report({
