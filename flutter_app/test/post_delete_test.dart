@@ -284,6 +284,8 @@ void main() {
         expect(api.feedReads, readsBefore);
         expect(state.climbingEvents, 0);
         expect(state.socialEvents, 0);
+        await tester.tap(find.byTooltip('关闭提示'));
+        await tester.pumpAndSettle();
         await _openDeleteConfirmation(tester);
         await _tapConfirmation(tester, '取消');
         expect(api.deleteCalls, hasLength(1));

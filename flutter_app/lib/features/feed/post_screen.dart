@@ -12,6 +12,7 @@ import '../../core/repositories/feed_repository.dart';
 import '../auth/application/session_controller.dart';
 import '../../shared/motion/wanpan_motion.dart';
 import '../../shared/widgets/wanpan_content_safety.dart';
+import '../../shared/widgets/wanpan_notice.dart';
 import '../../shared/widgets/wanpan_video_player.dart';
 
 enum _PostSafetyAction { report, block }
@@ -390,9 +391,7 @@ class _PostScreenState extends State<PostScreen> {
     }
   }
 
-  void _notice(String message) => ScaffoldMessenger.of(context)
-    ..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(content: Text(message)));
+  void _notice(String message) => WanpanNotice.show(context, message);
 
   @override
   Widget build(BuildContext context) {
@@ -622,9 +621,7 @@ class _PostScreenState extends State<PostScreen> {
                     ? null
                     : _toggleFavorite,
                 icon: Icon(
-                  _favorited
-                      ? Icons.bookmark_rounded
-                      : Icons.bookmark_border_rounded,
+                  _favorited ? Icons.star_rounded : Icons.star_border_rounded,
                 ),
                 label: Text(_favorited ? '已收藏' : '收藏'),
                 style: TextButton.styleFrom(

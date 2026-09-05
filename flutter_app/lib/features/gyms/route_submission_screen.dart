@@ -23,6 +23,7 @@ import '../../shared/app_assets.dart';
 import '../../shared/motion/wanpan_motion.dart';
 import '../../shared/motion/wanpan_motion_sound.dart';
 import '../../shared/widgets/wanpan_card.dart';
+import '../../shared/widgets/wanpan_notice.dart';
 import '../../shared/widgets/wanpan_grade_picker.dart';
 import '../../shared/widgets/wanpan_gym_picker.dart';
 import '../../shared/widgets/wanpan_lottie_stage.dart';
@@ -580,7 +581,7 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
         ),
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).removeCurrentSnackBar();
+      WanpanNotice.dismiss(context);
       setState(() {
         _progress = 1;
         _submitting = false;
@@ -607,9 +608,7 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
   }
 
   void _notice(String message) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
+    WanpanNotice.show(context, message);
   }
 
   void _handleSuccessAnimationPresented(bool animated) {

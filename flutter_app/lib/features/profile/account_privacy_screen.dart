@@ -6,6 +6,7 @@ import '../../app/wanpan_theme.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
 import '../../core/repositories/profile_repository.dart';
+import '../../shared/widgets/wanpan_notice.dart';
 import '../../shared/widgets/wanpan_pressable.dart';
 import '../auth/application/session_controller.dart';
 
@@ -37,8 +38,7 @@ class _AccountPrivacyScreenState extends State<AccountPrivacyScreen> {
       mode: LaunchMode.externalApplication,
     );
     if (!opened && mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('暂时无法打开网页，请稍后再试。')));
+      WanpanNotice.show(context, '暂时无法打开网页，请稍后再试。');
     }
   }
 
@@ -91,12 +91,10 @@ class _AccountPrivacyScreenState extends State<AccountPrivacyScreen> {
       if (mounted) context.go('/gyms');
     } on ApiException catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(error.message)));
+      WanpanNotice.show(context, error.message);
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('账号暂时没有删除成功，请稍后重试。')));
+      WanpanNotice.show(context, '账号暂时没有删除成功，请稍后重试。');
     } finally {
       if (mounted) setState(() => _deleting = false);
     }

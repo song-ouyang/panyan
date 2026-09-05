@@ -12,6 +12,7 @@ import '../../shared/app_assets.dart';
 import '../../shared/widgets/wanpan_card.dart';
 import '../../shared/widgets/wanpan_content_safety.dart';
 import '../../shared/widgets/wanpan_mascot.dart';
+import '../../shared/widgets/wanpan_notice.dart';
 import '../../shared/widgets/wanpan_pressable.dart';
 import '../../shared/widgets/wanpan_video_cover.dart';
 import '../auth/application/session_controller.dart';
@@ -317,9 +318,7 @@ class _FeedScreenState extends State<FeedScreen> {
   }
 
   void _notice(String message) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
+    WanpanNotice.show(context, message);
   }
 
   @override
@@ -740,8 +739,8 @@ class _PostCard extends StatelessWidget {
                 onPressed: favoriting || deleting ? null : onFavorite,
                 icon: Icon(
                   entry.favorited
-                      ? Icons.bookmark_rounded
-                      : Icons.bookmark_border_rounded,
+                      ? Icons.star_rounded
+                      : Icons.star_border_rounded,
                 ),
                 color: entry.favorited
                     ? WanpanColors.coral
@@ -896,8 +895,7 @@ class _ComposeSheetState extends State<_ComposeSheet> {
     } catch (_) {
       if (!mounted) return;
       setState(() => _submitting = false);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('发布失败，请稍后重试')));
+      WanpanNotice.show(context, '发布失败，请稍后重试');
     }
   }
 

@@ -269,7 +269,7 @@ class _ActivityShortcuts extends StatelessWidget {
           name: 'favorites',
           label: '收藏',
           semanticLabel: '我的收藏',
-          icon: Icons.bookmark_border_rounded,
+          icon: Icons.star_border_rounded,
         ),
         _ActivityShortcut(
           name: 'likes',

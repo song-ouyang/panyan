@@ -8,6 +8,7 @@ import '../../core/models/notification_models.dart';
 import '../../core/models/user_models.dart';
 import '../../shared/app_assets.dart';
 import '../../shared/widgets/wanpan_card.dart';
+import '../../shared/widgets/wanpan_notice.dart';
 import '../../shared/widgets/wanpan_pressable.dart';
 import '../../shared/widgets/wanpan_skeleton.dart';
 import '../../shared/widgets/wanpan_states.dart';
@@ -36,9 +37,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   void _notice(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
+    WanpanNotice.show(context, message);
   }
 
   Future<void> _openNotification(AppNotificationItem item) async {

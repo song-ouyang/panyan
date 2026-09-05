@@ -7,6 +7,7 @@ import '../../core/network/api_client.dart';
 import '../../core/repositories/feed_repository.dart';
 import '../../core/repositories/profile_repository.dart';
 import '../../shared/widgets/wanpan_card.dart';
+import '../../shared/widgets/wanpan_notice.dart';
 import '../../shared/widgets/wanpan_content_safety.dart';
 import '../../shared/widgets/wanpan_states.dart';
 import '../../shared/widgets/wanpan_video_cover.dart';
@@ -165,9 +166,7 @@ class _MyPostsScreenState extends State<MyPostsScreen> {
   }
 
   void _notice(String message) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
+    WanpanNotice.show(context, message);
   }
 
   @override

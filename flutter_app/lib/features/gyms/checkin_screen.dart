@@ -16,6 +16,7 @@ import '../../shared/app_assets.dart';
 import '../../shared/motion/milestone_grade_sequence.dart';
 import '../../shared/motion/wanpan_motion_sound.dart';
 import '../../shared/widgets/wanpan_card.dart';
+import '../../shared/widgets/wanpan_notice.dart';
 import '../../shared/widgets/wanpan_lottie_stage.dart';
 import '../../shared/widgets/wanpan_mascot.dart';
 import '../../shared/widgets/wanpan_milestone_stage.dart';
@@ -239,7 +240,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
   }
 
   void _toast(String text) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+    WanpanNotice.show(context, text);
   }
 
   @override

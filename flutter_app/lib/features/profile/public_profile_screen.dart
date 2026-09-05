@@ -8,6 +8,7 @@ import '../../core/repositories/profile_repository.dart';
 import '../../shared/motion/wanpan_motion.dart';
 import '../../shared/widgets/wanpan_card.dart';
 import '../../shared/widgets/wanpan_content_safety.dart';
+import '../../shared/widgets/wanpan_notice.dart';
 import '../../shared/widgets/wanpan_pressable.dart';
 
 enum _ProfileSafetyAction { report, block, unblock }
@@ -187,9 +188,7 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
     }
   }
 
-  void _notice(String message) => ScaffoldMessenger.of(context)
-    ..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(content: Text(message)));
+  void _notice(String message) => WanpanNotice.show(context, message);
 
   @override
   Widget build(BuildContext context) {

@@ -9,6 +9,7 @@ import '../../core/repositories/profile_repository.dart';
 import '../../shared/app_assets.dart';
 import '../../shared/motion/wanpan_motion.dart';
 import '../../shared/widgets/wanpan_card.dart';
+import '../../shared/widgets/wanpan_notice.dart';
 import '../../shared/widgets/wanpan_pressable.dart';
 
 typedef OpenFriendProfile = Future<Object?> Function(String userId);
@@ -295,9 +296,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
     });
   }
 
-  void _notice(String message) => ScaffoldMessenger.of(context)
-    ..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(content: Text(message)));
+  void _notice(String message) => WanpanNotice.show(context, message);
 
   @override
   Widget build(BuildContext context) {

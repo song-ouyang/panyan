@@ -9,6 +9,7 @@ import '../../core/preferences/gym_selection_store.dart';
 import '../../core/repositories/gym_repository.dart';
 import '../../shared/widgets/wanpan_card.dart';
 import '../../shared/widgets/wanpan_gym_picker.dart';
+import '../../shared/widgets/wanpan_notice.dart';
 import '../../shared/widgets/wanpan_pressable.dart';
 import '../../shared/widgets/wanpan_skeleton.dart';
 import '../../shared/widgets/wanpan_states.dart';
@@ -258,9 +259,7 @@ class _RoutePickerScreenState extends State<RoutePickerScreen> {
   }
 
   void _notice(String message) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
+    WanpanNotice.show(context, message);
   }
 
   @override

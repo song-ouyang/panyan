@@ -7,6 +7,7 @@ import '../../core/network/api_client.dart';
 import '../../core/repositories/feed_repository.dart';
 import '../../core/repositories/profile_repository.dart';
 import '../../shared/widgets/wanpan_card.dart';
+import '../../shared/widgets/wanpan_notice.dart';
 import '../../shared/widgets/wanpan_pressable.dart';
 import '../../shared/widgets/wanpan_states.dart';
 import '../../shared/widgets/wanpan_video_cover.dart';
@@ -372,9 +373,7 @@ class _MyActivityScreenState extends State<MyActivityScreen> {
       ) ??
       false;
 
-  void _notice(String text) => ScaffoldMessenger.of(context)
-    ..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(content: Text(text)));
+  void _notice(String text) => WanpanNotice.show(context, text);
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -566,7 +565,7 @@ class _ActivityCard extends StatelessWidget {
                       )
                     : Icon(switch (kind) {
                         MyActivityKind.comments => Icons.delete_outline_rounded,
-                        MyActivityKind.favorites => Icons.bookmark_rounded,
+                        MyActivityKind.favorites => Icons.star_rounded,
                         MyActivityKind.likes => Icons.favorite_rounded,
                       }),
               ),

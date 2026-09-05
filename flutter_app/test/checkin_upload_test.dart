@@ -292,7 +292,7 @@ void main() {
       expect(tester.widget<WanpanButton>(_button('上传并打卡')).loading, isFalse);
       _expectNoReview(tester);
 
-      await tester.drag(find.byType(SnackBar), const Offset(0, 100));
+      await tester.tap(find.byTooltip('关闭提示'));
       await tester.pumpAndSettle();
       final retry = await _startUpload(tester, api);
       expect(api.uploads, hasLength(2));

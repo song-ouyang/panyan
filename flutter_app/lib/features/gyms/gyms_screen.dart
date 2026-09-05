@@ -10,6 +10,7 @@ import '../../core/network/api_client.dart';
 import '../../core/repositories/gym_repository.dart';
 import '../../core/repositories/profile_repository.dart';
 import '../../shared/app_assets.dart';
+import '../../shared/widgets/wanpan_notice.dart';
 import '../../shared/widgets/wanpan_pressable.dart';
 import '../../shared/widgets/wanpan_skeleton.dart';
 import '../../shared/widgets/wanpan_states.dart';
@@ -755,10 +756,9 @@ class _CityPickerSheetState extends State<_CityPickerSheet> {
   Future<void> _openSettings() async {
     final opened = await widget.controller.openLocationSettings();
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(opened ? '开启定位后，点击“使用当前位置”重试。' : '无法打开设置，请在系统设置中开启定位。'),
-      ),
+    WanpanNotice.show(
+      context,
+      opened ? '开启定位后，点击“使用当前位置”重试。' : '无法打开设置，请在系统设置中开启定位。',
     );
   }
 

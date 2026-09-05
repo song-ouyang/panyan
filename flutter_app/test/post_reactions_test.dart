@@ -261,15 +261,15 @@ void main() {
           ..writeBarrier = barrier
           ..malformed = true;
         await _open(tester, api, detail: detail);
-        await tester.tap(find.byIcon(Icons.bookmark_border_rounded));
+        await tester.tap(find.byIcon(Icons.star_border_rounded));
         await tester.pump();
-        expect(find.byIcon(Icons.bookmark_rounded), findsOneWidget);
-        await tester.tap(find.byIcon(Icons.bookmark_rounded));
+        expect(find.byIcon(Icons.star_rounded), findsOneWidget);
+        await tester.tap(find.byIcon(Icons.star_rounded));
         await tester.pump();
         expect(api.writes.length, 1);
         barrier.complete();
         await tester.pumpAndSettle();
-        expect(find.byIcon(Icons.bookmark_border_rounded), findsOneWidget);
+        expect(find.byIcon(Icons.star_border_rounded), findsOneWidget);
         expect(api.favorites, isEmpty);
         expect(tester.takeException(), isNull);
       },
@@ -280,13 +280,13 @@ void main() {
         final barrier = Completer<void>();
         final api = _Api()..writeBarrier = barrier;
         final state = await _open(tester, api, detail: detail);
-        await tester.tap(find.byIcon(Icons.bookmark_border_rounded));
+        await tester.tap(find.byIcon(Icons.star_border_rounded));
         await tester.pump();
         await state.session.acceptSession(_account('second'));
         await tester.pumpAndSettle();
         barrier.complete();
         await tester.pumpAndSettle();
-        expect(find.byIcon(Icons.bookmark_border_rounded), findsOneWidget);
+        expect(find.byIcon(Icons.star_border_rounded), findsOneWidget);
         expect(api.favorites, {'me'});
         expect(tester.takeException(), isNull);
       },
@@ -296,7 +296,7 @@ void main() {
     ) async {
       final api = _Api();
       await _open(tester, api, detail: detail, guest: true);
-      await tester.tap(find.byIcon(Icons.bookmark_border_rounded));
+      await tester.tap(find.byIcon(Icons.star_border_rounded));
       await tester.pumpAndSettle();
       expect(find.text('登录页'), findsOneWidget);
       expect(api.writes, isEmpty);

@@ -23,6 +23,7 @@ import 'package:wanpan_diary/features/gyms/route_submission_screen.dart';
 import 'package:wanpan_diary/shared/app_assets.dart';
 import 'package:wanpan_diary/shared/motion/wanpan_motion_sound.dart';
 import 'package:wanpan_diary/shared/widgets/wanpan_lottie_stage.dart';
+import 'package:wanpan_diary/shared/widgets/wanpan_notice.dart';
 import 'package:wanpan_diary/shared/widgets/wanpan_pressable.dart';
 
 import 'support/fake_motion_sound_player.dart';
@@ -572,8 +573,10 @@ void main() {
 
     await tester.enterText(_fieldWithLabel('线路名称（选填）'), '测试橙线');
     await tester.enterText(_fieldWithLabel('线路颜色'), '橙');
-    ScaffoldMessenger.of(tester.element(find.byType(RouteSubmissionScreen)))
-        .showSnackBar(const SnackBar(content: Text('旧错误提示')));
+    WanpanNotice.show(
+      tester.element(find.byType(RouteSubmissionScreen)),
+      '旧错误提示',
+    );
     await tester.pump();
     expect(find.text('旧错误提示'), findsOneWidget);
     await tester.tap(
