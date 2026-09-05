@@ -10,12 +10,16 @@ class AppConfig {
     required this.apiBaseUrl,
     required this.enableDevelopmentLogin,
     this.enableAppleLogin = false,
+    this.shareBaseUrl = defaultShareBaseUrl,
   });
 
   static const String productionApiBaseUrl = String.fromEnvironment(
     'PRODUCTION_API_BASE_URL',
     defaultValue: 'https://panyan-api.gblh.cloud/api',
   );
+
+  static const defaultShareBaseUrl =
+      'https://wanpan-diary.racing-crumb-9418.chatgpt.site';
 
   static AppConfig fromEnvironment() {
     const environmentValue = String.fromEnvironment(
@@ -31,6 +35,10 @@ class AppConfig {
       'ENABLE_APPLE_LOGIN',
       defaultValue: false,
     );
+    const shareBaseUrl = String.fromEnvironment(
+      'SHARE_BASE_URL',
+      defaultValue: defaultShareBaseUrl,
+    );
     return resolveForBuild(
       isReleaseMode: kReleaseMode,
       isAndroid: Platform.isAndroid,
@@ -39,6 +47,7 @@ class AppConfig {
       productionApiBaseUrl: productionApiBaseUrl,
       enableDevelopmentLogin: developmentLogin,
       enableAppleLogin: appleLogin,
+      shareBaseUrl: shareBaseUrl,
     );
   }
 
@@ -56,6 +65,7 @@ class AppConfig {
     required String productionApiBaseUrl,
     required bool enableDevelopmentLogin,
     bool enableAppleLogin = false,
+    String shareBaseUrl = defaultShareBaseUrl,
   }) {
     final requestedDevelopment =
         appEnvironment.trim().toLowerCase() == 'development';
@@ -79,6 +89,7 @@ class AppConfig {
       enableDevelopmentLogin:
           environment == AppEnvironment.development && enableDevelopmentLogin,
       enableAppleLogin: enableAppleLogin,
+      shareBaseUrl: validateShareBaseUrl(shareBaseUrl),
     );
   }
 
@@ -86,8 +97,30 @@ class AppConfig {
   final String apiBaseUrl;
   final bool enableDevelopmentLogin;
   final bool enableAppleLogin;
+  final String shareBaseUrl;
+
+  /// Invitations and their QR codes use the same official download entry.
+  Uri get inviteUrl =>
+      Uri.parse(validateShareBaseUrl(shareBaseUrl))
+          .replace(path: '/', fragment: 'download');
 
   bool get isProduction => environment == AppEnvironment.production;
+
+  static String validateShareBaseUrl(String value) {
+    final normalized = _validatedProductionUrl(value);
+    final uri = Uri.parse(normalized);
+    if (uri.userInfo.isNotEmpty ||
+        uri.hasQuery ||
+        uri.hasFragment ||
+        (uri.path.isNotEmpty && uri.path != '/')) {
+      throw ArgumentError.value(
+        value,
+        'shareBaseUrl',
+        'Share URL must be an HTTPS origin without credentials or a path.',
+      );
+    }
+    return normalized;
+  }
 
   static String _normalizeBaseUrl(String value) {
     final trimmed = value.trim();

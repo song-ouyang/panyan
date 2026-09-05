@@ -84,6 +84,10 @@ GoRouter _createRouter({
       builder: (_, _) => const Scaffold(body: Text('攀岩日历页')),
     ),
     GoRoute(
+      path: '/profile/invite',
+      builder: (_, _) => const Scaffold(body: Text('邀请好友页')),
+    ),
+    GoRoute(
       path: '/settings',
       builder: (_, _) => const Scaffold(body: Text('设置页')),
     ),
@@ -248,6 +252,25 @@ void main() {
     });
   });
 
+  testWidgets('我的攀岩包含邀请好友入口并进入邀请页', (tester) async {
+    final api = _ProfileApi();
+    final session = await _createSession();
+    final router = _createRouter(api: api, session: session);
+    addTearDown(router.dispose);
+    addTearDown(session.dispose);
+    await _pumpProfile(tester, router: router);
+
+    expect(find.text('我的攀岩'), findsOneWidget);
+    expect(find.text('邀请好友'), findsOneWidget);
+    await tester.ensureVisible(find.text('邀请好友'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('邀请好友'));
+    await tester.pumpAndSettle();
+
+    expect(router.state.uri.path, '/profile/invite');
+    expect(find.text('邀请好友页'), findsOneWidget);
+  });
+
   testWidgets('320px 紧凑屏与最大字号下主要入口可用且无溢出', (tester) async {
     await tester.binding.setSurfaceSize(const Size(320, 568));
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -286,6 +309,20 @@ void main() {
         expect(rect.right, lessThanOrEqualTo(320));
         expect(tester.takeException(), isNull);
       }
+      await tester.scrollUntilVisible(
+        find.text('邀请好友'),
+        180,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('邀请好友').hitTestable(), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('profile-growth-period-lifetime')),
+        -180,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
       for (final period in ['lifetime', 'month']) {
         final selector = find.byKey(Key('profile-growth-period-$period'));
         await tester.ensureVisible(selector);

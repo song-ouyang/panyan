@@ -212,6 +212,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   subtitle: '看看谁最近也在上墙',
                   onTap: () => context.push('/friends'),
                 ),
+                const Divider(indent: 73, endIndent: 16),
+                _ActionTile(
+                  icon: Icons.qr_code_rounded,
+                  title: '邀请好友',
+                  subtitle: '扫码或分享链接，一起记录完攀',
+                  onTap: () => context.push('/profile/invite'),
+                ),
               ],
             ),
           ),

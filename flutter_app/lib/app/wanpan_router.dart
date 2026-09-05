@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/network/api_client.dart';
+import '../core/services/friend_code.dart';
 import '../features/auth/application/session_controller.dart';
 import '../features/auth/data/auth_repository.dart';
 import '../features/auth/data/native_auth_service.dart';
@@ -22,6 +23,9 @@ import '../features/onboarding/presentation/onboarding_screen.dart';
 import '../features/profile/climbing_calendar_screen.dart';
 import '../features/profile/account_privacy_screen.dart';
 import '../features/profile/friends_screen.dart';
+import '../features/profile/friend_code_screen.dart';
+import '../features/profile/friend_scanner_screen.dart';
+import '../features/profile/invite_friends_screen.dart';
 import '../features/profile/profile_screen.dart';
 import '../features/profile/public_profile_screen.dart';
 import '../features/profile/route_submissions_screen.dart';
@@ -38,6 +42,7 @@ GoRouter createWanpanRouter({
   OnboardingController? onboarding,
 }) {
   final rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
+  final friendCode = FriendCode(shareBaseUrl: api.config.shareBaseUrl);
   final onboardingState =
       onboarding ?? OnboardingController.ephemeral(completed: true);
   final onboardingEnabled = onboarding != null;
@@ -120,6 +125,14 @@ GoRouter createWanpanRouter({
           repository: authRepository,
           returnTo: safeAuthReturnTo(state.uri.queryParameters['from']),
           editing: state.uri.queryParameters['editing'] == 'true',
+        ),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: '/profile/invite',
+        builder: (context, state) => InviteFriendsScreen(
+          inviteUrl: api.config.inviteUrl,
+          onShowFriendCode: () => context.push('/friends/code'),
         ),
       ),
       GoRoute(
@@ -234,7 +247,47 @@ GoRouter createWanpanRouter({
         builder: (context, state) => FriendsScreen(
           api: api,
           onOpenProfile: (userId) => context.push('/users/$userId'),
+          onScan: () => context.push<String>('/friends/scan'),
+          onShowFriendCode: () => context.push<Object?>('/friends/code'),
         ),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: '/friends/code',
+        builder: (context, state) {
+          final user = session.user;
+          if (user == null) return const _WaitingForSession();
+          return FriendCodeScreen(
+            user: user,
+            friendUrl: friendCode.encode(user.id),
+            onScan: () async {
+              final userId = await context.push<String>('/friends/scan');
+              if (userId != null && context.mounted) {
+                await context.push<void>('/users/$userId');
+              }
+            },
+          );
+        },
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: '/friends/scan',
+        builder: (context, state) {
+          final user = session.user;
+          if (user == null) return const _WaitingForSession();
+          return FriendScannerScreen(
+            codec: friendCode,
+            currentUserId: user.id,
+            onScanned: (userId) {
+              // Login restoration may open the scanner as the first page.
+              if (context.canPop()) {
+                context.pop(userId);
+              } else {
+                context.go('/users/$userId');
+              }
+            },
+          );
+        },
       ),
       GoRoute(
         parentNavigatorKey: rootNavigatorKey,
@@ -286,9 +339,22 @@ bool _isProtectedPath(String path) {
   if (path == '/settings') return true;
   if (path == '/profile') return true;
   if (path == '/profile/setup' || path.startsWith('/profile/')) return true;
-  if (path == '/friends' || path.startsWith('/users/')) return true;
+  if (path == '/friends' ||
+      path.startsWith('/friends/') ||
+      path.startsWith('/users/')) {
+    return true;
+  }
   if (path == '/route-submissions' || path.startsWith('/route-submissions/')) {
     return true;
   }
   return path.startsWith('/routes/') && path.endsWith('/checkin');
+}
+
+class _WaitingForSession extends StatelessWidget {
+  const _WaitingForSession();
+
+  @override
+  Widget build(BuildContext context) => const Scaffold(
+    body: Center(child: CircularProgressIndicator(strokeWidth: 3)),
+  );
 }

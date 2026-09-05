@@ -14,10 +14,18 @@ import '../../shared/widgets/wanpan_pressable.dart';
 typedef OpenFriendProfile = Future<Object?> Function(String userId);
 
 class FriendsScreen extends StatefulWidget {
-  const FriendsScreen({required this.api, super.key, this.onOpenProfile});
+  const FriendsScreen({
+    required this.api,
+    super.key,
+    this.onOpenProfile,
+    this.onScan,
+    this.onShowFriendCode,
+  });
 
   final ApiClient api;
   final OpenFriendProfile? onOpenProfile;
+  final Future<String?> Function()? onScan;
+  final Future<Object?> Function()? onShowFriendCode;
 
   @override
   State<FriendsScreen> createState() => _FriendsScreenState();
@@ -34,6 +42,8 @@ class _FriendsScreenState extends State<FriendsScreen> {
   List<UserSummary> _searchResults = const [];
   bool _loading = true;
   bool _searching = false;
+  bool _openingScanner = false;
+  bool _openingFriendCode = false;
   String? _error;
   int _searchRevision = 0;
   int _socialRevision = 0;
@@ -136,6 +146,39 @@ class _FriendsScreenState extends State<FriendsScreen> {
     if (openProfile == null) return;
     await openProfile(userId);
     if (mounted) await _refresh();
+  }
+
+  Future<void> _scanFriend() async {
+    if (_openingScanner || _openingFriendCode || widget.onScan == null) return;
+    _searchFocusNode.unfocus();
+    setState(() => _openingScanner = true);
+    try {
+      final userId = await widget.onScan!();
+      if (!mounted || userId == null) return;
+      await _openProfile(userId);
+    } catch (_) {
+      if (mounted) _notice('暂时无法打开岩友主页，请重试');
+    } finally {
+      if (mounted) setState(() => _openingScanner = false);
+    }
+  }
+
+  Future<void> _showFriendCode() async {
+    if (_openingScanner ||
+        _openingFriendCode ||
+        widget.onShowFriendCode == null) {
+      return;
+    }
+    _searchFocusNode.unfocus();
+    setState(() => _openingFriendCode = true);
+    try {
+      await widget.onShowFriendCode!();
+      if (mounted) await _refresh();
+    } catch (_) {
+      if (mounted) _notice('暂时无法打开好友二维码，请重试');
+    } finally {
+      if (mounted) setState(() => _openingFriendCode = false);
+    }
   }
 
   Future<void> _actOnSearchResult(UserSummary user) async {
@@ -272,6 +315,31 @@ class _FriendsScreenState extends State<FriendsScreen> {
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 48),
           children: [
+            if (widget.onScan != null || widget.onShowFriendCode != null) ...[
+              Wrap(
+                spacing: 12,
+                runSpacing: 8,
+                children: [
+                  if (widget.onScan != null && widget.onOpenProfile != null)
+                    OutlinedButton.icon(
+                      onPressed: _openingScanner || _openingFriendCode
+                          ? null
+                          : _scanFriend,
+                      icon: const Icon(Icons.qr_code_scanner_rounded),
+                      label: const Text('扫一扫'),
+                    ),
+                  if (widget.onShowFriendCode != null)
+                    OutlinedButton.icon(
+                      onPressed: _openingScanner || _openingFriendCode
+                          ? null
+                          : _showFriendCode,
+                      icon: const Icon(Icons.qr_code_rounded),
+                      label: const Text('我的好友码'),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 16),
+            ],
             _SearchField(
               controller: _searchController,
               focusNode: _searchFocusNode,

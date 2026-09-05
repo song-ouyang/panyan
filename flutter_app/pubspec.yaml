@@ -45,6 +45,9 @@ dependencies:
   flutter_secure_storage: ^10.0.0
   crypto: ^3.0.7
   url_launcher: ^6.3.2
+  share_plus: ^13.3.0
+  qr_flutter: ^4.1.0
+  mobile_scanner: ^7.4.0
   lottie: ^3.5.1
 
 dev_dependencies:
