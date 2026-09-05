@@ -51,7 +51,18 @@ export const routeRoutes: FastifyPluginAsync = async (app) => {
       `SELECT s.id,s.attempts,s.video_url,s.image_urls,s.caption,s.visibility,s.moderation_status,s.sent_at,
               u.id user_id,u.nickname,u.avatar_url,r.id route_id,r.name route_name,r.grade,r.color,
               g.id gym_id,g.name gym_name,count(DISTINCT l.user_id)::int like_count,
-              (SELECT count(*)::int FROM comments c WHERE c.send_id=s.id AND c.moderation_status='approved') comment_count,
+              (SELECT count(*)::int FROM comments c
+               WHERE c.send_id=s.id AND (
+                 c.moderation_status='approved' OR
+                 (c.moderation_status='pending' AND c.user_id=$2::uuid)
+               )
+                 AND ($2::uuid IS NULL OR NOT EXISTS (
+                   SELECT 1 FROM friendships blocked_commenter
+                   WHERE blocked_commenter.status='blocked' AND (
+                     (blocked_commenter.requester_id=$2 AND blocked_commenter.addressee_id=c.user_id) OR
+                     (blocked_commenter.addressee_id=$2 AND blocked_commenter.requester_id=c.user_id)
+                   )
+                 ))) comment_count,
               coalesce(bool_or(l.user_id=$2::uuid),false) liked
        FROM sends s
        JOIN users u ON u.id=s.user_id

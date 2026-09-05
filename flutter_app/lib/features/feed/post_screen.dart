@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -5,6 +7,7 @@ import '../../app/wanpan_theme.dart';
 import '../../core/models/feed_models.dart';
 import '../../core/models/user_models.dart';
 import '../../core/network/api_client.dart';
+import '../../core/network/api_exception.dart';
 import '../../core/repositories/feed_repository.dart';
 import '../auth/application/session_controller.dart';
 import '../../shared/motion/wanpan_motion.dart';
@@ -35,6 +38,9 @@ class _PostScreenState extends State<PostScreen> {
   final _commentController = TextEditingController();
   late final FeedRepository _repository = FeedRepository(widget.api);
   FeedPost? _post;
+  List<FeedComment> _comments = const [];
+  int _loadRevision = 0;
+  String? _sessionToken;
   bool _loading = true;
   bool _commenting = false;
   bool _safetySubmitting = false;
@@ -45,34 +51,72 @@ class _PostScreenState extends State<PostScreen> {
   @override
   void initState() {
     super.initState();
+    _sessionToken = widget.session.token;
+    widget.session.addListener(_handleSessionChanged);
     _load();
+  }
+
+  void _handleSessionChanged() {
+    final token = widget.session.token;
+    if (token == _sessionToken) return;
+    _sessionToken = token;
+    ++_loadRevision;
+    setState(() {
+      _post = null;
+      _comments = const [];
+      _loading = true;
+      _commenting = false;
+      _error = null;
+    });
+    _commentController.clear();
+    unawaited(_load());
   }
 
   @override
   void dispose() {
+    widget.session.removeListener(_handleSessionChanged);
     _commentController.dispose();
     super.dispose();
   }
 
-  Future<void> _load() async {
+  Future<void> _load({bool afterComment = false}) async {
+    final revision = ++_loadRevision;
+    final token = widget.session.token;
     try {
-      final post = FeedPost.fromJson(
-        await widget.api.getJson('/sends/${widget.postId}'),
-      );
-      if (!mounted) return;
+      final post = await _repository.getPost(widget.postId);
+      if (!mounted ||
+          revision != _loadRevision ||
+          token != widget.session.token) {
+        return;
+      }
       setState(() {
         _post = post;
+        _comments = post.comments;
         _liked = post.liked;
         _likeCount = post.likeCount;
         _loading = false;
         _error = null;
       });
-    } catch (_) {
-      if (!mounted) return;
+    } catch (error) {
+      if (!mounted ||
+          revision != _loadRevision ||
+          token != widget.session.token) {
+        return;
+      }
+      final unavailable =
+          error is ApiException && [401, 403, 404].contains(error.statusCode);
+      final preserveContent = _post != null && !unavailable;
       setState(() {
         _loading = false;
-        _error = '这条动态暂时无法打开';
+        _error = preserveContent ? null : '这条动态暂时无法打开';
+        if (unavailable) {
+          _post = null;
+          _comments = const [];
+        }
       });
+      if (preserveContent) {
+        _notice(afterComment ? '评论已提交，暂时无法刷新动态' : '刷新失败，仍保留当前内容');
+      }
     }
   }
 
@@ -108,19 +152,35 @@ class _PostScreenState extends State<PostScreen> {
     if (!_requireAuthentication()) return;
     final content = _commentController.text.trim();
     if (content.isEmpty || _commenting) return;
+    final token = widget.session.token;
+    final author = widget.session.user;
     setState(() => _commenting = true);
     try {
-      await widget.api.postJson(
-        '/sends/${widget.postId}/comments',
-        data: {'content': content},
+      final comment = await _repository.addComment(
+        widget.postId,
+        content,
+        author: author,
       );
-      _commentController.clear();
-      if (mounted) _notice('评论已提交');
-      await _load();
+      if (!mounted || token != widget.session.token) return;
+      setState(() {
+        // Ignore older detail requests that began before this comment saved.
+        ++_loadRevision;
+        _comments = [
+          ..._comments.where((item) => item.id != comment.id),
+          comment,
+        ];
+      });
+      if (_commentController.text.trim() == content) _commentController.clear();
+      _notice(comment.isPending ? '评论已提交，审核后其他岩友可见' : '评论已提交');
+      await _load(afterComment: true);
     } catch (_) {
-      if (mounted) _notice('评论失败，请稍后重试');
+      if (mounted && token == widget.session.token) {
+        _notice('评论失败，请稍后重试');
+      }
     } finally {
-      if (mounted) setState(() => _commenting = false);
+      if (mounted && token == widget.session.token) {
+        setState(() => _commenting = false);
+      }
     }
   }
 
@@ -240,6 +300,10 @@ class _PostScreenState extends State<PostScreen> {
         ],
       ),
       body: AnimatedSwitcher(
+        // Private pending comments must disappear immediately on account change.
+        key: ValueKey(
+          widget.session.isAuthenticated ? widget.session.user?.id : null,
+        ),
         duration: WanpanMotion.duration(context, WanpanMotion.exit),
         child: _buildBody(),
       ),
@@ -400,11 +464,11 @@ class _PostScreenState extends State<PostScreen> {
           ),
           const Divider(height: 36),
           Text(
-            '评论 ${post.comments.length}',
+            '评论 ${_comments.length}',
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 12),
-          if (post.comments.isEmpty)
+          if (_comments.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 24),
               child: Text(
@@ -414,7 +478,7 @@ class _PostScreenState extends State<PostScreen> {
               ),
             )
           else
-            ...post.comments.map(
+            ..._comments.map(
               (comment) => _CommentTile(
                 comment: comment,
                 onReport: comment.user.id == widget.session.user?.id
@@ -516,6 +580,14 @@ class _CommentTile extends StatelessWidget {
                   comment.content,
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
+                if (comment.isPending) ...[
+                  const SizedBox(height: 5),
+                  Text(
+                    '审核中 · 仅自己可见',
+                    style: Theme.of(context).textTheme.labelSmall
+                        ?.copyWith(color: WanpanColors.inkSecondary),
+                  ),
+                ],
               ],
             ),
           ),

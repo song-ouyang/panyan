@@ -7,6 +7,7 @@ class FeedComment {
     required this.content,
     required this.user,
     this.createdAt,
+    this.moderationStatus,
   });
 
   factory FeedComment.fromJson(JsonMap json) => FeedComment(
@@ -18,12 +19,16 @@ class FeedComment {
       'avatar_url': json['avatar_url'],
     }),
     createdAt: jsonDateTime(json['created_at']),
+    moderationStatus: jsonNullableString(json['moderation_status']),
   );
 
   final String id;
   final String content;
   final UserSummary user;
   final DateTime? createdAt;
+  final String? moderationStatus;
+
+  bool get isPending => moderationStatus == 'pending';
 }
 
 class FeedPost {

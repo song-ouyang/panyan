@@ -1,5 +1,6 @@
 import '../json/json_helpers.dart';
 import '../models/feed_models.dart';
+import '../models/user_models.dart';
 import '../network/api_client.dart';
 
 class FeedRepository {
@@ -47,13 +48,25 @@ class FeedRepository {
     return jsonBool(json['liked']);
   }
 
-  Future<FeedComment> addComment(String postId, String content) async =>
-      FeedComment.fromJson(
-        await _apiClient.postJson(
-          '/sends/$postId/comments',
-          data: {'content': content},
-        ),
-      );
+  Future<FeedComment> addComment(
+    String postId,
+    String content, {
+    UserSummary? author,
+  }) async {
+    final json = await _apiClient.postJson(
+      '/sends/$postId/comments',
+      data: {'content': content},
+    );
+    // Older servers return the saved comment without joined profile fields.
+    // Only use the submitting account's profile for its own returned record.
+    return FeedComment.fromJson({
+      if (author != null && json['user_id'] == author.id) ...{
+        'nickname': author.nickname,
+        'avatar_url': author.avatarUrl,
+      },
+      ...json,
+    });
+  }
 
   Future<void> deleteComment(String postId, String commentId) async {
     await _apiClient.deleteJson('/sends/$postId/comments/$commentId');

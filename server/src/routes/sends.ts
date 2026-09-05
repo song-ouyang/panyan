@@ -171,7 +171,10 @@ export const sendRoutes: FastifyPluginAsync = async (app) => {
               r.id route_id,r.name route_name,r.grade,r.color,g.id gym_id,g.name gym_name,
               (SELECT count(*)::int FROM post_likes l WHERE l.send_id=s.id) like_count,
               (SELECT count(*)::int FROM comments c
-               WHERE c.send_id=s.id AND c.moderation_status='approved'
+               WHERE c.send_id=s.id AND (
+                 c.moderation_status='approved' OR
+                 (c.moderation_status='pending' AND c.user_id=$1::uuid)
+               )
                  AND ($1::uuid IS NULL OR NOT EXISTS (
                    SELECT 1 FROM friendships blocked_commenter
                    WHERE blocked_commenter.status='blocked' AND (
@@ -202,7 +205,10 @@ export const sendRoutes: FastifyPluginAsync = async (app) => {
               u.id user_id,u.nickname,u.avatar_url,r.id route_id,r.name route_name,r.grade,r.color,
               g.id gym_id,g.name gym_name,count(DISTINCT l.user_id)::int like_count,
               (SELECT count(*)::int FROM comments c
-               WHERE c.send_id=s.id AND c.moderation_status='approved'
+               WHERE c.send_id=s.id AND (
+                 c.moderation_status='approved' OR
+                 (c.moderation_status='pending' AND c.user_id=$2::uuid)
+               )
                  AND ($2::uuid IS NULL OR NOT EXISTS (
                    SELECT 1 FROM friendships blocked_commenter
                    WHERE blocked_commenter.status='blocked' AND (
@@ -239,9 +245,12 @@ export const sendRoutes: FastifyPluginAsync = async (app) => {
     );
     if (!result.rowCount) throw app.httpErrors.notFound('动态不存在');
     const comments = await query(
-      `SELECT c.id,c.content,c.created_at,u.id user_id,u.nickname,u.avatar_url
+      `SELECT c.id,c.content,c.created_at,c.moderation_status,u.id user_id,u.nickname,u.avatar_url
        FROM comments c JOIN users u ON u.id=c.user_id
-       WHERE c.send_id=$1 AND c.moderation_status='approved'
+       WHERE c.send_id=$1 AND (
+         c.moderation_status='approved' OR
+         (c.moderation_status='pending' AND c.user_id=$2::uuid)
+       )
        AND ($2::uuid IS NULL OR NOT EXISTS (
          SELECT 1 FROM friendships blocked
          WHERE blocked.status='blocked' AND (
@@ -269,7 +278,15 @@ export const sendRoutes: FastifyPluginAsync = async (app) => {
     const { id } = idParams.parse(request.params);
     const { content } = commentBody.parse(request.body);
     await assertVisibleSend(id, request.user.sub);
-    const result = await query('INSERT INTO comments(send_id,user_id,content,moderation_status) VALUES($1,$2,$3,$4) RETURNING *', [id, request.user.sub, content, initialModerationStatus()]);
+    const result = await query(
+      `WITH inserted AS (
+         INSERT INTO comments(send_id,user_id,content,moderation_status)
+         VALUES($1,$2,$3,$4) RETURNING *
+       )
+       SELECT c.*,u.nickname,u.avatar_url
+       FROM inserted c JOIN users u ON u.id=c.user_id`,
+      [id, request.user.sub, content, initialModerationStatus()]
+    );
     return result.rows[0];
   });
   app.delete('/:sendId/comments/:commentId', { preHandler: app.authenticate }, async (request) => {
