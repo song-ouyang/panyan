@@ -29,6 +29,18 @@ CREATE TABLE IF NOT EXISTS users (
 -- incomplete when the identity provider did not provide usable profile data.
 ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_completed boolean NOT NULL DEFAULT true;
 
+-- Monthly summaries become public only after their owner explicitly shares.
+-- Keep revocation state for idempotent retries; sharing again rotates the token.
+-- Account deletion cascades immediately to every shared monthly summary.
+CREATE TABLE IF NOT EXISTS monthly_record_shares (
+  token varchar(43) PRIMARY KEY CHECK (token ~ '^[A-Za-z0-9_-]{43}$'),
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  month date NOT NULL CHECK (extract(day FROM month)=1),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  revoked_at timestamptz,
+  UNIQUE(user_id,month)
+);
+
 CREATE TABLE IF NOT EXISTS gym_brands (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name varchar(80) UNIQUE NOT NULL,
