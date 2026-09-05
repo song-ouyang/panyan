@@ -65,6 +65,11 @@ if [[ -n "$allow_gym_import" && "$allow_gym_import" != "false" ]]; then
   fail "ALLOW_PRODUCTION_GYM_IMPORT 不能长期写入生产配置；只能在备份后为单次目录导入命令临时传入 true"
 fi
 
+allow_square_seed="$(env_value ALLOW_PRODUCTION_SQUARE_SEED)"
+if [[ -n "$allow_square_seed" && "$allow_square_seed" != "false" ]]; then
+  fail "ALLOW_PRODUCTION_SQUARE_SEED 不能长期写入生产配置；只能在备份后为单次广场体验数据导入命令临时传入 true"
+fi
+
 apple_client="$(env_value APPLE_CLIENT_ID)"
 apple_team="$(env_value APPLE_TEAM_ID)"
 if [[ -z "$apple_client" || -z "$apple_team" || "$apple_client" =~ 请|填写 || "$apple_team" =~ 请|填写 ]]; then

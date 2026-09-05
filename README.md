@@ -123,6 +123,14 @@ docker compose --env-file .env.production -f docker-compose.server.yml run --rm 
 
 不要把 `ALLOW_PRODUCTION_GYM_IMPORT=true` 长期写入生产配置；开发环境仍直接使用 `npm --workspace server run db:seed`。
 
+广场体验数据使用完全独立的 seed，不会重跑岩馆目录，也不会删除任何数据。它只写入固定 fixture UUID/openid 命名空间下的 5 个「完攀体验」账号、12 条纯文字公开动态及对应点赞/评论；动态不关联真实岩馆或线路。生产脚本会核对当前正在运行的 API 容器与已部署镜像完全一致、校验配置、先备份数据库，导入后同时检查 `/health` 和 `/ready`。只对这一次命令显式授权：
+
+```bash
+ALLOW_PRODUCTION_SQUARE_SEED=true bash deploy/seed-square-experience.sh
+```
+
+生产环境未传入 `ALLOW_PRODUCTION_SQUARE_SEED=true` 时命令会在任何写入前拒绝执行。不要把该变量改为生产配置的持久值；需要重跑时，应重新备份后再执行同一条单次命令。本地开发可在 migration 后使用 `npm --workspace server run db:seed-square-experience`。
+
 ### Flutter 原生登录人工配置
 
 - 微信开放平台：创建「移动应用」，配置 iOS Bundle ID `com.wanpan.wanpanDiary`、Android package `com.wanpan.wanpan_diary` 和正式签名指纹。小程序 AppID/Secret 不能替代移动应用凭据。

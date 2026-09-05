@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:e2e": "RUN_DB_E2E=1 vitest run test/db-e2e.test.ts",
     "db:migrate": "tsx src/db/migrate.ts",
-    "db:seed": "tsx src/db/seed.ts"
+    "db:seed": "tsx src/db/seed.ts",
+    "db:seed-square-experience": "tsx src/db/seed_square_experience.ts"
   },
   "dependencies": {
     "@alicloud/dypnsapi20170525": "^2.0.0",

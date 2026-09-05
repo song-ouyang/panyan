@@ -47,6 +47,9 @@ const schema = z.object({
   MODERATION_MODE: z.enum(['off', 'manual']).default('off'),
   ALLOW_PRODUCTION_GYM_IMPORT: z.enum(['true', 'false'])
     .default('false')
+    .transform((value) => value === 'true'),
+  ALLOW_PRODUCTION_SQUARE_SEED: z.enum(['true', 'false'])
+    .default('false')
     .transform((value) => value === 'true')
 }).superRefine((value, context) => {
   const hasDatabaseUrl = value.DATABASE_URL.length > 0;
