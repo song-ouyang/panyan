@@ -83,7 +83,10 @@ beforeEach(() => {
   mocks.config.WECHAT_MOBILE_APP_SECRET = 'mobile-secret';
 });
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.useRealTimers();
+  vi.unstubAllGlobals();
+});
 
 describe('authentication routes', () => {
   it('sends a phone verification code without creating a user', async () => {
@@ -168,34 +171,63 @@ describe('authentication routes', () => {
     await app.close();
   });
 
-  it('limits repeated verification attempts for the same phone', async () => {
+  it.each([
+    { scope: 'phone', max: 8 },
+    { scope: 'IP', max: 20 }
+  ])('limits SMS login by $scope for five minutes with an accurate Retry-After', async ({ scope, max }) => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    const start = Date.parse('2026-09-05T08:00:00Z');
+    vi.setSystemTime(start);
     mocks.verifySmsCode.mockRejectedValue(
       new mocks.SmsProviderError('验证码错误或已过期。', 401)
     );
     const app = await createApp();
-    for (let attempt = 0; attempt < 8; attempt += 1) {
-      const response = await app.inject({
-        method: 'POST',
-        url: '/api/auth/sms/login',
-        remoteAddress: `10.0.0.${attempt + 1}`,
-        payload: { phone: '13800138000', code: '000000' }
-      });
-      expect(response.statusCode).toBe(401);
-    }
-    const blocked = await app.inject({
+    const attemptLogin = (attempt: number) => app.inject({
       method: 'POST',
       url: '/api/auth/sms/login',
-      remoteAddress: '10.0.0.99',
-      payload: { phone: '13800138000', code: '000000' }
+      remoteAddress: scope === 'phone' ? `10.0.0.${attempt + 1}` : '10.0.0.1',
+      payload: {
+        phone: scope === 'phone' ? '13800138000' : `1390000${String(attempt).padStart(4, '0')}`,
+        code: '000000'
+      }
+    });
+    for (let attempt = 0; attempt < max; attempt += 1) {
+      const response = await attemptLogin(attempt);
+      expect(response.statusCode).toBe(401);
+    }
+    const blocked = await attemptLogin(max);
+    expect(blocked.statusCode).toBe(429);
+    expect(blocked.headers).toMatchObject({
+      'retry-after': '300',
+      'x-ratelimit-reset': '300',
+      'x-ratelimit-limit': String(max),
+      'x-ratelimit-remaining': '0'
     });
 
-    expect(blocked.statusCode).toBe(429);
-    expect(mocks.verifySmsCode).toHaveBeenCalledTimes(8);
+    vi.setSystemTime(start + 2 * 60_000);
+    const stillBlocked = await attemptLogin(max + 1);
+    expect(stillBlocked.statusCode).toBe(429);
+    expect(stillBlocked.headers['retry-after']).toBe('180');
+    vi.setSystemTime(start + 5 * 60_000 - 1);
+    const almostExpired = await attemptLogin(max + 2);
+    expect(almostExpired.statusCode).toBe(429);
+    expect(almostExpired.headers['retry-after']).toBe('1');
+    expect(mocks.verifySmsCode).toHaveBeenCalledTimes(max);
     expect(mocks.query).not.toHaveBeenCalled();
+
+    vi.setSystemTime(start + 5 * 60_000);
+    mocks.verifySmsCode.mockResolvedValue({ isReview: false });
+    const unblocked = await attemptLogin(max + 3);
+    expect(unblocked.statusCode).toBe(200);
+    expect(unblocked.headers['retry-after']).toBeUndefined();
+    expect(mocks.verifySmsCode).toHaveBeenCalledTimes(max + 1);
+    expect(mocks.query).toHaveBeenCalledOnce();
     await app.close();
   });
 
   it('normalizes whitespace before applying the per-phone send limit', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-09-05T08:00:00Z'));
     const app = await createApp();
     for (let attempt = 0; attempt < 5; attempt += 1) {
       const response = await app.inject({
@@ -212,11 +244,14 @@ describe('authentication routes', () => {
     });
 
     expect(blocked.statusCode).toBe(429);
+    expect(blocked.headers['retry-after']).toBe('600');
     expect(mocks.sendSmsCode).toHaveBeenCalledTimes(5);
     await app.close();
   });
 
   it('limits SMS sends by IP even when every phone number is different', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-09-05T08:00:00Z'));
     const app = await createApp();
     for (let attempt = 0; attempt < 10; attempt += 1) {
       const response = await app.inject({
@@ -233,7 +268,7 @@ describe('authentication routes', () => {
     });
 
     expect(blocked.statusCode).toBe(429);
-    expect(blocked.headers['retry-after']).toBeDefined();
+    expect(blocked.headers['retry-after']).toBe('600');
     expect(mocks.sendSmsCode).toHaveBeenCalledTimes(10);
     await app.close();
   });

@@ -161,12 +161,12 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
   });
   const smsLoginIpLimit = app.createRateLimit({
     max: 20,
-    timeWindow: '10 minutes',
+    timeWindow: '5 minutes',
     keyGenerator: (request) => `sms-login:ip:${request.ip}`
   });
   const smsLoginPhoneLimit = app.createRateLimit({
     max: 8,
-    timeWindow: '10 minutes',
+    timeWindow: '5 minutes',
     keyGenerator: (request) => smsPhoneKey('sms-login', request)
   });
 
