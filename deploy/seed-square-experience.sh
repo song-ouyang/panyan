@@ -56,7 +56,7 @@ bash deploy/backup.sh "$COMPOSE_FILE"
 
 API_IMAGE_TAG="$image_tag" "${COMPOSE[@]}" \
   --env-file "$ENV_FILE" -f "$COMPOSE_FILE" \
-  run --rm --no-deps --pull never \
+  run --rm --no-deps \
   -e NODE_ENV=production \
   -e ALLOW_PRODUCTION_SQUARE_SEED=true \
   api sh -c 'node server/dist/db/migrate.js && node server/dist/db/seed_square_experience.js'
