@@ -35,12 +35,14 @@ class _RegionRankingApi extends ApiClient {
     this.includeMyRank = false,
     this.nickname = '天府岩友',
     this.points = 168,
+    this.rank = 1,
   }) : super(config: _config, accessTokenProvider: () => null);
 
   final Future<JsonMap>? regionsResponse;
   final bool includeMyRank;
   final String nickname;
   final int points;
+  final int rank;
   final requests = <_CapturedRequest>[];
 
   @override
@@ -62,7 +64,7 @@ class _RegionRankingApi extends ApiClient {
     }
     if (path == '/rankings') {
       final entry = {
-        'rank': 1,
+        'rank': rank,
         'user_id': 'user-chengdu',
         'nickname': nickname,
         'avatar_url': null,
@@ -105,7 +107,10 @@ class _RegionRankingApi extends ApiClient {
       requests.lastWhere((request) => request.path == path);
 }
 
-Future<SessionController> _createSession({bool authenticated = false}) async {
+Future<SessionController> _createSession({
+  bool authenticated = false,
+  String userId = 'user-chengdu',
+}) async {
   SharedPreferences.setMockInitialValues({});
   final session = SessionController(
     preferences: await SharedPreferences.getInstance(),
@@ -114,9 +119,9 @@ Future<SessionController> _createSession({bool authenticated = false}) async {
   );
   if (authenticated) {
     await session.acceptSession(
-      const AuthSession(
+      AuthSession(
         token: 'ranking-test-token',
-        user: UserSummary(id: 'user-chengdu', nickname: '天府岩友'),
+        user: UserSummary(id: userId, nickname: '天府岩友'),
         needsProfile: false,
       ),
     );
@@ -211,10 +216,10 @@ Future<void> _pumpRanking(
 }
 
 void main() {
-  testWidgets('我的排名保持紧凑横条，首行前移且真实积分和主页入口保留', (tester) async {
+  testWidgets('我的排名采用大插画比例，名次与积分来自接口且榜单仍可进入主页', (tester) async {
     await tester.binding.setSurfaceSize(const Size(390, 844));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    final api = _RegionRankingApi(includeMyRank: true);
+    final api = _RegionRankingApi(includeMyRank: true, rank: 7, points: 2468);
     final session = await _createSession(authenticated: true);
     final cityController = HomeCityController();
     await cityController.selectManually('成都');
@@ -233,12 +238,20 @@ void main() {
 
     final summary = find.byKey(const Key('ranking-my-summary'));
     final firstRow = find.byKey(const Key('ranked-person-user-chengdu'));
-    expect(tester.getSize(summary).height, inInclusiveRange(62, 64));
-    expect(tester.getTopLeft(firstRow).dy, lessThan(300));
-    expect(firstRow.hitTestable(), findsOneWidget);
-    expect(find.text('我的成都排名 #1'), findsOneWidget);
-    expect(find.text('168'), findsNWidgets(2));
-    expect(find.text('本月攀岩记录'), findsOneWidget);
+    final heroSize = tester.getSize(summary);
+    expect(heroSize.width / heroSize.height, closeTo(1.15, .03));
+    expect(
+      find.descendant(of: summary, matching: find.text('我的成都排名')),
+      findsOneWidget,
+    );
+    expect(
+      tester.widget<Text>(find.byKey(const Key('ranking-hero-rank'))).data,
+      '#7',
+    );
+    expect(
+      tester.widget<Text>(find.byKey(const Key('ranking-hero-points'))).data,
+      '2468',
+    );
     expect(find.textContaining('首攀'), findsNothing);
     expect(
       tester.getSize(find.byKey(const Key('ranking-segment-0'))).height,
@@ -246,6 +259,21 @@ void main() {
     );
     expect(tester.takeException(), isNull);
 
+    await tester.scrollUntilVisible(
+      firstRow,
+      160,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    expect(firstRow.hitTestable(), findsOneWidget);
+    expect(
+      find.descendant(of: firstRow, matching: find.text('2468')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: firstRow, matching: find.text('12 条完攀 · 最高 V6')),
+      findsOneWidget,
+    );
     await tester.tap(firstRow);
     await tester.pumpAndSettle();
     expect(find.text('岩友主页 user-chengdu'), findsOneWidget);
@@ -282,17 +310,83 @@ void main() {
       final firstRow = find.byKey(const Key('ranked-person-user-chengdu'));
       expect(filter.hitTestable(), findsOneWidget);
       expect(tester.getSize(filter).height, greaterThanOrEqualTo(44));
-      expect(tester.getSize(summary).height, greaterThanOrEqualTo(62));
-      expect(find.text('123456789'), findsNWidgets(2));
-      expect(find.text('12 条完攀 · 最高 V6'), findsOneWidget);
+      final heroSize = tester.getSize(summary);
+      expect(heroSize.width, lessThanOrEqualTo(320));
+      expect(heroSize.height, greaterThanOrEqualTo(heroSize.width / 1.15));
+      expect(
+        tester.widget<Text>(find.byKey(const Key('ranking-hero-points'))).data,
+        '123456789',
+      );
       expect(tester.takeException(), isNull);
 
-      await tester.ensureVisible(firstRow);
+      await tester.scrollUntilVisible(
+        firstRow,
+        160,
+        scrollable: find.byType(Scrollable).first,
+      );
       await tester.pumpAndSettle();
       expect(firstRow.hitTestable(), findsOneWidget);
+      expect(
+        find.descendant(of: firstRow, matching: find.text('123456789')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: firstRow, matching: find.text('12 条完攀 · 最高 V6')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: firstRow,
+          matching: find.textContaining(api.nickname),
+        ),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
       await tester.tap(firstRow);
       await tester.pumpAndSettle();
       expect(find.text('岩友主页 user-chengdu'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  for (final authenticated in [false, true]) {
+    testWidgets('${authenticated ? '未上榜用户' : '游客'}的大插画卡保留加入提示，不生成我的名次或积分', (
+      tester,
+    ) async {
+      await tester.binding.setSurfaceSize(const Size(390, 844));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final api = _RegionRankingApi();
+      final session = await _createSession(
+        authenticated: authenticated,
+        userId: 'viewer-without-sends',
+      );
+      final router = _createRouter(
+        api: api,
+        session: session,
+        initialSegment: 0,
+        compactShell: true,
+      );
+      addTearDown(router.dispose);
+      addTearDown(session.dispose);
+
+      await _pumpRanking(tester, router: router, compact: true, textScale: 1);
+
+      final summary = find.byKey(const Key('ranking-my-summary'));
+      expect(summary, findsOneWidget);
+      expect(
+        find.descendant(
+          of: summary,
+          matching: find.text(authenticated ? '完成线路，加入全国榜' : '登录后加入全国榜'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('ranking-hero-rank')), findsNothing);
+      expect(find.byKey(const Key('ranking-hero-points')), findsNothing);
+      expect(
+        find.descendant(of: summary, matching: find.text('168')),
+        findsNothing,
+        reason: '榜单他人的分数不能成为我的积分',
+      );
       expect(tester.takeException(), isNull);
     });
   }
@@ -508,6 +602,12 @@ void main() {
     expect(peopleRequest, containsPair('scope', 'city'));
     expect(peopleRequest, containsPair('province', '四川省'));
     expect(peopleRequest, containsPair('city', '成都'));
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('ranked-person-user-chengdu')),
+      180,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
     expect(find.text('天府岩友'), findsOneWidget);
 
     await tester.tap(find.text('热门线路'));

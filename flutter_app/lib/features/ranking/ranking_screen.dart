@@ -12,11 +12,13 @@ import '../gyms/application/home_city_controller.dart';
 import '../../shared/app_assets.dart';
 import '../../shared/motion/wanpan_motion.dart';
 import '../../shared/motion/wanpan_motion_sound.dart';
-import '../../shared/widgets/wanpan_cat_mark.dart';
 import '../../shared/widgets/wanpan_lottie_stage.dart';
 import '../../shared/widgets/wanpan_mascot.dart';
 import '../../shared/widgets/wanpan_pressable.dart';
 import '../../shared/widgets/wanpan_skeleton.dart';
+import 'widgets/ranking_hero_card.dart';
+import 'widgets/ranking_medal.dart';
+import 'widgets/ranking_rock_backdrop.dart';
 
 class RankingScreen extends StatefulWidget {
   const RankingScreen({
@@ -366,11 +368,15 @@ class _RankingScreenState extends State<RankingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(toolbarHeight: 48, title: const Text('排行')),
+      appBar: AppBar(
+        toolbarHeight: (MediaQuery.textScalerOf(context).scale(24) * 1.3 + 8)
+            .clamp(56.0, double.infinity),
+        title: Text('排行', style: Theme.of(context).textTheme.headlineMedium),
+      ),
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
             child: _SegmentedControl(
               value: _segment,
               peopleLabel: _selectedRegion == null ? '全国榜' : '$_regionLabel榜',
@@ -378,7 +384,7 @@ class _RankingScreenState extends State<RankingScreen> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
             child: _RegionFilter(
               selected: _selectedRegion,
               loading: _regionsLoading,
@@ -451,47 +457,52 @@ class _RankingScreenState extends State<RankingScreen> {
     return RefreshIndicator(
       key: const ValueKey('people'),
       onRefresh: _load,
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
+      child: Stack(
         children: [
-          _ScoringCard(
-            board: board,
-            regionLabel: _regionLabel,
-            isAuthenticated: widget.session.isAuthenticated,
-          ),
-          Padding(
-            padding: const EdgeInsets.only(top: 14, bottom: 10),
-            child: Row(
-              children: [
-                Container(
-                  width: 7,
-                  height: 7,
-                  decoration: const BoxDecoration(
-                    color: WanpanColors.coral,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    '本月攀岩记录',
-                    style: Theme.of(context).textTheme.titleSmall
-                        ?.copyWith(fontWeight: FontWeight.w800),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          ...board.items.map(
-            (entry) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: _RankTile(
-                entry: entry,
-                isMe: board.myRank?.user.id == entry.user.id,
-                onTap: () => context.push('/users/${entry.user.id}'),
+          const Positioned(right: 0, bottom: 0, child: RankingRockBackdrop()),
+          ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
+            children: [
+              RankingHeroCard(
+                myRank: board.myRank,
+                regionLabel: _regionLabel,
+                isAuthenticated: widget.session.isAuthenticated,
               ),
-            ),
+              Padding(
+                padding: const EdgeInsets.only(top: 14, bottom: 10),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 7,
+                      height: 7,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFE6BA87),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '本月攀岩记录',
+                        style: Theme.of(context).textTheme.titleSmall
+                            ?.copyWith(fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              ...board.items.map(
+                (entry) => Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: _RankTile(
+                    entry: entry,
+                    isMe: board.myRank?.user.id == entry.user.id,
+                    onTap: () => context.push('/users/${entry.user.id}'),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -584,7 +595,7 @@ class _RegionFilter extends StatelessWidget {
         decoration: BoxDecoration(
           color: WanpanColors.surface,
           borderRadius: BorderRadius.circular(WanpanRadii.medium),
-          border: Border.all(color: WanpanColors.border),
+          border: Border.all(color: const Color(0xFFF0D7B7), width: 1.2),
         ),
         child: Row(
           children: [
@@ -841,10 +852,28 @@ class _SegmentedControl extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 9),
               decoration: BoxDecoration(
                 color: active ? WanpanColors.coral : WanpanColors.surface,
+                gradient: active
+                    ? const LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Color(0xFFFF7D5D), Color(0xFFFF674B)],
+                      )
+                    : null,
                 borderRadius: BorderRadius.circular(18),
                 border: Border.all(
-                  color: active ? WanpanColors.coral : WanpanColors.border,
+                  color: active
+                      ? const Color(0xFFE95434)
+                      : const Color(0xFFF0D7B7),
+                  width: 1.3,
                 ),
+                boxShadow: active
+                    ? const [
+                        BoxShadow(
+                          color: Color(0xFFDE4E2F),
+                          offset: Offset(0, 3),
+                        ),
+                      ]
+                    : null,
               ),
               child: Text(
                 label,
@@ -853,86 +882,13 @@ class _SegmentedControl extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: active ? Colors.white : WanpanColors.ink,
+                  fontSize: 16,
                   fontWeight: FontWeight.w800,
                 ),
               ),
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _ScoringCard extends StatelessWidget {
-  const _ScoringCard({
-    required this.board,
-    required this.regionLabel,
-    required this.isAuthenticated,
-  });
-  final RankingBoard board;
-  final String regionLabel;
-  final bool isAuthenticated;
-  @override
-  Widget build(BuildContext context) {
-    final me = board.myRank;
-    return Container(
-      key: const Key('ranking-my-summary'),
-      constraints: const BoxConstraints(minHeight: 62),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: WanpanColors.goldSoft,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: WanpanColors.gold.withValues(alpha: .35)),
-      ),
-      child: Row(
-        children: [
-          const ExcludeSemantics(
-            child: SizedBox(
-              width: 44,
-              height: 42,
-              child: Stack(
-                children: [
-                  WanpanCatMark(size: 40),
-                  Positioned(
-                    right: 0,
-                    bottom: 0,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: WanpanColors.goldSoft,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Padding(
-                        padding: EdgeInsets.all(2),
-                        child: Icon(
-                          Icons.emoji_events_rounded,
-                          color: WanpanColors.gold,
-                          size: 17,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              me == null
-                  ? isAuthenticated
-                        ? '完成线路，加入$regionLabel榜'
-                        : '登录后加入$regionLabel榜'
-                  : '我的$regionLabel排名 #${me.rank}',
-              style: Theme.of(context).textTheme.titleMedium
-                  ?.copyWith(fontSize: 15, height: 1.25),
-            ),
-          ),
-          if (me != null) ...[
-            const SizedBox(width: 8),
-            _RankPoints(points: me.points, fontSize: 24),
-          ],
-        ],
       ),
     );
   }
@@ -949,7 +905,9 @@ class _RankTile extends StatelessWidget {
   final VoidCallback onTap;
   @override
   Widget build(BuildContext context) {
-    final usesLargeText = MediaQuery.textScalerOf(context).scale(1) >= 1.6;
+    final usesLargeText =
+        MediaQuery.textScalerOf(context).scale(1) >= 1.6 ||
+        MediaQuery.sizeOf(context).width < 360;
     final description = Text(
       '${entry.sendCount} 条完攀 · 最高 V${entry.maxGrade}',
       style: Theme.of(context).textTheme.labelMedium,
@@ -960,40 +918,67 @@ class _RankTile extends StatelessWidget {
       semanticLabel: '查看${entry.user.nickname}的主页',
       borderRadius: BorderRadius.circular(WanpanRadii.medium),
       child: Container(
-        constraints: const BoxConstraints(minHeight: 72),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        constraints: const BoxConstraints(minHeight: 88),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         decoration: BoxDecoration(
           color: WanpanColors.surface,
-          borderRadius: BorderRadius.circular(WanpanRadii.medium),
-          border: Border.all(
-            color: isMe ? const Color(0x59F2674F) : WanpanColors.border,
-          ),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: const Color(0xFFF0D7B7), width: 1.2),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Row(
               children: [
-                _RankBadge(rank: entry.rank),
+                RankingMedal(rank: entry.rank),
                 const SizedBox(width: 8),
                 CircleAvatar(
-                  radius: 18,
+                  radius: 24,
                   backgroundColor: WanpanColors.surfaceSoft,
                   backgroundImage: entry.user.avatarUrl == null
                       ? null
                       : NetworkImage(entry.user.avatarUrl!),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        '${entry.user.nickname}${isMe ? ' · 我' : ''}',
-                        maxLines: usesLargeText ? 2 : 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(fontSize: 15),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              entry.user.nickname,
+                              maxLines: usesLargeText ? 2 : 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                          ),
+                          if (isMe) ...[
+                            const SizedBox(width: 5),
+                            DecoratedBox(
+                              decoration: BoxDecoration(
+                                color: WanpanColors.coralSoft,
+                                borderRadius: BorderRadius.circular(5),
+                              ),
+                              child: const Padding(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 5,
+                                  vertical: 2,
+                                ),
+                                child: Text(
+                                  '我',
+                                  style: TextStyle(
+                                    color: WanpanColors.coralStrong,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                       if (!usesLargeText) description,
                     ],
@@ -1031,10 +1016,9 @@ class _RankTile extends StatelessWidget {
 }
 
 class _RankPoints extends StatelessWidget {
-  const _RankPoints({required this.points, this.fontSize = 18});
+  const _RankPoints({required this.points});
 
   final int points;
-  final double fontSize;
 
   @override
   Widget build(BuildContext context) => ConstrainedBox(
@@ -1048,9 +1032,9 @@ class _RankPoints extends StatelessWidget {
           alignment: Alignment.centerRight,
           child: Text(
             '$points',
-            style: TextStyle(
+            style: const TextStyle(
               color: WanpanColors.coralStrong,
-              fontSize: fontSize,
+              fontSize: 22,
               height: 1.1,
               fontWeight: FontWeight.w900,
             ),
@@ -1063,46 +1047,6 @@ class _RankPoints extends StatelessWidget {
       ],
     ),
   );
-}
-
-class _RankBadge extends StatelessWidget {
-  const _RankBadge({required this.rank});
-
-  final int rank;
-
-  @override
-  Widget build(BuildContext context) {
-    final medalColor = switch (rank) {
-      1 => WanpanColors.sunflower,
-      2 => const Color(0xFF87969E),
-      3 => const Color(0xFFB8794C),
-      _ => null,
-    };
-    return Semantics(
-      label: '第$rank名',
-      excludeSemantics: true,
-      child: SizedBox(
-        width: 30,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (medalColor != null)
-              Icon(Icons.emoji_events_rounded, size: 22, color: medalColor),
-            Text(
-              '$rank',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: WanpanColors.ink,
-                fontSize: medalColor == null ? 19 : 12,
-                fontWeight: FontWeight.w900,
-                height: 1.2,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 class _RouteRankingIntro extends StatelessWidget {

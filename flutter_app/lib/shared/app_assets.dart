@@ -10,6 +10,7 @@ abstract final class AppAssets {
   static const profilePeekCat = 'assets/profile-peek-cat-v2.png';
   static const routeMapCat = 'assets/route-map-cat-v2.png';
   static const routeReviewCat = 'assets/route-review-cat-v2.png';
+  static const rankingHeroScene = 'assets/ranking-hero-scene-v1.png';
   static const sendSuccessAnimation = 'assets/lottie/send-success.json';
   static const gradeMilestoneAnimation = 'assets/lottie/grade-milestone.json';
   static const routePublishedAnimation = 'assets/lottie/route-published.json';
