@@ -107,7 +107,10 @@
 
     <view class="menu-group">
       <view class="menu pressable" bindtap="notifications"><text>消息通知 <label wx:if="{{unread}}" class="badge">{{unread}}</label></text><text>›</text></view>
-      <view class="menu pressable" bindtap="posts"><text>我的打卡动态</text><text>›</text></view>
+      <view class="menu pressable" bindtap="posts"><text>我的动态</text><text>›</text></view>
+      <view class="menu pressable" data-type="comments" bindtap="activity"><text>我的评论</text><text>›</text></view>
+      <view class="menu pressable" data-type="favorites" bindtap="activity"><text>我的收藏</text><text>›</text></view>
+      <view class="menu pressable" data-type="likes" bindtap="activity"><text>我的点赞</text><text>›</text></view>
       <view class="menu pressable" bindtap="meetups"><text>我的约爬</text><text>›</text></view>
       <view class="menu pressable" bindtap="friends"><text>我的岩友</text><text>›</text></view>
       <view class="menu pressable" bindtap="submissions"><text>我的线路投稿</text><text>›</text></view>

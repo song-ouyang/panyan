@@ -63,7 +63,8 @@ export const routeRoutes: FastifyPluginAsync = async (app) => {
                      (blocked_commenter.addressee_id=$2 AND blocked_commenter.requester_id=c.user_id)
                    )
                  ))) comment_count,
-              coalesce(bool_or(l.user_id=$2::uuid),false) liked
+              coalesce(bool_or(l.user_id=$2::uuid),false) liked,
+              EXISTS(SELECT 1 FROM post_favorites own_favorite WHERE own_favorite.send_id=s.id AND own_favorite.user_id=$2::uuid) favorited
        FROM sends s
        JOIN users u ON u.id=s.user_id
        JOIN routes r ON r.id=s.route_id

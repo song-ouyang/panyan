@@ -1,6 +1,7 @@
 const { request } = require('../../utils/api');
 const { invalidate, invalidatePrefix } = require('../../utils/page-cache');
 const { haptic } = require('../../utils/motion');
+const social = require('../../utils/social-state');
 
 const STATUS_LABELS = {
   approved: '已发布',
@@ -27,6 +28,7 @@ Page({
   onLoad() {
     this._disposed = false;
     this.loadSequence = 0;
+    this._userId = social.currentUserId();
   },
 
   onShow() {
@@ -70,7 +72,7 @@ Page({
     return `${date.getFullYear()}.${pad(date.getMonth() + 1)}.${pad(date.getDate())}`;
   },
 
-  load({ background = false } = {}) {
+  async load({ background = false } = {}) {
     const sequence = (this.loadSequence || 0) + 1;
     this.loadSequence = sequence;
     const hasItems = this.data.items.length > 0;
@@ -80,26 +82,27 @@ Page({
       this.setData({ error: '' });
     }
 
-    return request('/users/me/sends')
-      .then(data => {
-        if (this._disposed || sequence !== this.loadSequence) return data;
-        this.setData({
-          items: this.normalizeItems(data),
-          loading: false,
-          refreshing: false,
-          error: ''
-        });
-        return data;
-      })
-      .catch(error => {
-        if (this._disposed || sequence !== this.loadSequence) return null;
-        this.setData({
-          loading: false,
-          refreshing: false,
-          error: error.message || '我的动态加载失败'
-        });
-        return null;
-      });
+    const visibleUserId = social.currentUserId();
+    if (this._userId !== visibleUserId) {
+      this._userId = visibleUserId;
+      this.setData({ items: [], deletingId: '', loading: true, refreshing: false });
+    }
+    let userId;
+    try {
+      userId = await social.identity();
+      if (this._disposed || sequence !== this.loadSequence) return;
+      this._userId = userId;
+      const data = await request('/users/me/sends', { expectedUserId: userId });
+      if (this._disposed || sequence !== this.loadSequence) return;
+      if (!social.isCurrent(userId)) { this.setData({ items: [], loading: false, refreshing: false }); return; }
+      this.setData({ items: this.normalizeItems(data), loading: false, refreshing: false, error: '' });
+      return data;
+    } catch (error) {
+      if (this._disposed || sequence !== this.loadSequence) return;
+      if (userId && !social.isCurrent(userId)) this.setData({ items: [] });
+      this.setData({ loading: false, refreshing: false, error: error.message || '我的动态加载失败' });
+      return null;
+    }
   },
 
   retry() {
@@ -119,6 +122,8 @@ Page({
   remove(e) {
     const id = e.currentTarget.dataset.id;
     if (!id || this._disposed || this._deletePromptOpen || this.data.deletingId) return;
+    const userId = this._userId;
+    if (!social.isCurrent(userId)) return this.load();
     this._deletePromptOpen = true;
     wx.showModal({
       title: '删除动态',
@@ -127,16 +132,19 @@ Page({
       confirmColor: '#c94c3f',
       success: async result => {
         if (!result.confirm || this._disposed || this.data.deletingId) return;
+        if (!social.isCurrent(userId)) return this.load();
         this.setData({ deletingId: id });
         try {
-          const deleted = await request(`/sends/${id}`, { method: 'DELETE' });
+          const deleted = await request(`/sends/${id}`, { method: 'DELETE', expectedUserId: userId });
           if (!deleted || deleted.deleted !== true) throw new Error('动态未删除，请稍后重试');
+          social.changed();
           invalidate('feed:public');
           invalidate('profile:overview');
           invalidatePrefix('profile:dashboard:');
           invalidatePrefix('ranking:users:');
           invalidate('ranking:routes');
           if (this._disposed) return;
+          if (!social.isCurrent(userId)) return this.load();
           this.loadSequence = (this.loadSequence || 0) + 1;
           haptic('warning');
           this.setData({
@@ -148,6 +156,7 @@ Page({
           wx.showToast({ title: '已删除' });
         } catch (error) {
           if (this._disposed) return;
+          if (!social.isCurrent(userId)) return this.load();
           this.setData({ deletingId: '' });
           wx.showToast({ title: error.message || '删除失败，请重试', icon: 'none' });
         }

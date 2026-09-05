@@ -7,6 +7,7 @@ import '../../core/network/api_client.dart';
 import '../auth/application/session_controller.dart';
 import '../../shared/app_assets.dart';
 import '../../shared/motion/wanpan_motion.dart';
+import '../../shared/widgets/wanpan_card.dart';
 import '../../shared/widgets/wanpan_mascot.dart';
 import '../../shared/widgets/wanpan_pressable.dart';
 
@@ -184,6 +185,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         children: [
           _ProfileHeader(profile: profile, onEdit: _openProfileEditor),
           const SizedBox(height: 16),
+          const _ActivityShortcuts(),
+          const SizedBox(height: 16),
           _GrowthCard(
             stats: profile.stats,
             onTap: () => context.push<void>('/profile/calendar'),
@@ -206,13 +209,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             child: Column(
               children: [
-                _ActionTile(
-                  icon: Icons.article_outlined,
-                  title: '我的动态',
-                  subtitle: '查看和管理自己的动态与打卡',
-                  onTap: () => context.push('/profile/posts'),
-                ),
-                const Divider(indent: 73, endIndent: 16),
                 _ActionTile(
                   icon: Icons.alt_route_rounded,
                   title: '线路发布记录',
@@ -245,6 +241,79 @@ class _ProfileScreenState extends State<ProfileScreen> {
     await context.push<void>('/profile/setup?editing=true&from=/profile');
     if (mounted && widget.session.isAuthenticated) await _load();
   }
+}
+
+class _ActivityShortcuts extends StatelessWidget {
+  const _ActivityShortcuts();
+
+  @override
+  Widget build(BuildContext context) => const WanpanCard(
+    key: Key('profile-activity-shortcuts'),
+    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+    hasShadow: false,
+    child: Row(
+      children: [
+        _ActivityShortcut(
+          name: 'posts',
+          label: '动态',
+          semanticLabel: '我的动态',
+          icon: Icons.article_outlined,
+        ),
+        _ActivityShortcut(
+          name: 'comments',
+          label: '评论',
+          semanticLabel: '我的评论',
+          icon: Icons.chat_bubble_outline_rounded,
+        ),
+        _ActivityShortcut(
+          name: 'favorites',
+          label: '收藏',
+          semanticLabel: '我的收藏',
+          icon: Icons.bookmark_border_rounded,
+        ),
+        _ActivityShortcut(
+          name: 'likes',
+          label: '点赞',
+          semanticLabel: '我的点赞',
+          icon: Icons.favorite_border_rounded,
+        ),
+      ],
+    ),
+  );
+}
+
+class _ActivityShortcut extends StatelessWidget {
+  const _ActivityShortcut({
+    required this.name,
+    required this.label,
+    required this.semanticLabel,
+    required this.icon,
+  });
+
+  final String name;
+  final String label;
+  final String semanticLabel;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) => Expanded(
+    child: WanpanPressable(
+      key: Key('profile-activity-$name'),
+      semanticLabel: semanticLabel,
+      onTap: () => context.push('/profile/$name'),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 26, color: WanpanColors.coralStrong),
+            const SizedBox(height: 8),
+            Text(label, style: Theme.of(context).textTheme.labelLarge),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class _ProfileHeader extends StatelessWidget {

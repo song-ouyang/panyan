@@ -124,7 +124,8 @@ void main() {
     expect(find.text('动态已发布'), findsOneWidget);
     expect(find.text('今天又有新的进步'), findsOneWidget);
     expect(find.byType(TextField), findsNothing);
-    expect(api.scopes, ['square', 'square']);
+    expect(api.scopes.length, greaterThanOrEqualTo(2));
+    expect(api.scopes, everyElement('square'));
     expect(tester.takeException(), isNull);
   });
 

@@ -1,1 +1,1 @@
-{ "navigationBarTitleText": "完攀动态", "enableShareAppMessage": true }
+{ "navigationBarTitleText": "完攀动态", "enableShareAppMessage": true, "enablePullDownRefresh": true }

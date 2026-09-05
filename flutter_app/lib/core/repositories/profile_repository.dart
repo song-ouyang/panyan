@@ -44,6 +44,30 @@ class ProfileRepository {
     return jsonModelList(json['items'], MyPost.fromJson);
   }
 
+  Future<MyCommentPage> getMyComments({String? cursor, int limit = 20}) async =>
+      MyCommentPage.fromJson(
+        await _apiClient.getJson(
+          '/users/me/comments',
+          queryParameters: {'cursor': ?cursor, 'limit': limit.clamp(1, 50)},
+        ),
+      );
+
+  Future<FeedPage> getMyFavorites({String? cursor, int limit = 20}) async =>
+      FeedPage.fromJson(
+        await _apiClient.getJson(
+          '/users/me/favorites',
+          queryParameters: {'cursor': ?cursor, 'limit': limit.clamp(1, 50)},
+        ),
+      );
+
+  Future<FeedPage> getMyLikes({String? cursor, int limit = 20}) async =>
+      FeedPage.fromJson(
+        await _apiClient.getJson(
+          '/users/me/likes',
+          queryParameters: {'cursor': ?cursor, 'limit': limit.clamp(1, 50)},
+        ),
+      );
+
   Future<PublicProfile> getPublicProfile(String userId) async =>
       PublicProfile.fromJson(await _apiClient.getJson('/users/$userId/public'));
 

@@ -70,7 +70,9 @@ class NotificationsController extends ChangeNotifier
     if (token != null) unawaited(refresh());
   }
 
-  void _handleSocialChanged() => unawaited(refresh());
+  void _handleSocialChanged() {
+    if (_api.socialActivity.changedPostId == null) unawaited(refresh());
+  }
 
   void _updatePolling() {
     _timer?.cancel();

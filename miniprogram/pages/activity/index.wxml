@@ -1,0 +1,22 @@
+<view class="page activity-page">
+  <view class="activity-note" wx:if="{{type==='favorites'}}">收藏仅自己可见</view>
+  <view class="loading-copy" wx:if="{{loading}}">正在加载{{title}}…</view>
+  <view class="inline-error card" wx:if="{{error}}"><text>{{error}}</text><button class="pressable" bindtap="retry">重新加载</button></view>
+  <view class="activity-card card" wx:for="{{items}}" wx:key="id">
+    <view class="activity-comment" wx:if="{{type==='comments'}}">
+      <text>{{item.content}}</text>
+      <text class="status" wx:if="{{item.moderation_status==='pending'}}">审核中 · 仅自己可见</text>
+      <text class="status" wx:elif="{{item.moderation_status==='rejected'}}">未通过</text>
+    </view>
+    <view class="post-preview pressable" role="button" aria-label="查看动态" data-id="{{item.postId}}" bindtap="open">
+      <view class="post-owner"><image class="avatar small" src="{{item.post.avatar_url || '/assets/logo.png'}}" mode="aspectFill"/><text>{{item.post.nickname || '岩友'}}</text></view>
+      <view class="post-caption">{{item.post.caption || (item.post.route_id?'分享了一次完攀':'分享了攀岩日常')}}</view>
+      <image class="post-photo" wx:if="{{item.post.image_urls.length}}" src="{{item.post.image_urls[0]}}" mode="aspectFill" lazy-load/>
+      <view class="media-note" wx:elif="{{item.post.video_url}}">▶ 查看完攀视频</view>
+      <view class="route-note" wx:if="{{item.post.route_id}}">{{item.post.grade}} · {{item.post.route_name}} · {{item.post.gym_name}}</view>
+    </view>
+    <view class="activity-footer"><text>{{item.dateText}}</text><button wx:if="{{type!=='comments'}}" class="remove-action pressable" data-id="{{item.postId}}" disabled="{{!!busyId}}" loading="{{busyId===item.postId}}" bindtap="remove">{{type==='favorites'?'取消收藏':'取消点赞'}}</button></view>
+  </view>
+  <view class="empty-state card" wx:if="{{!loading && !error && !items.length}}"><image src="/assets/mascot-welcome.jpg" mode="aspectFit"/><view class="empty-title">{{empty}}</view><view class="empty-copy">{{hint}}</view></view>
+  <button class="load-more pressable" wx:if="{{nextCursor && !loading}}" loading="{{loadingMore}}" disabled="{{loadingMore}}" bindtap="loadMore">{{loadingMore?'正在加载':'加载更多'}}</button>
+</view>

@@ -1,6 +1,7 @@
 const { request, upload } = require('../../utils/api');
 const { read, write, loadOnce, invalidate } = require('../../utils/page-cache');
 const { haptic } = require('../../utils/motion');
+const social = require('../../utils/social-state');
 
 // Exit is intentionally faster than the 240ms entrance so dismissing feels immediate.
 const COMPOSER_ANIMATION_MS = 180;
@@ -13,6 +14,7 @@ const FEED_CACHE_TTL_MS = 30000;
 Page({
   data: {
     items: [],
+    scope: 'square',
     skeletonRows: [1, 2, 3],
     likePulseId: '',
     loading: true,
@@ -34,11 +36,13 @@ Page({
 
   onLoad() {
     this.feedRequestSeq = 0;
+    this._pendingInteractions = {};
   },
 
   onShow() {
     this._disposed = false;
-    this.load({ background: true });
+    this.syncAccount(social.currentUserId());
+    return this.load({ background: true });
   },
 
   onHide() {
@@ -60,16 +64,23 @@ Page({
     clearTimeout(this.newItemEnterTimer);
   },
 
+  syncAccount(userId) {
+    if (userId === this._userId) return;
+    this._userId = userId;
+    this._pendingInteractions = {};
+    this.setData({ items: [], likePulseId: '', loading: true, refreshing: false, error: '' });
+  },
+
   normalizeFeed(data) {
-    return (data && Array.isArray(data.items) ? data.items : []).map(item => {
-      const pendingLike = this.likeRequests && this.likeRequests[item.id];
-      return {
-        ...item,
-        ...(pendingLike ? { liked: pendingLike.liked, like_count: pendingLike.count } : {}),
-        image_urls: Array.isArray(item.image_urls) ? item.image_urls : [],
-        sent_at_text: this.relativeTime(item.sent_at)
-      };
-    });
+    return (data && Array.isArray(data.items) ? data.items : []).map(item => ({
+      ...item,
+      liked: item.liked === true,
+      favorited: item.favorited === true,
+      likePending: Boolean(this._pendingInteractions && this._pendingInteractions[`like:${item.id}`]),
+      favoritePending: Boolean(this._pendingInteractions && this._pendingInteractions[`favorite:${item.id}`]),
+      image_urls: Array.isArray(item.image_urls) ? item.image_urls : [],
+      sent_at_text: this.relativeTime(item.sent_at)
+    }));
   },
 
   applyFeed(data) {
@@ -98,66 +109,44 @@ Page({
     }
   },
 
-  fetchFeed(force) {
-    if (force) invalidate(FEED_CACHE_KEY);
-    if (force) return request('/sends/feed');
-    return loadOnce(FEED_CACHE_KEY, () => request('/sends/feed'));
-  },
-
-  load(options = {}) {
+  async load(options = {}) {
     const { force = false, background = false } = options;
     const requestSeq = (this.feedRequestSeq || 0) + 1;
     this.feedRequestSeq = requestSeq;
-
-    const cached = force ? null : read(FEED_CACHE_KEY, FEED_CACHE_TTL_MS);
-    if (cached && !this.data.items.length) this.applyFeed(cached.value);
-    if (cached && cached.fresh) return Promise.resolve(cached.value);
-
-    const hasItems = this.data.items.length > 0 || Boolean(cached);
-    if (!background || !hasItems) {
-      this.setData({
-        loading: !hasItems,
-        refreshing: hasItems,
-        error: ''
-      });
-    } else if (this.data.error || this.data.loading || this.data.refreshing) {
-      this.setData({ loading: false, refreshing: false, error: '' });
+    this.syncAccount(social.currentUserId());
+    const scope = this.data.scope || 'square';
+    let userId;
+    try {
+      userId = await social.identity();
+      if (this._disposed || requestSeq !== this.feedRequestSeq) return;
+      this.syncAccount(userId);
+      const revision = social.currentRevision();
+      const key = `feed:${userId}:${scope}`;
+      if (force) invalidate(key);
+      const cached = force ? null : read(key, FEED_CACHE_TTL_MS);
+      if (cached) this.applyFeed(cached.value);
+      if (cached && cached.fresh) return cached.value;
+      const hasItems = this.data.items.length > 0;
+      this.setData({ loading: !hasItems, refreshing: hasItems && !background, error: '' });
+      const data = await loadOnce(key, () => request(`/sends/feed?scope=${scope}`, { expectedUserId: userId }));
+      if (this._disposed || requestSeq !== this.feedRequestSeq || scope !== (this.data.scope || 'square')) return;
+      if (!social.isCurrent(userId)) { this.syncAccount(social.currentUserId()); return; }
+      if (revision !== social.currentRevision()) return this.load({ force: true, background: true });
+      write(key, data);
+      this.applyFeed(data);
+      return data;
+    } catch (error) {
+      if (this._disposed || requestSeq !== this.feedRequestSeq) return;
+      if (userId && !social.isCurrent(userId)) this.syncAccount(social.currentUserId());
+      this.setData({ loading: false, refreshing: false, error: error.message || '动态加载失败，请稍后重试' });
     }
-
-    const task = this.fetchFeed(force)
-      .then(data => {
-        // Keep useful network work even when a tab switch makes this page stale.
-        write(FEED_CACHE_KEY, data);
-        if (this._disposed || requestSeq !== this.feedRequestSeq) return data;
-        this.applyFeed(data);
-        return data;
-      })
-      .catch(error => {
-        if (this._disposed || requestSeq !== this.feedRequestSeq) return null;
-        this.setData({
-          loading: false,
-          refreshing: false,
-          error: error.message || '广场加载失败，请稍后重试'
-        });
-        return null;
-      })
-      .finally(() => {
-        if (requestSeq === this.feedRequestSeq) this.loadingPromise = null;
-      });
-
-    this.loadingPromise = task;
-    return task;
   },
 
-  updateCachedLike(id, liked, count) {
-    const cached = read(FEED_CACHE_KEY);
-    if (!cached || !cached.value || !Array.isArray(cached.value.items)) return;
-    write(FEED_CACHE_KEY, {
-      ...cached.value,
-      items: cached.value.items.map(item => (
-        item.id === id ? { ...item, liked, like_count: count } : item
-      ))
-    });
+  changeScope(e) {
+    const scope = e.currentTarget.dataset.scope;
+    if (!['square', 'friends'].includes(scope) || scope === this.data.scope) return;
+    this.setData({ scope, items: [], loading: true, error: '' });
+    return this.load();
   },
 
   retry() { this.load({ force: true }); },
@@ -175,49 +164,48 @@ Page({
     return `${Math.floor(diff / 86400000)}天前`;
   },
 
-  async like(e) {
+  like(e) { return this.interact(e, 'like'); },
+  favorite(e) { return this.interact(e, 'favorite'); },
+
+  async interact(e, kind) {
     const id = e.currentTarget.dataset.id;
-    const index = this.data.items.findIndex(item => item.id === id);
-    if (index < 0 || (this.likeRequests && this.likeRequests[id])) return;
-
-    const item = this.data.items[index];
-    const previousLiked = Boolean(item.liked);
-    const previousCount = Number(item.like_count) || 0;
-    const nextLiked = !previousLiked;
-    const nextCount = Math.max(0, previousCount + (nextLiked ? 1 : -1));
-
-    if (!this.likeRequests) this.likeRequests = {};
-    this.likeRequests[id] = { liked: nextLiked, count: nextCount };
-    this.setData({
-      [`items[${index}].liked`]: nextLiked,
-      [`items[${index}].like_count`]: nextCount,
-      likePulseId: nextLiked ? id : ''
-    });
-    this.updateCachedLike(id, nextLiked, nextCount);
-    clearTimeout(this.likePulseTimer);
-    if (nextLiked) {
-      this.likePulseTimer = setTimeout(() => {
-        if (!this._disposed) this.setData({ likePulseId: '' });
-      }, 240);
-    }
-    if (nextLiked) haptic('selection');
-
+    const item = this.data.items.find(candidate => candidate.id === id);
+    const userId = this._userId;
+    const scope = this.data.scope || 'square';
+    if (!item || this._disposed) return;
+    if (!social.isCurrent(userId)) { this.syncAccount(social.currentUserId()); return this.load(); }
+    if (!this._pendingInteractions) this._pendingInteractions = {};
+    const pending = this._pendingInteractions;
+    const key = `${kind}:${id}`;
+    if (pending[key]) return;
+    pending[key] = true;
+    const field = kind === 'like' ? 'liked' : 'favorited';
+    const busy = kind === 'like' ? 'likePending' : 'favoritePending';
+    const selected = !item[field];
+    this.setData({ items: this.data.items.map(row => row.id === id ? { ...row, [busy]: true } : row) });
     try {
-      await request(`/sends/${id}/like`, { method: nextLiked ? 'POST' : 'DELETE' });
+      await social.setInteraction(id, kind, selected, userId);
+      if (this._disposed || !social.isCurrent(userId)) return;
+      if (scope !== (this.data.scope || 'square')) return this.load({ force: true, background: true });
+      this.feedRequestSeq = (this.feedRequestSeq || 0) + 1;
+      this.setData({
+        items: this.data.items.map(row => row.id === id ? {
+          ...row, [field]: selected,
+          ...(kind === 'like' ? { like_count: Math.max(0, (Number(row.like_count) || 0) + (selected ? 1 : -1)) } : {})
+        } : row),
+        loading: false, refreshing: false, likePulseId: kind === 'like' && selected ? id : ''
+      });
+      if (selected) haptic('selection');
+      clearTimeout(this.likePulseTimer);
+      this.likePulseTimer = setTimeout(() => { if (!this._disposed) this.setData({ likePulseId: '' }); }, 240);
     } catch (error) {
-      if (this._disposed) return;
-      const rollbackIndex = this.data.items.findIndex(candidate => candidate.id === id);
-      if (rollbackIndex >= 0) {
-        this.setData({
-          [`items[${rollbackIndex}].liked`]: previousLiked,
-          [`items[${rollbackIndex}].like_count`]: previousCount,
-          likePulseId: ''
-        });
-        this.updateCachedLike(id, previousLiked, previousCount);
-      }
-      wx.showToast({ title: error.message || '操作失败，请重试', icon: 'none' });
+      if (!this._disposed && social.isCurrent(userId)) wx.showToast({ title: error.message || '操作失败，请重试', icon: 'none' });
     } finally {
-      if (this.likeRequests) delete this.likeRequests[id];
+      delete pending[key];
+      if (!this._disposed) {
+        if (!social.isCurrent(userId)) this.syncAccount(social.currentUserId());
+        else this.setData({ items: this.data.items.map(row => row.id === id ? { ...row, [busy]: false } : row) });
+      }
     }
   },
 
@@ -350,7 +338,7 @@ Page({
       this.setData({ publishStage: '正在发表' });
       const created = await request('/sends/moments', {
         method: 'POST',
-        data: { caption, imageUrls, visibility: 'public' }
+        data: { caption, imageUrls, visibility: this.data.scope === 'friends' ? 'friends' : 'public' }
       });
 
       if (this._disposed) return;
@@ -373,6 +361,7 @@ Page({
       });
       if (approved) {
         invalidate(FEED_CACHE_KEY);
+        social.changed();
         haptic('success');
       }
       clearTimeout(this.publishSuccessTimer);

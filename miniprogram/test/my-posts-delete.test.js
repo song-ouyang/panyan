@@ -37,6 +37,11 @@ function harness(t, { request = async () => ({ deleted: true }), status = 'appro
   };
   global.Page = value => { definition = value; };
   global.wx = {
+    getStorageSync: () => `header.${Buffer.from(JSON.stringify({ sub: 'me' })).toString('base64url')}.signature`,
+    base64ToArrayBuffer: encoded => {
+      const bytes = Buffer.from(encoded, 'base64');
+      return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+    },
     showModal(options) { modals.push(options); },
     showToast(options) { toasts.push(options); },
     vibrateShort() {}
@@ -89,7 +94,7 @@ for (const status of ['approved', 'pending', 'rejected']) {
     const state = harness(t, { status });
     state.tap();
     await state.respond();
-    assert.deepEqual(state.requests, [{ path: '/sends/mine', options: { method: 'DELETE' } }]);
+    assert.deepEqual(state.requests, [{ path: '/sends/mine', options: { method: 'DELETE', expectedUserId: 'me' } }]);
     assert.deepEqual(state.page.data.items.map(item => item.id), ['keep']);
     assert.equal(state.page.data.deletingId, '');
     relatedKeys.forEach(key => assert.equal(cache.read(key), null, key));

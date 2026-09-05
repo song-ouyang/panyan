@@ -1,6 +1,13 @@
 import 'package:flutter/foundation.dart';
 
-/// Refreshes social state after a saved friendship or post change in this client.
+/// Announces saved changes; consumers reload using the current account.
 class SocialActivityChanges extends ChangeNotifier {
-  void recordChanged() => notifyListeners();
+  String? changedPostId;
+  bool postDeleted = false;
+
+  void recordChanged({String? postId, bool deleted = false}) {
+    changedPostId = postId;
+    postDeleted = deleted;
+    notifyListeners();
+  }
 }

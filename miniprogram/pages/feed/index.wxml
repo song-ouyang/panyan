@@ -1,4 +1,5 @@
 <view class="moments-page">
+  <view class="feed-scopes"><button class="pressable {{scope==='square'?'selected':''}}" data-scope="square" bindtap="changeScope">广场</button><button class="pressable {{scope==='friends'?'selected':''}}" data-scope="friends" bindtap="changeScope">朋友圈</button></view>
   <view class="refresh-indicator" wx:if="{{refreshing}}"><view></view><text>正在更新</text></view>
 
   <view class="feed-skeleton" wx:if="{{loading && !items.length}}" aria-label="正在加载广场动态">
@@ -69,10 +70,11 @@
       </view>
       <view class="moment-meta"><text>{{item.sent_at_text || ''}}</text><text class="location" wx:if="{{item.gym_name}}">{{item.gym_name}}</text></view>
       <view class="moment-actions">
-        <view class="action-btn like-button pressable {{item.liked?'liked':''}} {{likePulseId===item.id?'confirmed':''}}" data-id="{{item.id}}" role="button" aria-label="{{item.liked?'取消点赞':'点赞'}}" bindtap="like">
+        <view class="action-btn like-button pressable {{item.liked?'liked':''}} {{likePulseId===item.id?'confirmed':''}} {{item.likePending?'is-disabled':''}}" data-id="{{item.id}}" role="button" aria-label="{{item.liked?'取消点赞':'点赞'}}" aria-disabled="{{item.likePending}}" bindtap="like">
           <text class="heart">{{item.liked?'♥':'♡'}}</text><text>{{item.like_count}}</text>
         </view>
         <view class="action-btn pressable" data-id="{{item.id}}" role="button" aria-label="查看评论" bindtap="openPost"><text class="comment-icon">○</text><text>{{item.comment_count}}</text></view>
+        <view class="action-btn favorite-button pressable {{item.favorited?'favorited':''}} {{item.favoritePending?'is-disabled':''}}" data-id="{{item.id}}" role="button" aria-label="{{item.favorited?'取消收藏':'收藏动态'}}" aria-disabled="{{item.favoritePending}}" bindtap="favorite"><text class="star">{{item.favorited?'★':'☆'}}</text><text>{{item.favoritePending?'保存中':item.favorited?'已收藏':'收藏'}}</text></view>
         <button class="share-button pressable" open-type="share" aria-label="分享动态">分享</button>
       </view>
     </view>
@@ -80,8 +82,8 @@
 
   <view class="feed-state empty-state" wx:if="{{!loading && !error && !items.length}}">
     <image src="/assets/mascot-welcome.jpg" mode="aspectFit"/>
-    <view class="state-title">这里还很安静</view>
-    <view class="state-copy">分享第一张攀岩照片，认识附近的岩友</view>
+    <view class="state-title">{{scope==='friends'?'朋友圈还很安静':'这里还很安静'}}</view>
+    <view class="state-copy">{{scope==='friends'?'添加岩友后，可以在这里看到彼此的动态':'分享第一张攀岩照片，认识附近的岩友'}}</view>
     <view class="state-action pressable primary-action" role="button" bindtap="openComposer">发布第一条动态</view>
   </view>
 
@@ -111,6 +113,6 @@
     </view>
     <view class="publish-review-note {{publishResult==='pending'?'visible':''}}" wx:if="{{publishResult==='pending'}}">审核进度可在“我的动态”中查看</view>
     <view class="publish-error" wx:if="{{publishError}}">{{publishError}}</view>
-    <view class="composer-tip" wx:if="{{!publishing && !publishComplete}}">最多选择 9 张图片</view>
+    <view class="composer-tip" wx:if="{{!publishing && !publishComplete}}">最多选择 9 张图片 · {{scope==='friends'?'发布后仅你和岩友可见':'发布后所有人可见'}}</view>
   </view>
 </block>

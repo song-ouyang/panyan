@@ -47,6 +47,9 @@ class _PostScreenState extends State<PostScreen> {
   bool _deletingPost = false;
   bool _postDeleted = false;
   bool _liked = false;
+  bool _liking = false;
+  bool _favorited = false;
+  bool _favoriting = false;
   int _likeCount = 0;
   String? _error;
 
@@ -55,7 +58,43 @@ class _PostScreenState extends State<PostScreen> {
     super.initState();
     _sessionToken = widget.session.token;
     widget.session.addListener(_handleSessionChanged);
+    widget.api.socialActivity.addListener(_handleSocialChanged);
     _load();
+  }
+
+  void _handleSocialChanged() {
+    final change = widget.api.socialActivity;
+    if (!mounted ||
+        _postDeleted ||
+        (change.changedPostId != null &&
+            change.changedPostId != widget.postId)) {
+      return;
+    }
+    if (change.changedPostId == widget.postId &&
+        change.postDeleted &&
+        !_deletingPost) {
+      ++_loadRevision;
+      setState(() {
+        _postDeleted = true;
+        _post = null;
+        _comments = const [];
+        _loading = false;
+        _error = '这条动态已删除';
+      });
+      return;
+    }
+    if (change.changedPostId != null &&
+        (_liking || _favoriting || _commenting || _deletingPost)) {
+      return;
+    }
+    if (change.changedPostId == null) {
+      setState(() {
+        _post = null;
+        _comments = const [];
+        _loading = true;
+      });
+    }
+    unawaited(_load());
   }
 
   void _handleSessionChanged() {
@@ -68,6 +107,11 @@ class _PostScreenState extends State<PostScreen> {
       _comments = const [];
       _loading = true;
       _commenting = false;
+      _liking = false;
+      _favoriting = false;
+      _liked = false;
+      _favorited = false;
+      _deletingPost = false;
       _error = null;
     });
     _commentController.clear();
@@ -77,6 +121,7 @@ class _PostScreenState extends State<PostScreen> {
   @override
   void dispose() {
     widget.session.removeListener(_handleSessionChanged);
+    widget.api.socialActivity.removeListener(_handleSocialChanged);
     _commentController.dispose();
     super.dispose();
   }
@@ -96,8 +141,11 @@ class _PostScreenState extends State<PostScreen> {
       setState(() {
         _post = post;
         _comments = post.comments;
-        _liked = post.liked;
-        _likeCount = post.likeCount;
+        if (!_liking) {
+          _liked = post.liked;
+          _likeCount = post.likeCount;
+        }
+        if (!_favoriting) _favorited = post.favorited;
         _loading = false;
         _error = null;
       });
@@ -130,27 +178,61 @@ class _PostScreenState extends State<PostScreen> {
     if (mounted) await _load();
   }
 
-  Future<void> _toggleLike() async {
-    if (_deletingPost || _postDeleted) return;
+  Future<void> _toggleLike() => _toggleReaction(favorite: false);
+
+  Future<void> _toggleFavorite() => _toggleReaction(favorite: true);
+
+  Future<void> _toggleReaction({required bool favorite}) async {
+    if (_deletingPost ||
+        _postDeleted ||
+        _post == null ||
+        (favorite ? _favoriting : _liking)) {
+      return;
+    }
     if (!_requireAuthentication()) return;
-    final previous = _liked;
+    final token = widget.session.token;
+    final previous = favorite ? _favorited : _liked;
+    final previousCount = _likeCount;
+    ++_loadRevision;
     setState(() {
-      _liked = !previous;
-      _likeCount += previous ? -1 : 1;
+      if (favorite) {
+        _favoriting = true;
+        _favorited = !previous;
+      } else {
+        _liking = true;
+        _liked = !previous;
+        _likeCount = (_likeCount + (previous ? -1 : 1)).clamp(0, 1 << 31);
+      }
     });
     try {
-      if (previous) {
-        await widget.api.deleteJson('/sends/${widget.postId}/like');
+      if (favorite) {
+        await _repository.setFavorited(widget.postId, favorited: !previous);
       } else {
-        await widget.api.postJson('/sends/${widget.postId}/like');
+        await _repository.setLiked(widget.postId, liked: !previous);
       }
     } catch (_) {
-      if (!mounted || _postDeleted) return;
+      if (!mounted || _postDeleted || token != widget.session.token) return;
       setState(() {
-        _liked = previous;
-        _likeCount += previous ? 1 : -1;
+        if (favorite) {
+          _favorited = previous;
+        } else {
+          _liked = previous;
+          _likeCount = previousCount;
+        }
       });
-      _notice('点赞没有保存，请重试');
+      _notice(favorite ? '收藏没有保存，请重试' : '点赞没有保存，请重试');
+    } finally {
+      if (mounted && !_postDeleted && token == widget.session.token) {
+        ++_loadRevision;
+        setState(() {
+          if (favorite) {
+            _favoriting = false;
+          } else {
+            _liking = false;
+          }
+        });
+        unawaited(_load());
+      }
     }
   }
 
@@ -501,7 +583,7 @@ class _PostScreenState extends State<PostScreen> {
           Row(
             children: [
               InkWell(
-                onTap: _toggleLike,
+                onTap: _liking || _deletingPost ? null : _toggleLike,
                 borderRadius: BorderRadius.circular(WanpanRadii.pill),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
@@ -532,6 +614,23 @@ class _PostScreenState extends State<PostScreen> {
                       ),
                     ],
                   ),
+                ),
+              ),
+              const SizedBox(width: 20),
+              TextButton.icon(
+                onPressed: _favoriting || _deletingPost
+                    ? null
+                    : _toggleFavorite,
+                icon: Icon(
+                  _favorited
+                      ? Icons.bookmark_rounded
+                      : Icons.bookmark_border_rounded,
+                ),
+                label: Text(_favorited ? '已收藏' : '收藏'),
+                style: TextButton.styleFrom(
+                  foregroundColor: _favorited
+                      ? WanpanColors.coral
+                      : WanpanColors.inkSecondary,
                 ),
               ),
             ],

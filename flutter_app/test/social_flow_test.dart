@@ -55,6 +55,7 @@ class _SocialApiClient extends ApiClient {
 
   final List<String> calls = [];
   bool friendAccepted = false;
+  bool liked = false;
   final List<Map<String, dynamic>> comments = [];
   String commentModerationStatus = 'approved';
   bool failComment = false;
@@ -95,6 +96,8 @@ class _SocialApiClient extends ApiClient {
       // acquire a comment posted later just because the network was slow.
       final response = <String, dynamic>{
         ..._post(id: 'post-1', caption: '详情动态'),
+        'liked': liked,
+        'like_count': liked ? 3 : 2,
         'comment_count': comments
             .where((comment) => comment['moderation_status'] == 'approved')
             .length,
@@ -170,7 +173,10 @@ class _SocialApiClient extends ApiClient {
     if (path == '/users/search-user/friend-request') {
       return {'status': 'pending'};
     }
-    if (path == '/sends/post-1/like') return {'liked': true};
+    if (path == '/sends/post-1/like') {
+      liked = true;
+      return {'liked': true};
+    }
     if (path == '/sends/post-1/comments') {
       if (failComment) throw StateError('Comment was not saved');
       final comment = <String, dynamic>{

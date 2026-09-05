@@ -11,6 +11,7 @@
     "pages/admin/index",
     "pages/notifications/index",
     "pages/my-posts/index",
+    "pages/activity/index",
     "pages/checkin/index",
     "pages/feed/index",
     "pages/post/index",

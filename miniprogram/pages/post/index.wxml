@@ -1,4 +1,5 @@
 <view class="page post-page" wx:if="{{post}}">
+  <view class="post-error" wx:if="{{error}}"><text>{{error}}</text><button class="pressable" bindtap="retry">重新加载</button></view>
   <view class="card post-card">
     <view class="row">
       <image class="avatar" src="{{post.avatar_url || '/assets/logo.png'}}" mode="aspectFill"/>
@@ -7,8 +8,10 @@
     </view>
     <video wx:if="{{post.video_url}}" src="{{post.video_url}}" controls object-fit="cover"></video>
     <view class="caption">{{post.caption || '完成了这条线路'}}</view>
+    <view class="post-images" wx:if="{{post.image_urls.length}}"><image wx:for="{{post.image_urls}}" wx:key="*this" src="{{item}}" data-url="{{item}}" mode="aspectFill" lazy-load bindtap="previewImage"/></view>
     <view class="actions">
-      <view class="post-like pressable {{post.liked?'liked':''}} {{likePulse?'confirmed':''}}" role="button" aria-label="{{post.liked?'取消点赞':'点赞'}}" bindtap="like"><text class="heart">{{post.liked?'♥':'♡'}}</text><text>{{post.like_count}}</text></view>
+      <view class="post-like pressable {{post.liked?'liked':''}} {{likePulse?'confirmed':''}} {{likePending?'is-disabled':''}}" role="button" aria-label="{{post.liked?'取消点赞':'点赞'}}" aria-disabled="{{likePending}}" bindtap="like"><text class="heart">{{post.liked?'♥':'♡'}}</text><text>{{post.like_count}}</text></view>
+      <view class="post-favorite pressable {{post.favorited?'favorited':''}} {{favoritePending?'is-disabled':''}}" role="button" aria-label="{{post.favorited?'取消收藏':'收藏动态'}}" aria-disabled="{{favoritePending}}" bindtap="favorite"><text class="heart">{{post.favorited?'★':'☆'}}</text><text>{{favoritePending?'保存中':post.favorited?'已收藏':'收藏'}}</text></view>
       <button class="share-button pressable" open-type="share">分享给岩友</button>
       <view class="report pressable" role="button" bindtap="report">举报</view>
     </view>
@@ -26,4 +29,5 @@
   </view>
 </view>
 
+<view class="page post-error" wx:elif="{{error}}"><text>{{error}}</text><button class="pressable" bindtap="retry">重新加载</button></view>
 <view class="page post-loading" wx:else><view class="skeleton-circle avatar"></view><view class="skeleton-line"></view><view class="skeleton-block"></view></view>

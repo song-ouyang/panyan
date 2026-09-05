@@ -32,7 +32,8 @@ class FeedScreen extends StatefulWidget {
 class _FeedScreenState extends State<FeedScreen> {
   late final FeedRepository _repository = FeedRepository(widget.api);
   final Map<String, List<_FeedEntry>> _scopeCache = {};
-  final Set<String> _likingPostIds = {};
+  final Map<String, bool> _pendingLikes = {};
+  final Map<String, bool> _pendingFavorites = {};
   final Set<String> _deletedPostIds = {};
   final Set<String> _deletingPostIds = {};
   String? _sessionToken;
@@ -61,8 +62,19 @@ class _FeedScreenState extends State<FeedScreen> {
 
   void _handleSocialChanged() {
     if (!mounted) return;
-    _scopeCache.clear();
-    _load(showLoading: true);
+    final postId = widget.api.socialActivity.changedPostId;
+    if (postId == null) {
+      _scopeCache.clear();
+      _load(showLoading: true);
+    } else {
+      if (widget.api.socialActivity.postDeleted) {
+        _deletedPostIds.add(postId);
+        for (final items in _scopeCache.values) {
+          items.removeWhere((entry) => entry.post.id == postId);
+        }
+      }
+      _load();
+    }
   }
 
   void _handleSessionChanged() {
@@ -72,8 +84,10 @@ class _FeedScreenState extends State<FeedScreen> {
     ++_loadRevision;
     _deletedPostIds.clear();
     _deletingPostIds.clear();
-    _likingPostIds.clear();
-    _handleSocialChanged();
+    _pendingLikes.clear();
+    _pendingFavorites.clear();
+    _scopeCache.clear();
+    _load(showLoading: true);
   }
 
   Future<void> _load({bool showLoading = false}) async {
@@ -95,7 +109,19 @@ class _FeedScreenState extends State<FeedScreen> {
     try {
       final posts = (await _repository.getFeed(scope: scope)).items
           .where((post) => !_deletedPostIds.contains(post.id))
-          .map(_FeedEntry.new)
+          .map((post) {
+            final entry = _FeedEntry(post);
+            final liked = _pendingLikes[post.id];
+            if (liked != null && liked != entry.liked) {
+              entry.likeCount = (entry.likeCount + (liked ? 1 : -1)).clamp(
+                0,
+                1 << 31,
+              );
+              entry.liked = liked;
+            }
+            entry.favorited = _pendingFavorites[post.id] ?? entry.favorited;
+            return entry;
+          })
           .toList();
       if (!mounted ||
           revision != _loadRevision ||
@@ -122,46 +148,68 @@ class _FeedScreenState extends State<FeedScreen> {
     }
   }
 
-  Future<void> _toggleLike(_FeedEntry entry) async {
-    if (_deletingPostIds.contains(entry.post.id)) return;
+  Future<void> _toggleLike(_FeedEntry entry) =>
+      _toggleReaction(entry, favorite: false);
+
+  Future<void> _toggleFavorite(_FeedEntry entry) =>
+      _toggleReaction(entry, favorite: true);
+
+  void _applyReaction(String postId, bool value, {required bool favorite}) {
+    for (final items in _scopeCache.values) {
+      for (final item in items.where((item) => item.post.id == postId)) {
+        if (favorite) {
+          item.favorited = value;
+        } else if (item.liked != value) {
+          item.liked = value;
+          item.likeCount = (item.likeCount + (value ? 1 : -1)).clamp(
+            0,
+            1 << 31,
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _toggleReaction(
+    _FeedEntry entry, {
+    required bool favorite,
+  }) async {
+    final postId = entry.post.id;
+    if (_deletingPostIds.contains(postId) || _deletedPostIds.contains(postId)) {
+      return;
+    }
     if (!widget.session.isAuthenticated) {
       await context.push('/login?from=/feed');
       return;
     }
-    final postId = entry.post.id;
-    if (_likingPostIds.contains(postId)) return;
-    final previous = entry.liked;
-    final copies = [
-      for (final items in _scopeCache.values)
-        for (final item in items)
-          if (item.post.id == postId)
-            (entry: item, liked: item.liked, likeCount: item.likeCount),
-    ];
+    final pending = favorite ? _pendingFavorites : _pendingLikes;
+    if (pending.containsKey(postId)) return;
+    final previous = favorite ? entry.favorited : entry.liked;
+    final token = widget.session.token;
     setState(() {
-      _likingPostIds.add(postId);
-      for (final copy in copies) {
-        copy.entry.liked = !previous;
-        copy.entry.likeCount = (copy.entry.likeCount + (previous ? -1 : 1))
-            .clamp(0, 1 << 31);
-      }
+      pending[postId] = !previous;
+      _applyReaction(postId, !previous, favorite: favorite);
     });
     try {
-      if (previous) {
-        await widget.api.deleteJson('/sends/$postId/like');
+      if (favorite) {
+        await _repository.setFavorited(postId, favorited: !previous);
       } else {
-        await widget.api.postJson('/sends/$postId/like');
+        await _repository.setLiked(postId, liked: !previous);
       }
     } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        for (final copy in copies) {
-          copy.entry.liked = copy.liked;
-          copy.entry.likeCount = copy.likeCount;
-        }
-      });
+      if (!mounted ||
+          token != widget.session.token ||
+          _deletedPostIds.contains(postId)) {
+        return;
+      }
+      setState(() => _applyReaction(postId, previous, favorite: favorite));
       _notice('操作没有保存，请重试');
     } finally {
-      if (mounted) setState(() => _likingPostIds.remove(postId));
+      if (mounted && token == widget.session.token) {
+        setState(() => pending.remove(postId));
+        // Supersede any read begun before the mutation finished.
+        _load();
+      }
     }
   }
 
@@ -378,7 +426,9 @@ class _FeedScreenState extends State<FeedScreen> {
             key: ValueKey(entry.post.id),
             entry: entry,
             onLike: () => _toggleLike(entry),
-            liking: _likingPostIds.contains(entry.post.id),
+            liking: _pendingLikes.containsKey(entry.post.id),
+            onFavorite: () => _toggleFavorite(entry),
+            favoriting: _pendingFavorites.containsKey(entry.post.id),
             onOpen: _deletingPostIds.contains(entry.post.id)
                 ? null
                 : () => _openPost(entry.post.id),
@@ -456,9 +506,13 @@ class _FriendsActivityBanner extends StatelessWidget {
 }
 
 class _FeedEntry {
-  _FeedEntry(this.post) : liked = post.liked, likeCount = post.likeCount;
+  _FeedEntry(this.post)
+    : liked = post.liked,
+      likeCount = post.likeCount,
+      favorited = post.favorited;
   final FeedPost post;
   bool liked;
+  bool favorited;
   int likeCount;
 }
 
@@ -561,6 +615,8 @@ class _PostCard extends StatelessWidget {
     required this.entry,
     required this.liking,
     required this.onLike,
+    required this.onFavorite,
+    required this.favoriting,
     required this.onOpen,
     this.onOpenUser,
     this.onDelete,
@@ -569,6 +625,8 @@ class _PostCard extends StatelessWidget {
 
   final _FeedEntry entry;
   final bool liking;
+  final bool favoriting;
+  final VoidCallback onFavorite;
   final VoidCallback onLike;
   final VoidCallback? onOpen;
   final VoidCallback? onOpenUser;
@@ -663,7 +721,7 @@ class _PostCard extends StatelessWidget {
               _LikeButton(
                 liked: entry.liked,
                 count: entry.likeCount,
-                onTap: liking ? null : onLike,
+                onTap: liking || deleting ? null : onLike,
               ),
               const SizedBox(width: 16),
               const Icon(
@@ -676,10 +734,27 @@ class _PostCard extends StatelessWidget {
                 '${post.commentCount}',
                 style: Theme.of(context).textTheme.labelLarge,
               ),
+              const SizedBox(width: 12),
+              IconButton(
+                tooltip: entry.favorited ? '取消收藏' : '收藏',
+                onPressed: favoriting || deleting ? null : onFavorite,
+                icon: Icon(
+                  entry.favorited
+                      ? Icons.bookmark_rounded
+                      : Icons.bookmark_border_rounded,
+                ),
+                color: entry.favorited
+                    ? WanpanColors.coral
+                    : WanpanColors.inkSecondary,
+              ),
               const Spacer(),
-              Text(
-                _relativeTime(post.sentAt),
-                style: Theme.of(context).textTheme.labelMedium,
+              Flexible(
+                child: Text(
+                  _relativeTime(post.sentAt),
+                  style: Theme.of(context).textTheme.labelMedium,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ],
           ),

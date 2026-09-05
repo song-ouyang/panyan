@@ -2,6 +2,7 @@ const { request, uploadVideo } = require('../../utils/api');
 const { playFeedback } = require('../../utils/sound');
 const { afterPaint, haptic, motionDuration } = require('../../utils/motion');
 const { invalidate, invalidatePrefix } = require('../../utils/page-cache');
+const social = require('../../utils/social-state');
 
 const PHASE_COPY_DELAY = 80;
 const UPLOAD_COPY = {
@@ -251,6 +252,7 @@ Page({
       invalidate('profile:overview');
       invalidatePrefix('profile:dashboard:');
       if (moderationStatus === 'approved') {
+        social.changed();
         invalidate('feed:public');
         invalidate('ranking:routes');
         invalidatePrefix('ranking:users:');

@@ -10,6 +10,14 @@ page {
   background: #fff;
 }
 
+.feed-scopes { display: flex; gap: 12rpx; padding: 20rpx 0 4rpx; }
+.feed-scopes button { flex: 1; min-height: 88rpx; margin: 0; border-radius: 22rpx; background: #fff8e9; color: #69777e; font-size: 28rpx; font-weight: 800; }
+.feed-scopes button::after { border: 0; }
+.feed-scopes .selected { background: #fff0e7; color: #eb644f; }
+.favorite-button { white-space: nowrap; }
+.favorite-button.favorited { color: #9c710b; }
+.star { font-size: 31rpx; }
+
 /* A feed should read as one continuous surface, not a stack of cards. */
 .moment {
   display: flex;

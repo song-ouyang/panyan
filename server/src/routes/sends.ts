@@ -181,7 +181,8 @@ export const sendRoutes: FastifyPluginAsync = async (app) => {
                      (blocked_commenter.addressee_id=$1 AND blocked_commenter.requester_id=c.user_id)
                    )
                  ))) comment_count,
-              EXISTS(SELECT 1 FROM post_likes own_like WHERE own_like.send_id=s.id AND own_like.user_id=$1::uuid) liked
+              EXISTS(SELECT 1 FROM post_likes own_like WHERE own_like.send_id=s.id AND own_like.user_id=$1::uuid) liked,
+              EXISTS(SELECT 1 FROM post_favorites own_favorite WHERE own_favorite.send_id=s.id AND own_favorite.user_id=$1::uuid) favorited
        FROM visible_sends s
        JOIN users u ON u.id=s.user_id
        LEFT JOIN routes r ON r.id=s.route_id
@@ -215,7 +216,8 @@ export const sendRoutes: FastifyPluginAsync = async (app) => {
                      (blocked_commenter.addressee_id=$2 AND blocked_commenter.requester_id=c.user_id)
                    )
                  ))) comment_count,
-              coalesce(bool_or(l.user_id=$2::uuid),false) liked
+              coalesce(bool_or(l.user_id=$2::uuid),false) liked,
+              EXISTS(SELECT 1 FROM post_favorites own_favorite WHERE own_favorite.send_id=s.id AND own_favorite.user_id=$2::uuid) favorited
        FROM sends s JOIN users u ON u.id=s.user_id LEFT JOIN routes r ON r.id=s.route_id LEFT JOIN gyms g ON g.id=r.gym_id
        LEFT JOIN post_likes l ON l.send_id=s.id
        WHERE s.id=$1 AND ($2::uuid IS NULL OR NOT EXISTS (
@@ -272,6 +274,18 @@ export const sendRoutes: FastifyPluginAsync = async (app) => {
     const { id } = idParams.parse(request.params);
     await query('DELETE FROM post_likes WHERE send_id=$1 AND user_id=$2', [id, request.user.sub]);
     return { liked: false };
+  });
+  app.post('/:id/favorite', { preHandler: app.authenticate }, async (request) => {
+    const { id } = idParams.parse(request.params);
+    await assertVisibleSend(id, request.user.sub);
+    await query('INSERT INTO post_favorites(send_id,user_id) VALUES($1,$2) ON CONFLICT DO NOTHING', [id, request.user.sub]);
+    return { favorited: true };
+  });
+  app.delete('/:id/favorite', { preHandler: app.authenticate }, async (request) => {
+    const { id } = idParams.parse(request.params);
+    // Unsave remains available after friendship or visibility changes.
+    await query('DELETE FROM post_favorites WHERE send_id=$1 AND user_id=$2', [id, request.user.sub]);
+    return { favorited: false };
   });
   app.post('/:id/comments', { preHandler: app.authenticate }, async (request) => {
     const { id } = idParams.parse(request.params);

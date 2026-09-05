@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { query, transaction } from '../db.js';
 import { idParams, profileBody } from '../schemas.js';
+import { activityPostFields, activityPostVisibility, encodeActivityCursor, parseActivityQuery, type PersonalActivity } from '../social_activity.js';
 
 export const userRoutes: FastifyPluginAsync = async (app) => {
   app.get('/search', { preHandler: app.authenticate }, async (request) => {
@@ -145,6 +146,38 @@ export const userRoutes: FastifyPluginAsync = async (app) => {
     );
     return { items: result.rows };
   });
+  for (const kind of ['comments', 'favorites', 'likes'] as const satisfies readonly PersonalActivity[]) {
+    app.get(`/me/${kind}`, { preHandler: app.authenticate }, async (request) => {
+      const { limit, cursor } = parseActivityQuery(kind, request.query);
+      // Table and column names are selected only from these internal constants.
+      const table = kind === 'comments' ? 'comments' : kind === 'favorites' ? 'post_favorites' : 'post_likes';
+      const activityId = kind === 'comments' ? 'activity.id' : 'activity.send_id';
+      const result = await query<Record<string, unknown> & {
+        _activity_id: string; _cursor_at: string; activity_at: Date;
+        _comment_content?: string; _comment_status?: string;
+      }>(
+        `SELECT ${activityPostFields},${activityId} _activity_id,activity.created_at activity_at,
+         to_char(activity.created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') _cursor_at
+         ${kind === 'comments' ? ',activity.content _comment_content,activity.moderation_status _comment_status' : ''}
+         FROM ${table} activity JOIN sends s ON s.id=activity.send_id
+         JOIN users u ON u.id=s.user_id LEFT JOIN routes r ON r.id=s.route_id LEFT JOIN gyms g ON g.id=r.gym_id
+         WHERE activity.user_id=$1 AND (${activityPostVisibility})
+         AND ($2::timestamptz IS NULL OR (activity.created_at,${activityId})<($2::timestamptz,$3::uuid))
+         ORDER BY activity.created_at DESC,${activityId} DESC LIMIT $4`,
+        [request.user.sub, cursor?.at ?? null, cursor?.id ?? null, limit + 1]
+      );
+      const page = result.rows.slice(0, limit);
+      const last = page.at(-1);
+      return {
+        items: page.map(({ _activity_id, _cursor_at, activity_at, _comment_content, _comment_status, ...post }) => kind === 'comments'
+          ? { id: _activity_id, content: _comment_content, created_at: activity_at, moderation_status: _comment_status, post }
+          : { ...post, activity_at }),
+        // Keep PostgreSQL microseconds in the opaque cursor; JavaScript Date
+        // truncation would otherwise skip records saved in the same millisecond.
+        nextCursor: result.rows.length > limit && last ? encodeActivityCursor(kind, last) : null
+      };
+    });
+  }
   app.get('/:id/public', { preHandler: app.authenticate }, async (request) => {
     const { id } = idParams.parse(request.params);
     const user = await query(

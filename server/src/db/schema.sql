@@ -148,6 +148,14 @@ CREATE TABLE IF NOT EXISTS post_likes (
   PRIMARY KEY(send_id, user_id)
 );
 
+-- Favorites belong to their owner; no public favorite counts or member lists.
+CREATE TABLE IF NOT EXISTS post_favorites (
+  send_id uuid NOT NULL REFERENCES sends(id) ON DELETE CASCADE,
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY(send_id, user_id)
+);
+
 CREATE TABLE IF NOT EXISTS comments (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   send_id uuid NOT NULL REFERENCES sends(id) ON DELETE CASCADE,
@@ -273,6 +281,9 @@ CREATE INDEX IF NOT EXISTS idx_sends_approved_visibility_cursor
 CREATE INDEX IF NOT EXISTS idx_comments_approved_send_time
   ON comments(send_id,created_at)
   WHERE moderation_status='approved';
+CREATE INDEX IF NOT EXISTS idx_comments_user_time ON comments(user_id,created_at DESC,id DESC);
+CREATE INDEX IF NOT EXISTS idx_post_likes_user_time ON post_likes(user_id,created_at DESC,send_id DESC);
+CREATE INDEX IF NOT EXISTS idx_post_favorites_user_time ON post_favorites(user_id,created_at DESC,send_id DESC);
 CREATE INDEX IF NOT EXISTS idx_meetups_gym_time ON meetups(gym_id, starts_at);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_friendships_pair ON friendships(LEAST(requester_id,addressee_id),GREATEST(requester_id,addressee_id));
 CREATE INDEX IF NOT EXISTS idx_route_submissions_status ON route_submissions(status,created_at);

@@ -391,5 +391,9 @@ Page({
   admin() { wx.navigateTo({ url: '/pages/admin/index' }); },
   notifications() { wx.navigateTo({ url: '/pages/notifications/index' }); },
   posts() { wx.navigateTo({ url: '/pages/my-posts/index' }); },
+  activity(e) {
+    const type = e.currentTarget.dataset.type;
+    if (['comments', 'favorites', 'likes'].includes(type)) wx.navigateTo({ url: `/pages/activity/index?type=${type}` });
+  },
   settings() { wx.navigateTo({ url: '/pages/settings/index' }); },
 });

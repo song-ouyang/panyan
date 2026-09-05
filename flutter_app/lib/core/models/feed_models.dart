@@ -40,6 +40,8 @@ class FeedPost {
     required this.commentCount,
     required this.liked,
     required this.comments,
+    this.favorited = false,
+    this.activityAt,
     this.user,
     this.routeId,
     this.routeName,
@@ -81,6 +83,8 @@ class FeedPost {
     likeCount: jsonInt(json['like_count']),
     commentCount: jsonInt(json['comment_count']),
     liked: jsonBool(json['liked']),
+    favorited: jsonBool(json['favorited']),
+    activityAt: jsonDateTime(json['activity_at']),
     comments: jsonModelList(json['comments'], FeedComment.fromJson),
   );
 
@@ -102,6 +106,8 @@ class FeedPost {
   final int likeCount;
   final int commentCount;
   final bool liked;
+  final bool favorited;
+  final DateTime? activityAt;
   final List<FeedComment> comments;
 
   bool get isMoment => routeId == null;
@@ -189,4 +195,40 @@ class RouteLeaderboard {
 
   final List<RouteLeaderboardEntry> items;
   final int completionCount;
+}
+
+class MyComment {
+  const MyComment({
+    required this.id,
+    required this.content,
+    required this.post,
+    this.createdAt,
+    this.moderationStatus,
+  });
+
+  factory MyComment.fromJson(JsonMap json) => MyComment(
+    id: jsonString(json['id'], field: 'id'),
+    content: jsonString(json['content'], field: 'content'),
+    createdAt: jsonDateTime(json['created_at']),
+    moderationStatus: jsonNullableString(json['moderation_status']),
+    post: FeedPost.fromJson(jsonMap(json['post'], field: 'post')),
+  );
+
+  final String id;
+  final String content;
+  final DateTime? createdAt;
+  final String? moderationStatus;
+  final FeedPost post;
+}
+
+class MyCommentPage {
+  const MyCommentPage({required this.items, this.nextCursor});
+
+  factory MyCommentPage.fromJson(JsonMap json) => MyCommentPage(
+    items: jsonModelList(json['items'], MyComment.fromJson),
+    nextCursor: jsonNullableString(json['nextCursor']),
+  );
+
+  final List<MyComment> items;
+  final String? nextCursor;
 }

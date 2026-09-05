@@ -94,6 +94,11 @@ GoRouter _createRouter({
       path: '/profile/posts',
       builder: (_, _) => const Scaffold(body: Text('动态管理页')),
     ),
+    for (final name in ['comments', 'favorites', 'likes'])
+      GoRoute(
+        path: '/profile/$name',
+        builder: (_, _) => Scaffold(body: Text('互动管理 $name')),
+      ),
     GoRoute(
       path: '/settings',
       builder: (_, _) => const Scaffold(body: Text('设置页')),
@@ -137,7 +142,7 @@ Future<void> _withSemantics(
 }
 
 void main() {
-  testWidgets('我的攀岩包含自己的动态管理入口', (tester) async {
+  testWidgets('个人页四个互动入口分别进入自己的动态、评论、收藏和点赞', (tester) async {
     final api = _ProfileApi();
     final session = await _createSession();
     final router = _createRouter(api: api, session: session);
@@ -145,12 +150,17 @@ void main() {
     addTearDown(session.dispose);
     await _pumpProfile(tester, router: router);
 
-    await tester.ensureVisible(find.text('我的动态'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('我的动态'));
-    await tester.pumpAndSettle();
-    expect(router.state.uri.path, '/profile/posts');
-    expect(find.text('动态管理页'), findsOneWidget);
+    expect(find.text('我的动态'), findsNothing, reason: '四入口取代重复的动态长行');
+    for (final name in ['posts', 'comments', 'favorites', 'likes']) {
+      final shortcut = find.byKey(Key('profile-activity-$name'));
+      await tester.ensureVisible(shortcut);
+      await tester.pumpAndSettle();
+      await tester.tap(shortcut);
+      await tester.pumpAndSettle();
+      expect(router.state.uri.path, '/profile/$name');
+      router.pop();
+      await tester.pumpAndSettle();
+    }
   });
 
   testWidgets('昵称旁编辑图标可进入资料页，攀爬进度只显示累计统计', (tester) async {
@@ -336,6 +346,25 @@ void main() {
         expect(rect.left, greaterThanOrEqualTo(0));
         expect(rect.right, lessThanOrEqualTo(320));
         expect(tester.takeException(), isNull);
+      }
+      // Visiting the lower growth card can dispose the shortcut row above it.
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('profile-activity-shortcuts')),
+        -180,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      final shortcuts = [
+        'posts',
+        'comments',
+        'favorites',
+        'likes',
+      ].map((name) => find.byKey(Key('profile-activity-$name'))).toList();
+      final rowY = tester.getCenter(shortcuts.first).dy;
+      for (final shortcut in shortcuts) {
+        expect(shortcut.hitTestable(), findsOneWidget);
+        expect(tester.getSize(shortcut).shortestSide, greaterThanOrEqualTo(44));
+        expect(tester.getCenter(shortcut).dy, closeTo(rowY, 1));
       }
       await tester.scrollUntilVisible(
         find.text('邀请好友'),
