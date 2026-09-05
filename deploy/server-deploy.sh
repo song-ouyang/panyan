@@ -20,6 +20,9 @@ ALLOW_POSTGRES_LIBC_SWITCH="${WANPAN_ALLOW_POSTGRES_LIBC_SWITCH:-0}"
 
 cd "$ROOT_DIR"
 
+source deploy/deploy-common.sh
+wanpan_lock_deployment
+
 if docker compose version >/dev/null 2>&1; then
   COMPOSE=(docker compose)
 elif command -v docker-compose >/dev/null 2>&1; then
@@ -196,6 +199,32 @@ fi
 OLD_REV="$(git rev-parse HEAD)"
 OLD_TAG="$(cat .deploy/current-image-tag 2>/dev/null || true)"
 
+restore_previous_api() {
+  if [[ -z "$OLD_TAG" ]] || ! docker image inspect "wanpan-diary-api:$OLD_TAG" >/dev/null 2>&1; then
+    echo "没有可自动恢复的上一 API 镜像。" >&2
+    return
+  fi
+  echo "尝试恢复上一 API 镜像 $OLD_TAG（数据库不回退）……" >&2
+  if ! API_IMAGE_TAG="$OLD_TAG" "${COMPOSE[@]}" --env-file "$ENV_FILE" -f "$COMPOSE_FILE" \
+    up -d --no-deps --no-build --pull never api; then
+    echo "错误：恢复上一 API 镜像失败，需要人工处理。" >&2
+    return
+  fi
+  local previous_api previous_status restore_deadline
+  previous_api="$("${COMPOSE[@]}" --env-file "$ENV_FILE" -f "$COMPOSE_FILE" ps -q api)"
+  restore_deadline=$((SECONDS + WAIT_SECONDS))
+  while (( SECONDS < restore_deadline )); do
+    previous_status="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$previous_api" 2>/dev/null || true)"
+    if [[ "$previous_status" == healthy ]]; then
+      echo "上一 API 镜像已恢复就绪；本次部署仍标记失败。" >&2
+      return
+    fi
+    [[ "$previous_status" == unhealthy || "$previous_status" == exited || "$previous_status" == dead ]] && break
+    sleep 2
+  done
+  echo "错误：上一 API 镜像仍未就绪，需要人工处理。" >&2
+}
+
 postgres_id="$("${COMPOSE[@]}" --env-file "$ENV_FILE" -f "$COMPOSE_FILE" ps -q postgres 2>/dev/null || true)"
 if [[ -n "$postgres_id" ]] && [[ "$(docker inspect -f '{{.State.Running}}' "$postgres_id" 2>/dev/null || true)" == "true" ]]; then
   echo "部署前备份数据库……"
@@ -208,11 +237,7 @@ fi
 
 echo "拉取 $REMOTE/$BRANCH……"
 git fetch --prune "$REMOTE" "$BRANCH"
-TARGET_REV="$(git rev-parse FETCH_HEAD)"
-if [[ -n "$EXPECTED_REVISION" && "$TARGET_REV" != "$EXPECTED_REVISION" ]]; then
-  echo "错误：预构建镜像对应 Git $EXPECTED_REVISION，但远端 $REMOTE/$BRANCH 已更新为 $TARGET_REV。" >&2
-  exit 1
-fi
+TARGET_REV="$(wanpan_select_revision "$(git rev-parse FETCH_HEAD)")"
 current_branch="$(git symbolic-ref --quiet --short HEAD || true)"
 if [[ "$current_branch" != "$BRANCH" ]]; then
   echo "错误：当前分支是 ${current_branch:-detached HEAD}，请先切换到 $BRANCH。" >&2
@@ -269,6 +294,7 @@ fi
 if ! "${COMPOSE[@]}" --env-file "$ENV_FILE" -f "$COMPOSE_FILE" "${up_args[@]}"; then
   echo "错误：Compose 启动失败。最近日志如下：" >&2
   "${COMPOSE[@]}" --env-file "$ENV_FILE" -f "$COMPOSE_FILE" logs --no-color --tail=160 api postgres >&2 || true
+  restore_previous_api
   exit 1
 fi
 
@@ -282,13 +308,26 @@ while (( SECONDS < deadline )); do
   sleep 2
 done
 
+host_port="$(docker inspect -f '{{with (index .NetworkSettings.Ports "3000/tcp")}}{{(index . 0).HostPort}}{{end}}' "$api_id" 2>/dev/null || true)"
+if [[ "$status" == healthy ]]; then
+  if ! docker exec "$api_id" node -e \
+    "Promise.all(['health','ready'].map(p=>fetch('http://127.0.0.1:3000/'+p,{signal:AbortSignal.timeout(10000)}).then(r=>{if(!r.ok)throw Error(p)}))).catch(()=>process.exit(1))"; then
+    status="failed-local-probes"
+  elif [[ -n "$host_port" ]]; then
+    for endpoint in health ready; do
+      if ! curl --fail --silent --show-error --connect-timeout 5 --max-time 15 \
+        "http://127.0.0.1:$host_port/$endpoint" >/dev/null; then
+        status="failed-host-probes"
+        break
+      fi
+    done
+  fi
+fi
+
 if [[ "$status" != "healthy" ]]; then
   echo "错误：新 API 未就绪（状态：${status:-unknown}）。最近日志如下：" >&2
   "${COMPOSE[@]}" --env-file "$ENV_FILE" -f "$COMPOSE_FILE" logs --tail=120 api postgres >&2 || true
-  if [[ -n "$OLD_TAG" ]] && docker image inspect "wanpan-diary-api:$OLD_TAG" >/dev/null 2>&1; then
-    echo "自动恢复上一 API 镜像 $OLD_TAG……" >&2
-    API_IMAGE_TAG="$OLD_TAG" "${COMPOSE[@]}" --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d --no-build || true
-  fi
+  restore_previous_api
   exit 1
 fi
 
@@ -301,9 +340,5 @@ printf '%s\n' "$NEW_TAG" > .deploy/current-image-tag
 printf '%s\n' "$OLD_REV" > .deploy/previous-git-revision
 chmod 600 .deploy/*
 
-host_port="$(docker inspect -f '{{with (index .NetworkSettings.Ports "3000/tcp")}}{{(index . 0).HostPort}}{{end}}' "$api_id" 2>/dev/null || true)"
-if [[ -n "$host_port" ]]; then
-  curl --fail --silent --show-error "http://127.0.0.1:$host_port/ready" >/dev/null
-fi
 "${COMPOSE[@]}" --env-file "$ENV_FILE" -f "$COMPOSE_FILE" ps
 echo "部署成功：Git ${NEW_REV:0:12}，API/数据库就绪。"

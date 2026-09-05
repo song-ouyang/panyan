@@ -1,23 +1,89 @@
-name: Build server image bundle
+name: Build server release for automatic deployment
 
 on:
   push:
+    branches: [main]
+    paths:
+      - 'server/**'
+      - 'data/gyms.public-verified.json'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.dockerignore'
+      - '.env.production.example'
+      - 'docker-compose.server.yml'
+      - 'docker-compose.prod.yml'
+      - 'deploy/**'
+      - '.github/workflows/server-image-bundle.yml'
     tags:
       - 'server-bundle-*'
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
+
+# Serialize main builds; the server deploys independently after publication.
+concurrency:
+  group: wanpan-server-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16.15-bookworm
+        env:
+          POSTGRES_USER: wanpan_ci
+          POSTGRES_PASSWORD: wanpan-ci-only
+          POSTGRES_DB: wanpan_ci
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U wanpan_ci -d wanpan_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgres://wanpan_ci:wanpan-ci-only@127.0.0.1:5432/wanpan_ci
+      JWT_SECRET: wanpan-ci-test-secret-only
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Validate scripts and backend
+        run: |
+          set -Eeuo pipefail
+          for script in deploy/*.sh; do bash -n "$script"; done
+          python3 deploy/test-deployment.py
+          npm ci
+          npm run check
+          npm test
+          npm run build
+          npm audit --omit=dev --audit-level=high --registry=https://registry.npmjs.org
+      - name: Test migration and API against isolated CI database
+        run: |
+          set -Eeuo pipefail
+          npm --workspace server run db:migrate
+          npm run test:server:e2e
+
   build:
+    needs: validate
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    permissions:
+      contents: write
 
     steps:
-      - name: Check out tagged revision
+      - name: Check out exact revision
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
 
       - name: Verify immutable bundle tag
+        if: startsWith(github.ref, 'refs/tags/')
         shell: bash
         run: |
           set -Eeuo pipefail
@@ -104,12 +170,42 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -Eeuo pipefail
-          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
-            echo "Release $GITHUB_REF_NAME already exists; refusing to replace immutable assets." >&2
-            exit 1
+          BUNDLE_TAG="server-bundle-${GITHUB_SHA:0:12}"
+          if gh release view "$BUNDLE_TAG" >/dev/null 2>&1; then
+            # Retrying deployment reuses a complete immutable release. Never
+            # overwrite its assets, even if this build produced new bytes.
+            mkdir -p existing-release
+            gh release download "$BUNDLE_TAG" --pattern REVISION --dir existing-release
+            test "$(tr -d '\r\n' < existing-release/REVISION)" = "$GITHUB_SHA"
+            gh release view "$BUNDLE_TAG" --json isDraft,assets --jq \
+              'select(.isDraft == false) | .assets[].name' > existing-release/assets
+            for asset in REVISION SHA256SUMS wanpan-diary-api-amd64.tar.gz postgres-16.15-bookworm-amd64.tar.gz; do
+              grep -Fxq "$asset" existing-release/assets
+            done
+            echo "Reusing complete release $BUNDLE_TAG."
+            exit 0
           fi
-          gh release create "$GITHUB_REF_NAME" release/* \
-            --verify-tag \
+          tag_args=(--target "$GITHUB_SHA")
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            tag_args=(--verify-tag)
+          fi
+          gh release create "$BUNDLE_TAG" release/* \
+            "${tag_args[@]}" \
             --latest=false \
             --title "Server image bundle ${GITHUB_SHA:0:12}" \
             --notes "Linux AMD64 deployment images for commit $GITHUB_SHA. Checksums are included in SHA256SUMS."
+
+      - name: Mark complete main release ready for server deployment
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -Eeuo pipefail
+          READY_TAG="server-ready-${GITHUB_SHA:0:12}"
+          if EXISTING_SHA="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$READY_TAG" --jq '.object.sha' 2>/dev/null)"; then
+            test "$EXISTING_SHA" = "$GITHUB_SHA"
+          else
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f "ref=refs/tags/$READY_TAG" -f "sha=$GITHUB_SHA" >/dev/null
+          fi
+          printf 'Release `%s` is ready. The server timer will deploy it and record the result in its journal.\n' "$GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"

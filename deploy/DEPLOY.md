@@ -131,7 +131,73 @@ npm run test:server:e2e
 
 脚本自身也会拒绝在 `NODE_ENV=production` 下运行。
 
-## 以后更新：服务器只复制这一条
+## main 自动部署（沿用服务器现有 GitHub 连接）
+
+GitHub 负责测试、构建和发布镜像包，服务器通过 systemd 计时器每分钟主动检查远端仓库。继续使用服务器原来的 GitHub 认证；不需要把服务器 SSH 私钥上传 GitHub，也不需要新增公网入口。
+
+工作流 [Build server release for automatic deployment](https://github.com/song-ouyang/panyan/actions/workflows/server-image-bundle.yml) 在 `main` 的后端、镜像输入或部署文件变化时自动运行。Flutter、小程序和普通文档变更不触发（`deploy/` 内运维文档也会触发）。合并 PR 和直接 push 都适用。
+
+流程：TypeScript 检查、单元测试、生产依赖审计 → 在独立 CI PostgreSQL 上执行 migration 和 API E2E → 构建 Linux AMD64 镜像 → 完整发布带 SHA-256 的 Release → 为 main 提交写入 `server-ready-<12位提交号>` 标签 → 服务器自动备份、部署并检查本机/公网 `/health` 和 `/ready`。旧的手动 `server-bundle-*` 标签只构建镜像包，不写自动上线标记。
+
+### 一次启用
+
+先把本次工作流和脚本提交、推送到 GitHub 的 `main`。然后在现有服务器的阿里云终端里以 root 执行：
+
+```bash
+cd /www/wwwroot/wanpan-diary
+git pull --ff-only origin main
+bash deploy/install-auto-deploy.sh
+```
+
+安装器会先验证生产配置、已部署镜像记录、干净的 main 分支，以及服务器原来的 GitHub 连接能否在无交互、无 SSH agent 的后台环境使用。检查通过后才安装并启用 `wanpan-auto-deploy.service` 与 `wanpan-auto-deploy.timer`。如果现有 GitHub 连接只在交互终端中有效，安装器会停下，需要先修复服务器自己的 Git 认证；不要改成向 GitHub 提供服务器登录私钥。
+
+服务器需已有正常运行的生产环境、Docker Compose、Git、curl、flock、systemd，以及访问 GitHub 仓库和公开 Release 的网络。镜像下载继续使用仓库现有的公开 GitHub Release 路径；仓库若改成私有，需另行配置下载认证。
+
+检查是否启用，以及首次执行结果：
+
+```bash
+systemctl is-enabled wanpan-auto-deploy.timer
+systemctl list-timers wanpan-auto-deploy.timer
+journalctl -u wanpan-auto-deploy.service -n 80 --no-pager
+```
+
+日常无需手动部署。镜像发布完成后，服务器通常在下一个一分钟检查周期开始更新。没有新版本时保持安静。GitHub Actions 全绿代表测试和镜像发布成功，服务器日志中的“自动部署完成”及 `.deploy/auto-deploy-success-revision` 才代表上线验证成功。
+
+### 连续提交、失败与暂停
+
+- 服务器读取 main 第一父链上最近的 ready 标签，并比较后端及部署输入。后续只有客户端改动时仍可部署已测试镜像；后续有后端改动时等待新版 CI，不部署过期的后端版本。合并提交也需要自己的测试和 ready 标记。
+- 代码、镜像标签、Release 完整提交号必须一致；部署必须快进，拒绝倒退和分叉。开启自动部署后让脚本管理服务器 checkout，日常不再另外执行 `git pull`。
+- systemd 不会重叠启动同一个服务，文件锁同时防止与手动部署/回滚重叠。计时器不因下一分钟到来而中断正在运行的备份或 migration。
+- 某个版本部署失败/中断后，记入 `.deploy/auto-deploy-failed-revision`，停止自动重试该版本，避免反复迁移。后续新的 ready 版本可以继续尝试。
+- 新 API 启动或本机健康检查失败时，部署脚本尝试恢复上一 API 镜像；数据库不自动回退。公网检查失败会记录失败，由运维排查网络/Nginx。修复后清除失败记录并手动执行一次检查；若该镜像已部署，只重试公网检查，不重复迁移。
+
+修复失败原因后，重新检查同一版本：
+
+```bash
+cd /www/wwwroot/wanpan-diary
+rm -f .deploy/auto-deploy-failed-revision
+systemctl start wanpan-auto-deploy.service
+journalctl -u wanpan-auto-deploy.service -n 80 --no-pager
+```
+
+暂停后续自动检查（不打断正在执行的部署）：
+
+```bash
+systemctl stop wanpan-auto-deploy.timer
+systemctl disable wanpan-auto-deploy.timer
+```
+
+恢复自动检查：
+
+```bash
+systemctl enable wanpan-auto-deploy.timer
+systemctl start wanpan-auto-deploy.timer
+systemctl start wanpan-auto-deploy.service
+```
+
+手动执行 `deploy/rollback.sh` 时会先暂停并禁用活动计时器，避免恢复的旧版立即被自动升级。应在修复版本准备好后再恢复计时器。API 镜像回滚不会恢复数据库；migration 必须兼容上一 API，破坏性 schema 变更需要单独安排迁移。
+
+## 以后手动更新：服务器只复制这一条
 
 ```bash
 cd /www/wwwroot/wanpan-diary && bash deploy/server-deploy.sh

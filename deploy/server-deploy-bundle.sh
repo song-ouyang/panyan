@@ -1,12 +1,21 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+# git fast-forward may replace this file while the nested deploy runs.
+if [[ "${WANPAN_BUNDLE_BOOTSTRAPPED:-0}" != 1 ]]; then
+  export WANPAN_BUNDLE_BOOTSTRAPPED=1
+  exec bash -s -- "$@" < "$0"
+fi
+
 ROOT_DIR="${WANPAN_ROOT:-/www/wwwroot/wanpan-diary}"
 REMOTE="${WANPAN_REMOTE:-origin}"
 BRANCH="${WANPAN_BRANCH:-main}"
 REPOSITORY="${WANPAN_BUNDLE_REPOSITORY:-song-ouyang/panyan}"
 
 cd "$ROOT_DIR"
+
+source deploy/deploy-common.sh
+wanpan_lock_deployment
 
 if ! docker info >/dev/null 2>&1; then
   echo "错误：Docker 服务未运行。" >&2
@@ -30,7 +39,7 @@ if [[ "$current_branch" != "$BRANCH" ]]; then
   exit 1
 fi
 
-REVISION="$(git rev-parse FETCH_HEAD)"
+REVISION="$(wanpan_select_revision "$(git rev-parse FETCH_HEAD)")"
 SHORT_REVISION="${REVISION:0:12}"
 BUNDLE_TAG="${1:-${WANPAN_BUNDLE_TAG:-server-bundle-$SHORT_REVISION}}"
 BASE_URL="https://github.com/$REPOSITORY/releases/download/$BUNDLE_TAG"

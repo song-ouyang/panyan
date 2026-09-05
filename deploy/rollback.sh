@@ -6,6 +6,16 @@ ENV_FILE="${WANPAN_ENV_FILE:-.env.production}"
 COMPOSE_FILE="${WANPAN_COMPOSE_FILE:-docker-compose.server.yml}"
 cd "$ROOT_DIR"
 
+source deploy/deploy-common.sh
+wanpan_lock_deployment
+
+# Keep a deliberate rollback in place until the operator resumes deployment.
+if command -v systemctl >/dev/null && systemctl is-active --quiet wanpan-auto-deploy.timer; then
+  systemctl stop wanpan-auto-deploy.timer
+  systemctl disable wanpan-auto-deploy.timer
+  echo "已暂停自动部署计时器，避免刚回滚的版本立即被重新升级。"
+fi
+
 if docker compose version >/dev/null 2>&1; then
   COMPOSE=(docker compose)
 elif command -v docker-compose >/dev/null 2>&1; then
