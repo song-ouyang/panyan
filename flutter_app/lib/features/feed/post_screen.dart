@@ -44,6 +44,8 @@ class _PostScreenState extends State<PostScreen> {
   bool _loading = true;
   bool _commenting = false;
   bool _safetySubmitting = false;
+  bool _deletingPost = false;
+  bool _postDeleted = false;
   bool _liked = false;
   int _likeCount = 0;
   String? _error;
@@ -80,11 +82,13 @@ class _PostScreenState extends State<PostScreen> {
   }
 
   Future<void> _load({bool afterComment = false}) async {
+    if (_postDeleted) return;
     final revision = ++_loadRevision;
     final token = widget.session.token;
     try {
       final post = await _repository.getPost(widget.postId);
       if (!mounted ||
+          _postDeleted ||
           revision != _loadRevision ||
           token != widget.session.token) {
         return;
@@ -99,6 +103,7 @@ class _PostScreenState extends State<PostScreen> {
       });
     } catch (error) {
       if (!mounted ||
+          _postDeleted ||
           revision != _loadRevision ||
           token != widget.session.token) {
         return;
@@ -126,6 +131,7 @@ class _PostScreenState extends State<PostScreen> {
   }
 
   Future<void> _toggleLike() async {
+    if (_deletingPost || _postDeleted) return;
     if (!_requireAuthentication()) return;
     final previous = _liked;
     setState(() {
@@ -139,7 +145,7 @@ class _PostScreenState extends State<PostScreen> {
         await widget.api.postJson('/sends/${widget.postId}/like');
       }
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted || _postDeleted) return;
       setState(() {
         _liked = previous;
         _likeCount += previous ? 1 : -1;
@@ -149,6 +155,7 @@ class _PostScreenState extends State<PostScreen> {
   }
 
   Future<void> _comment() async {
+    if (_deletingPost || _postDeleted) return;
     if (!_requireAuthentication()) return;
     final content = _commentController.text.trim();
     if (content.isEmpty || _commenting) return;
@@ -161,7 +168,7 @@ class _PostScreenState extends State<PostScreen> {
         content,
         author: author,
       );
-      if (!mounted || token != widget.session.token) return;
+      if (!mounted || _postDeleted || token != widget.session.token) return;
       setState(() {
         // Ignore older detail requests that began before this comment saved.
         ++_loadRevision;
@@ -174,11 +181,11 @@ class _PostScreenState extends State<PostScreen> {
       _notice(comment.isPending ? '评论已提交，审核后其他岩友可见' : '评论已提交');
       await _load(afterComment: true);
     } catch (_) {
-      if (mounted && token == widget.session.token) {
+      if (mounted && !_postDeleted && token == widget.session.token) {
         _notice('评论失败，请稍后重试');
       }
     } finally {
-      if (mounted && token == widget.session.token) {
+      if (mounted && !_postDeleted && token == widget.session.token) {
         setState(() => _commenting = false);
       }
     }
@@ -198,6 +205,50 @@ class _PostScreenState extends State<PostScreen> {
     return widget.session.isAuthenticated &&
         authorId != null &&
         authorId != widget.session.user?.id;
+  }
+
+  bool get _ownsPost =>
+      widget.session.isAuthenticated &&
+      _post?.user?.id != null &&
+      _post!.user!.id == widget.session.user?.id;
+
+  Future<void> _deletePost() async {
+    if (!_ownsPost || _deletingPost || _safetySubmitting) return;
+    final token = widget.session.token;
+    final isCheckin = _post!.routeId != null;
+    setState(() => _deletingPost = true);
+    try {
+      final confirmed = await showWanpanDeletePostConfirmation(
+        context,
+        isCheckin: isCheckin,
+      );
+      if (!confirmed ||
+          !mounted ||
+          token != widget.session.token ||
+          !_ownsPost) {
+        return;
+      }
+      await _repository.deletePost(widget.postId);
+      if (!mounted || token != widget.session.token) return;
+      ++_loadRevision;
+      setState(() {
+        _postDeleted = true;
+        _post = null;
+        _comments = const [];
+      });
+      _notice('动态已删除');
+      if (context.canPop()) {
+        context.pop(true);
+      } else {
+        context.go('/feed');
+      }
+    } catch (_) {
+      if (mounted && token == widget.session.token) {
+        _notice('删除失败，动态仍保留，请稍后重试');
+      }
+    } finally {
+      if (mounted && !_postDeleted) setState(() => _deletingPost = false);
+    }
   }
 
   Future<void> _handlePostSafetyAction(_PostSafetyAction action) async {
@@ -267,6 +318,28 @@ class _PostScreenState extends State<PostScreen> {
       appBar: AppBar(
         title: const Text('动态详情'),
         actions: [
+          if (_ownsPost)
+            PopupMenuButton<String>(
+              tooltip: '动态操作',
+              enabled: !_deletingPost && !_safetySubmitting,
+              onSelected: (_) => _deletePost(),
+              itemBuilder: (context) => const [
+                PopupMenuItem(
+                  value: 'delete',
+                  child: ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(
+                      Icons.delete_outline_rounded,
+                      color: WanpanColors.danger,
+                    ),
+                    title: Text(
+                      '删除动态',
+                      style: TextStyle(color: WanpanColors.danger),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           if (_canActOnPost)
             PopupMenuButton<_PostSafetyAction>(
               tooltip: '动态安全操作',
@@ -336,7 +409,8 @@ class _PostScreenState extends State<PostScreen> {
         ),
       );
     }
-    final post = _post!;
+    final post = _post;
+    if (post == null) return const SizedBox.shrink(key: ValueKey('removed'));
     final nickname = post.user?.nickname ?? '岩友';
     final avatarUrl = post.user?.avatarUrl;
     return RefreshIndicator(

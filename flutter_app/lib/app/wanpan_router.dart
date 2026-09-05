@@ -29,6 +29,7 @@ import '../features/profile/friends_screen.dart';
 import '../features/profile/friend_code_screen.dart';
 import '../features/profile/friend_scanner_screen.dart';
 import '../features/profile/invite_friends_screen.dart';
+import '../features/profile/my_posts_screen.dart';
 import '../features/profile/profile_screen.dart';
 import '../features/profile/public_profile_screen.dart';
 import '../features/profile/route_submissions_screen.dart';
@@ -142,6 +143,11 @@ GoRouter createWanpanRouter({
           inviteUrl: api.config.inviteUrl,
           onShowFriendCode: () => context.push('/friends/code'),
         ),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: '/profile/posts',
+        builder: (context, state) => MyPostsScreen(api: api, session: session),
       ),
       GoRoute(
         parentNavigatorKey: rootNavigatorKey,

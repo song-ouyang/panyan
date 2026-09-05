@@ -3,6 +3,46 @@ import 'package:flutter/material.dart';
 import '../../app/wanpan_theme.dart';
 import 'wanpan_pressable.dart';
 
+Future<bool> showWanpanDeletePostConfirmation(
+  BuildContext context, {
+  bool isCheckin = false,
+}) async =>
+    await showModalBottomSheet<bool>(
+      context: context,
+      useSafeArea: true,
+      isScrollControlled: true,
+      builder: (context) => SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('删除这条动态？', style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 8),
+            Text(
+              isCheckin
+                  ? '这条完攀记录及动态中的点赞、评论会一并删除，攀岩日历和成绩统计也会更新。线路仍会保留，删除后无法恢复。'
+                  : '这条动态及其点赞、评论会一并删除，删除后无法恢复。',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 20),
+            WanpanButton(
+              label: '确认删除',
+              style: WanpanButtonStyle.danger,
+              onPressed: () => Navigator.pop(context, true),
+            ),
+            const SizedBox(height: 8),
+            WanpanButton(
+              label: '取消',
+              style: WanpanButtonStyle.quiet,
+              onPressed: () => Navigator.pop(context, false),
+            ),
+          ],
+        ),
+      ),
+    ) ??
+    false;
+
 class WanpanReportReason {
   const WanpanReportReason({
     required this.value,

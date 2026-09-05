@@ -91,6 +91,10 @@ GoRouter _createRouter({
       builder: (_, _) => const Scaffold(body: Text('邀请好友页')),
     ),
     GoRoute(
+      path: '/profile/posts',
+      builder: (_, _) => const Scaffold(body: Text('动态管理页')),
+    ),
+    GoRoute(
       path: '/settings',
       builder: (_, _) => const Scaffold(body: Text('设置页')),
     ),
@@ -133,6 +137,22 @@ Future<void> _withSemantics(
 }
 
 void main() {
+  testWidgets('我的攀岩包含自己的动态管理入口', (tester) async {
+    final api = _ProfileApi();
+    final session = await _createSession();
+    final router = _createRouter(api: api, session: session);
+    addTearDown(router.dispose);
+    addTearDown(session.dispose);
+    await _pumpProfile(tester, router: router);
+
+    await tester.ensureVisible(find.text('我的动态'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('我的动态'));
+    await tester.pumpAndSettle();
+    expect(router.state.uri.path, '/profile/posts');
+    expect(find.text('动态管理页'), findsOneWidget);
+  });
+
   testWidgets('昵称旁编辑图标可进入资料页，攀爬进度只显示累计统计', (tester) async {
     final api = _ProfileApi();
     final session = await _createSession();

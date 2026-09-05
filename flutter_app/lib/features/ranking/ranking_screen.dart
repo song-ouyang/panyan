@@ -37,7 +37,7 @@ class RankingScreen extends StatefulWidget {
 }
 
 class _RankingScreenState extends State<RankingScreen> {
-  late final RankingRepository _repository;
+  late RankingRepository _repository;
   late int _segment;
   bool _loading = true;
   String? _error;
@@ -70,6 +70,7 @@ class _RankingScreenState extends State<RankingScreen> {
     _segment = _normalizedSegment(widget.initialSegment);
     _observedSessionToken = widget.session.token;
     widget.session.addListener(_handleSessionChanged);
+    widget.api.climbingActivity.addListener(_handleActivityChanged);
     _homeCity = widget.cityController?.city;
     _selectedRegion = _regionForCity(_homeCity);
     widget.cityController?.addListener(_handleHomeCityChanged);
@@ -84,6 +85,12 @@ class _RankingScreenState extends State<RankingScreen> {
   void didUpdateWidget(covariant RankingScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     var shouldReload = false;
+    if (oldWidget.api != widget.api) {
+      oldWidget.api.climbingActivity.removeListener(_handleActivityChanged);
+      widget.api.climbingActivity.addListener(_handleActivityChanged);
+      _repository = RankingRepository(widget.api);
+      shouldReload = true;
+    }
     if (oldWidget.cityController != widget.cityController) {
       oldWidget.cityController?.removeListener(_handleHomeCityChanged);
       widget.cityController?.addListener(_handleHomeCityChanged);
@@ -112,6 +119,7 @@ class _RankingScreenState extends State<RankingScreen> {
   void dispose() {
     _loadRequestId++;
     widget.session.removeListener(_handleSessionChanged);
+    widget.api.climbingActivity.removeListener(_handleActivityChanged);
     widget.cityController?.removeListener(_handleHomeCityChanged);
     if (_ownsMotionSoundPlayer) {
       unawaited(_motionSoundPlayer.dispose());
@@ -119,6 +127,10 @@ class _RankingScreenState extends State<RankingScreen> {
       unawaited(_motionSoundPlayer.stop());
     }
     super.dispose();
+  }
+
+  void _handleActivityChanged() {
+    if (mounted) unawaited(_load());
   }
 
   @override

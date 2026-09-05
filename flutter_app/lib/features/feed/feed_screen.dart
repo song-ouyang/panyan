@@ -10,6 +10,7 @@ import '../../core/network/api_client.dart';
 import '../../core/repositories/feed_repository.dart';
 import '../../shared/app_assets.dart';
 import '../../shared/widgets/wanpan_card.dart';
+import '../../shared/widgets/wanpan_content_safety.dart';
 import '../../shared/widgets/wanpan_mascot.dart';
 import '../../shared/widgets/wanpan_pressable.dart';
 import '../../shared/widgets/wanpan_video_cover.dart';
@@ -32,6 +33,9 @@ class _FeedScreenState extends State<FeedScreen> {
   late final FeedRepository _repository = FeedRepository(widget.api);
   final Map<String, List<_FeedEntry>> _scopeCache = {};
   final Set<String> _likingPostIds = {};
+  final Set<String> _deletedPostIds = {};
+  final Set<String> _deletingPostIds = {};
+  String? _sessionToken;
   String _scope = 'square';
   bool _loading = true;
   String? _error;
@@ -43,12 +47,15 @@ class _FeedScreenState extends State<FeedScreen> {
   void initState() {
     super.initState();
     widget.api.socialActivity.addListener(_handleSocialChanged);
+    _sessionToken = widget.session.token;
+    widget.session.addListener(_handleSessionChanged);
     _load();
   }
 
   @override
   void dispose() {
     widget.api.socialActivity.removeListener(_handleSocialChanged);
+    widget.session.removeListener(_handleSessionChanged);
     super.dispose();
   }
 
@@ -58,8 +65,20 @@ class _FeedScreenState extends State<FeedScreen> {
     _load(showLoading: true);
   }
 
+  void _handleSessionChanged() {
+    final token = widget.session.token;
+    if (token == _sessionToken) return;
+    _sessionToken = token;
+    ++_loadRevision;
+    _deletedPostIds.clear();
+    _deletingPostIds.clear();
+    _likingPostIds.clear();
+    _handleSocialChanged();
+  }
+
   Future<void> _load({bool showLoading = false}) async {
     final scope = _scope;
+    final token = widget.session.token;
     final revision = ++_loadRevision;
     if (!widget.session.isAuthenticated && scope == 'friends') {
       if (mounted && revision == _loadRevision) {
@@ -75,15 +94,26 @@ class _FeedScreenState extends State<FeedScreen> {
     }
     try {
       final posts = (await _repository.getFeed(scope: scope)).items
+          .where((post) => !_deletedPostIds.contains(post.id))
           .map(_FeedEntry.new)
           .toList();
-      if (!mounted || revision != _loadRevision || scope != _scope) return;
+      if (!mounted ||
+          revision != _loadRevision ||
+          scope != _scope ||
+          token != widget.session.token) {
+        return;
+      }
       setState(() {
         _scopeCache[scope] = posts;
         _loading = false;
       });
     } catch (_) {
-      if (!mounted || revision != _loadRevision || scope != _scope) return;
+      if (!mounted ||
+          revision != _loadRevision ||
+          scope != _scope ||
+          token != widget.session.token) {
+        return;
+      }
       setState(() {
         _loading = false;
         _error = '广场暂时走丢了，稍后再试';
@@ -93,6 +123,7 @@ class _FeedScreenState extends State<FeedScreen> {
   }
 
   Future<void> _toggleLike(_FeedEntry entry) async {
+    if (_deletingPostIds.contains(entry.post.id)) return;
     if (!widget.session.isAuthenticated) {
       await context.push('/login?from=/feed');
       return;
@@ -182,6 +213,40 @@ class _FeedScreenState extends State<FeedScreen> {
     if (mounted) await _load();
   }
 
+  Future<void> _deletePost(FeedPost post) async {
+    if (!widget.session.isAuthenticated ||
+        post.user?.id != widget.session.user?.id ||
+        _deletingPostIds.contains(post.id)) {
+      return;
+    }
+    final token = widget.session.token;
+    setState(() => _deletingPostIds.add(post.id));
+    try {
+      final confirmed = await showWanpanDeletePostConfirmation(
+        context,
+        isCheckin: post.routeId != null,
+      );
+      if (!confirmed || !mounted || token != widget.session.token) return;
+      await _repository.deletePost(post.id);
+      if (!mounted || token != widget.session.token) return;
+      setState(() {
+        _deletedPostIds.add(post.id);
+        for (final items in _scopeCache.values) {
+          items.removeWhere((item) => item.post.id == post.id);
+        }
+      });
+      _notice('动态已删除');
+    } catch (_) {
+      if (mounted && token == widget.session.token) {
+        _notice('删除失败，动态仍保留，请稍后重试');
+      }
+    } finally {
+      if (mounted && token == widget.session.token) {
+        setState(() => _deletingPostIds.remove(post.id));
+      }
+    }
+  }
+
   Future<void> _openUser(String userId) async {
     await context.push('/users/$userId');
     if (!mounted) return;
@@ -246,6 +311,7 @@ class _FeedScreenState extends State<FeedScreen> {
           ),
           Expanded(
             child: AnimatedSwitcher(
+              key: ValueKey(widget.session.user?.id),
               duration: WanpanMotion.duration(context, WanpanMotion.exit),
               child: _body(),
             ),
@@ -313,10 +379,18 @@ class _FeedScreenState extends State<FeedScreen> {
             entry: entry,
             onLike: () => _toggleLike(entry),
             liking: _likingPostIds.contains(entry.post.id),
-            onOpen: () => _openPost(entry.post.id),
+            onOpen: _deletingPostIds.contains(entry.post.id)
+                ? null
+                : () => _openPost(entry.post.id),
             onOpenUser: entry.post.user == null
                 ? null
                 : () => _openUser(entry.post.user!.id),
+            onDelete:
+                widget.session.isAuthenticated &&
+                    entry.post.user?.id == widget.session.user?.id
+                ? () => _deletePost(entry.post)
+                : null,
+            deleting: _deletingPostIds.contains(entry.post.id),
           );
         },
       ),
@@ -489,13 +563,17 @@ class _PostCard extends StatelessWidget {
     required this.onLike,
     required this.onOpen,
     this.onOpenUser,
+    this.onDelete,
+    this.deleting = false,
   });
 
   final _FeedEntry entry;
   final bool liking;
   final VoidCallback onLike;
-  final VoidCallback onOpen;
+  final VoidCallback? onOpen;
   final VoidCallback? onOpenUser;
+  final VoidCallback? onDelete;
+  final bool deleting;
 
   @override
   Widget build(BuildContext context) {
@@ -542,14 +620,30 @@ class _PostCard extends StatelessWidget {
                   ),
                 ),
               ),
-              IconButton(
-                tooltip: '更多',
-                onPressed: onOpen,
-                icon: const Icon(
-                  Icons.more_horiz_rounded,
-                  color: WanpanColors.muted,
+              if (onDelete != null)
+                PopupMenuButton<String>(
+                  tooltip: '动态操作',
+                  enabled: !deleting,
+                  onSelected: (_) => onDelete?.call(),
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(
+                      value: 'delete',
+                      child: Text(
+                        '删除动态',
+                        style: TextStyle(color: WanpanColors.danger),
+                      ),
+                    ),
+                  ],
+                )
+              else
+                IconButton(
+                  tooltip: '更多',
+                  onPressed: onOpen,
+                  icon: const Icon(
+                    Icons.more_horiz_rounded,
+                    color: WanpanColors.muted,
+                  ),
                 ),
-              ),
             ],
           ),
           if ((post.caption ?? '').isNotEmpty) ...[

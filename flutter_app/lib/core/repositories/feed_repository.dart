@@ -2,6 +2,7 @@ import '../json/json_helpers.dart';
 import '../models/feed_models.dart';
 import '../models/user_models.dart';
 import '../network/api_client.dart';
+import '../network/api_exception.dart';
 
 class FeedRepository {
   const FeedRepository(this._apiClient);
@@ -73,7 +74,12 @@ class FeedRepository {
   }
 
   Future<void> deletePost(String postId) async {
-    await _apiClient.deleteJson('/sends/$postId');
+    final result = await _apiClient.deleteJson('/sends/$postId');
+    if (result['deleted'] != true) {
+      throw const ApiException(message: '动态未删除，请稍后重试');
+    }
+    _apiClient.climbingActivity.recordChanged();
+    _apiClient.socialActivity.recordChanged();
   }
 
   Future<void> report({

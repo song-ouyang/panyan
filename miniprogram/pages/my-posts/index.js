@@ -1,5 +1,5 @@
 const { request } = require('../../utils/api');
-const { invalidate } = require('../../utils/page-cache');
+const { invalidate, invalidatePrefix } = require('../../utils/page-cache');
 const { haptic } = require('../../utils/motion');
 
 const STATUS_LABELS = {
@@ -118,23 +118,32 @@ Page({
 
   remove(e) {
     const id = e.currentTarget.dataset.id;
-    if (!id || this.data.deletingId) return;
+    if (!id || this._disposed || this._deletePromptOpen || this.data.deletingId) return;
+    this._deletePromptOpen = true;
     wx.showModal({
       title: '删除动态',
-      content: '图片或视频、点赞和评论将一并删除，无法恢复。',
+      content: '动态及其点赞和评论将被删除，无法恢复。完攀打卡删除后，相关统计也会更新。',
       confirmText: '删除',
       confirmColor: '#c94c3f',
       success: async result => {
-        if (!result.confirm || this._disposed) return;
+        if (!result.confirm || this._disposed || this.data.deletingId) return;
         this.setData({ deletingId: id });
         try {
-          await request(`/sends/${id}`, { method: 'DELETE' });
-          if (this._disposed) return;
+          const deleted = await request(`/sends/${id}`, { method: 'DELETE' });
+          if (!deleted || deleted.deleted !== true) throw new Error('动态未删除，请稍后重试');
           invalidate('feed:public');
+          invalidate('profile:overview');
+          invalidatePrefix('profile:dashboard:');
+          invalidatePrefix('ranking:users:');
+          invalidate('ranking:routes');
+          if (this._disposed) return;
+          this.loadSequence = (this.loadSequence || 0) + 1;
           haptic('warning');
           this.setData({
             items: this.data.items.filter(item => item.id !== id),
-            deletingId: ''
+            deletingId: '',
+            loading: false,
+            refreshing: false
           });
           wx.showToast({ title: '已删除' });
         } catch (error) {
@@ -142,7 +151,8 @@ Page({
           this.setData({ deletingId: '' });
           wx.showToast({ title: error.message || '删除失败，请重试', icon: 'none' });
         }
-      }
+      },
+      complete: () => { this._deletePromptOpen = false; }
     });
   }
 });

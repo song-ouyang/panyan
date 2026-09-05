@@ -434,7 +434,7 @@ void main() {
       expect(item('/pages/friends/index').route, '/friends');
       expect(item('/pages/my-submissions/index').route, '/route-submissions');
       expect(item('/submissions/mine').route, '/route-submissions');
-      expect(item('/pages/my-posts/index').route, '/profile/calendar');
+      expect(item('/pages/my-posts/index').route, '/profile/posts');
       const id = '00000000-0000-4000-8000-000000000001';
       expect(item('/pages/post/index?id=$id').route, '/posts/$id');
       expect(item(null, type: 'friend_request').route, '/friends');

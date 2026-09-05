@@ -207,6 +207,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Column(
               children: [
                 _ActionTile(
+                  icon: Icons.article_outlined,
+                  title: '我的动态',
+                  subtitle: '查看和管理自己的动态与打卡',
+                  onTap: () => context.push('/profile/posts'),
+                ),
+                const Divider(indent: 73, endIndent: 16),
+                _ActionTile(
                   icon: Icons.alt_route_rounded,
                   title: '线路发布记录',
                   subtitle: '查看已发布线路与历史记录',

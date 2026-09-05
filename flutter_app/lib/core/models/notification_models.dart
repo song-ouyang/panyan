@@ -46,7 +46,7 @@ class AppNotificationItem {
       case '/submissions/mine':
         return '/route-submissions';
       case '/pages/my-posts/index':
-        return '/profile/calendar';
+        return '/profile/posts';
       case '/pages/post/index':
         String? id;
         try {
