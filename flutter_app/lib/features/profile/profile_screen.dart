@@ -173,29 +173,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
       key: ValueKey(profile.user.id),
       onRefresh: _load,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
         children: [
           _ProfileHeader(profile: profile, onEdit: _openProfileEditor),
-          const SizedBox(height: 18),
+          const SizedBox(height: 16),
           _GrowthCard(
             stats: profile.stats,
             onTap: () => context.push<void>('/profile/calendar'),
           ),
-          const SizedBox(height: 22),
-          Text('我的攀岩', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 10),
-          _ActionTile(
-            icon: Icons.alt_route_rounded,
-            title: '线路发布记录',
-            subtitle: '查看已发布线路与历史记录',
-            onTap: () => context.push('/route-submissions'),
+          const SizedBox(height: 24),
+          Padding(
+            padding: const EdgeInsets.only(left: 4),
+            child: Text(
+              '我的攀岩',
+              style: Theme.of(context).textTheme.labelLarge
+                  ?.copyWith(color: WanpanColors.inkSecondary),
+            ),
           ),
           const SizedBox(height: 10),
-          _ActionTile(
-            icon: Icons.people_outline_rounded,
-            title: '我的岩友',
-            subtitle: '看看谁最近也在上墙',
-            onTap: () => context.push('/friends'),
+          Container(
+            decoration: BoxDecoration(
+              color: WanpanColors.surface,
+              borderRadius: BorderRadius.circular(WanpanRadii.large),
+              border: Border.all(color: WanpanColors.border),
+            ),
+            child: Column(
+              children: [
+                _ActionTile(
+                  icon: Icons.alt_route_rounded,
+                  title: '线路发布记录',
+                  subtitle: '查看已发布线路与历史记录',
+                  onTap: () => context.push('/route-submissions'),
+                ),
+                const Divider(indent: 73, endIndent: 16),
+                _ActionTile(
+                  icon: Icons.people_outline_rounded,
+                  title: '我的岩友',
+                  subtitle: '看看谁最近也在上墙',
+                  onTap: () => context.push('/friends'),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -223,11 +241,11 @@ class _ProfileHeader extends StatelessWidget {
         final compact = constraints.maxWidth < 330 || textScale > 1.15;
         return Container(
           key: const Key('profile-header-card'),
-          padding: EdgeInsets.fromLTRB(18, 18, compact ? 18 : 10, 16),
+          padding: EdgeInsets.fromLTRB(18, 18, compact ? 18 : 14, 18),
           decoration: BoxDecoration(
-            color: WanpanColors.skySoft,
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: WanpanColors.sky.withValues(alpha: .4)),
+            color: WanpanColors.surface,
+            borderRadius: BorderRadius.circular(WanpanRadii.large),
+            border: Border.all(color: WanpanColors.border),
           ),
           child: Row(
             children: [
@@ -283,11 +301,9 @@ class _ProfileHeader extends StatelessWidget {
                         constraints: const BoxConstraints(minHeight: 44),
                         padding: const EdgeInsets.symmetric(horizontal: 13),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: .78),
+                          color: WanpanColors.surfaceSoft,
                           borderRadius: BorderRadius.circular(WanpanRadii.pill),
-                          border: Border.all(
-                            color: WanpanColors.sky.withValues(alpha: .55),
-                          ),
+                          border: Border.all(color: WanpanColors.border),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -317,9 +333,9 @@ class _ProfileHeader extends StatelessWidget {
                 const SizedBox(width: 8),
                 const WanpanMascot(
                   asset: AppAssets.mascotWelcome,
-                  width: 72,
-                  height: 86,
-                  radius: 22,
+                  width: 64,
+                  height: 76,
+                  radius: 18,
                 ),
               ],
             ],
@@ -357,11 +373,11 @@ class _GrowthCardState extends State<_GrowthCard> {
       pressedScale: .985,
       borderRadius: BorderRadius.circular(WanpanRadii.large),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
         decoration: BoxDecoration(
-          color: WanpanColors.coralSoft,
+          color: WanpanColors.surface,
           borderRadius: BorderRadius.circular(WanpanRadii.large),
-          border: Border.all(color: const Color(0x33F2674F)),
+          border: Border.all(color: WanpanColors.border),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -386,7 +402,7 @@ class _GrowthCardState extends State<_GrowthCard> {
                 );
               },
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 20),
             Row(
               children: [
                 Expanded(
@@ -408,20 +424,27 @@ class _GrowthCardState extends State<_GrowthCard> {
                   ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 20),
+            const Divider(),
+            const SizedBox(height: 14),
             Row(
-              mainAxisAlignment: MainAxisAlignment.end,
               children: [
+                const Icon(
+                  Icons.calendar_month_outlined,
+                  size: 18,
+                  color: WanpanColors.coralStrong,
+                ),
+                const SizedBox(width: 7),
                 Text(
                   '攀岩日历',
                   style: Theme.of(context).textTheme.labelMedium
                       ?.copyWith(color: WanpanColors.coralStrong),
                 ),
-                const SizedBox(width: 2),
+                const Spacer(),
                 const Icon(
                   Icons.chevron_right_rounded,
                   size: 18,
-                  color: WanpanColors.coralStrong,
+                  color: WanpanColors.muted,
                 ),
               ],
             ),
@@ -435,7 +458,7 @@ class _GrowthCardState extends State<_GrowthCard> {
     return Container(
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: .45),
+        color: WanpanColors.surfaceSoft,
         borderRadius: BorderRadius.circular(WanpanRadii.pill),
       ),
       child: Row(
@@ -463,7 +486,7 @@ class _GrowthCardState extends State<_GrowthCard> {
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
                       color: _period == period
-                          ? WanpanColors.surface
+                          ? WanpanColors.coralSoft
                           : Colors.transparent,
                       borderRadius: BorderRadius.circular(WanpanRadii.pill),
                     ),
@@ -528,13 +551,8 @@ class _ActionTile extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(WanpanRadii.medium),
       pressedScale: .985,
-      child: Container(
-        padding: const EdgeInsets.all(15),
-        decoration: BoxDecoration(
-          color: WanpanColors.surface,
-          borderRadius: BorderRadius.circular(WanpanRadii.medium),
-          border: Border.all(color: WanpanColors.border),
-        ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
         child: Row(
           children: [
             Container(
