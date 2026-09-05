@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/wanpan_theme.dart';
 import '../motion/wanpan_motion.dart';
+import 'wanpan_cat_mark.dart';
 
 /// App-wide transient feedback, above routes and sheets without a modal barrier.
 abstract final class WanpanNotice {
@@ -123,18 +124,14 @@ class _NoticeState extends State<_Notice> with SingleTickerProviderStateMixin {
         key: const Key('wanpan-top-notice'),
         color: WanpanColors.mintSoft,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(WanpanRadii.medium),
+          borderRadius: BorderRadius.circular(22),
           side: const BorderSide(color: WanpanColors.mint),
         ),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 7, 5, 7),
+          padding: const EdgeInsets.fromLTRB(12, 7, 5, 7),
           child: Row(
             children: [
-              const Icon(
-                Icons.info_outline_rounded,
-                size: 22,
-                color: Color(0xFF34744B),
-              ),
+              const WanpanCatMark(size: 34),
               const SizedBox(width: 10),
               Expanded(
                 child: Semantics(
@@ -182,9 +179,7 @@ class _NoticeState extends State<_Notice> with SingleTickerProviderStateMixin {
                   ).animate(_animation),
             child: DecoratedBox(
               decoration: const BoxDecoration(
-                borderRadius: BorderRadius.all(
-                  Radius.circular(WanpanRadii.medium),
-                ),
+                borderRadius: BorderRadius.all(Radius.circular(22)),
                 boxShadow: [
                   BoxShadow(
                     color: Color(0x142B5B3A),

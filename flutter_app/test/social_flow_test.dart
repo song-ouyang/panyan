@@ -253,7 +253,7 @@ Future<void> _pumpPost(
 Future<void> _submitComment(WidgetTester tester, String content) async {
   await tester.enterText(find.byType(TextField), content);
   await tester.pump();
-  await tester.tap(find.byIcon(Icons.arrow_upward_rounded));
+  await tester.tap(find.byTooltip('发送评论'));
   // The POST can complete while the follow-up GET is still pending.
   await tester.pump();
 }
@@ -391,7 +391,7 @@ void main() {
 
     await tester.enterText(find.byType(TextField), '一起去刷这条线');
     await tester.pump();
-    await tester.tap(find.byIcon(Icons.arrow_upward_rounded));
+    await tester.tap(find.byTooltip('发送评论'));
     await tester.pumpAndSettle();
 
     expect(
@@ -410,7 +410,7 @@ void main() {
     expect(find.text('一起去刷这条线'), findsOneWidget);
     expect(find.text(_currentUser.nickname), findsOneWidget);
     expect(find.textContaining('审核中'), findsNothing);
-    expect(find.text('还没有评论，来聊聊这条线路吧。'), findsNothing);
+    expect(find.text('还没有评论，聊两句吧。'), findsNothing);
 
     await _refreshPost(tester);
     expect(find.text('一起去刷这条线'), findsOneWidget);
@@ -539,7 +539,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text(content), findsOneWidget);
     expect(find.textContaining('审核中'), findsOneWidget);
-    expect(find.text('还没有评论，来聊聊这条线路吧。'), findsNothing);
+    expect(find.text('还没有评论，聊两句吧。'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -616,11 +616,11 @@ void main() {
       content,
     );
     expect(find.text('评论失败，请稍后重试'), findsOneWidget);
-    expect(find.text('还没有评论，来聊聊这条线路吧。'), findsOneWidget);
+    expect(find.text('还没有评论，聊两句吧。'), findsOneWidget);
     expect(find.textContaining('审核中'), findsNothing);
 
     api.failComment = false;
-    await tester.tap(find.byIcon(Icons.arrow_upward_rounded));
+    await tester.tap(find.byTooltip('发送评论'));
     await tester.pumpAndSettle();
     expect(api.comments, hasLength(1));
     expect(
@@ -676,7 +676,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField), '登录后再聊');
     await tester.pump();
-    await tester.tap(find.byIcon(Icons.arrow_upward_rounded));
+    await tester.tap(find.byTooltip('发送评论'));
     await tester.pumpAndSettle();
 
     expect(find.text('登录页'), findsOneWidget);
@@ -749,5 +749,51 @@ void main() {
       isTrue,
     );
     expect(find.text('待确认'), findsOneWidget);
+  });
+  testWidgets('小屏大字号和键盘展开时评论输入与发送仍可用', (tester) async {
+    final api = _SocialApiClient();
+    final session = await _signedInSession();
+    await tester.binding.setSurfaceSize(const Size(320, 568));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    addTearDown(api.dispose);
+    addTearDown(session.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: WanpanTheme.light(),
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            textScaler: const TextScaler.linear(1.8),
+            viewInsets: const EdgeInsets.only(bottom: 220),
+          ),
+          child: child!,
+        ),
+        home: PostScreen(api: api, session: session, postId: 'post-1'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final send = find.byTooltip('发送评论');
+    expect(find.text('聊两句吧…'), findsOneWidget);
+    expect(
+      tester
+          .widget<IconButton>(
+            find.byWidgetPredicate(
+              (widget) => widget is IconButton && widget.tooltip == '发送评论',
+            ),
+          )
+          .onPressed,
+      isNull,
+    );
+    await tester.enterText(find.byType(TextField), '这条线的最后一步很有意思，下次一起试试');
+    await tester.pump();
+    expect(tester.getRect(send).right, lessThanOrEqualTo(320));
+    expect(tester.getRect(send).bottom, lessThanOrEqualTo(348));
+    expect(tester.getSize(send).width, greaterThanOrEqualTo(44));
+    expect(tester.takeException(), isNull);
+    await tester.tap(send);
+    await tester.pumpAndSettle();
+    expect(api.comments.single['content'], '这条线的最后一步很有意思，下次一起试试');
+    expect(find.text('评论已提交'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
   });
 }

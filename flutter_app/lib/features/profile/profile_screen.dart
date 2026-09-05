@@ -7,7 +7,6 @@ import '../../core/network/api_client.dart';
 import '../auth/application/session_controller.dart';
 import '../../shared/app_assets.dart';
 import '../../shared/motion/wanpan_motion.dart';
-import '../../shared/widgets/wanpan_card.dart';
 import '../../shared/widgets/wanpan_mascot.dart';
 import '../../shared/widgets/wanpan_pressable.dart';
 
@@ -184,53 +183,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
         children: [
           _ProfileHeader(profile: profile, onEdit: _openProfileEditor),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
           const _ActivityShortcuts(),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           _GrowthCard(
             stats: profile.stats,
             onTap: () => context.push<void>('/profile/calendar'),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 26),
           Padding(
-            padding: const EdgeInsets.only(left: 4),
+            padding: const EdgeInsets.only(left: 4, bottom: 4),
             child: Text(
               '我的攀岩',
-              style: Theme.of(context).textTheme.labelLarge
-                  ?.copyWith(color: WanpanColors.inkSecondary),
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: WanpanColors.inkSecondary,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
-          const SizedBox(height: 10),
-          Container(
-            decoration: BoxDecoration(
-              color: WanpanColors.surface,
-              borderRadius: BorderRadius.circular(WanpanRadii.large),
-              border: Border.all(color: WanpanColors.border),
-            ),
-            child: Column(
-              children: [
-                _ActionTile(
-                  icon: Icons.alt_route_rounded,
-                  title: '线路发布记录',
-                  subtitle: '查看已发布线路与历史记录',
-                  onTap: () => context.push('/route-submissions'),
-                ),
-                const Divider(indent: 73, endIndent: 16),
-                _ActionTile(
-                  icon: Icons.people_outline_rounded,
-                  title: '我的岩友',
-                  subtitle: '看看谁最近也在上墙',
-                  onTap: () => context.push('/friends'),
-                ),
-                const Divider(indent: 73, endIndent: 16),
-                _ActionTile(
-                  icon: Icons.qr_code_rounded,
-                  title: '邀请好友',
-                  subtitle: '扫码或分享链接，一起记录完攀',
-                  onTap: () => context.push('/profile/invite'),
-                ),
-              ],
-            ),
+          _ActionTile(
+            icon: Icons.alt_route_rounded,
+            title: '线路发布记录',
+            onTap: () => context.push('/route-submissions'),
+          ),
+          const Divider(indent: 44, endIndent: 4),
+          _ActionTile(
+            icon: Icons.people_outline_rounded,
+            title: '我的岩友',
+            onTap: () => context.push('/friends'),
+          ),
+          const Divider(indent: 44, endIndent: 4),
+          _ActionTile(
+            icon: Icons.qr_code_rounded,
+            title: '邀请好友',
+            onTap: () => context.push('/profile/invite'),
           ),
         ],
       ),
@@ -247,10 +233,9 @@ class _ActivityShortcuts extends StatelessWidget {
   const _ActivityShortcuts();
 
   @override
-  Widget build(BuildContext context) => const WanpanCard(
+  Widget build(BuildContext context) => const Padding(
     key: Key('profile-activity-shortcuts'),
-    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-    hasShadow: false,
+    padding: EdgeInsets.symmetric(horizontal: 2, vertical: 6),
     child: Row(
       children: [
         _ActivityShortcut(
@@ -302,13 +287,20 @@ class _ActivityShortcut extends StatelessWidget {
       semanticLabel: semanticLabel,
       onTap: () => context.push('/profile/$name'),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(vertical: 10),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 26, color: WanpanColors.coralStrong),
-            const SizedBox(height: 8),
-            Text(label, style: Theme.of(context).textTheme.labelLarge),
+            Icon(icon, size: 24, color: WanpanColors.catBlack),
+            const SizedBox(height: 7),
+            Text(
+              label,
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                color: WanpanColors.inkSecondary,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ],
         ),
       ),
@@ -436,37 +428,102 @@ class _GrowthCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const radius = BorderRadius.all(Radius.circular(16));
     return WanpanPressable(
       key: const Key('profile-growth-card'),
       semanticLabel: '查看攀岩日历',
       onTap: onTap,
       enableHaptics: true,
       pressedScale: .985,
-      borderRadius: BorderRadius.circular(WanpanRadii.large),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+      borderRadius: radius,
+      child: DecoratedBox(
         decoration: BoxDecoration(
           color: WanpanColors.surface,
-          borderRadius: BorderRadius.circular(WanpanRadii.large),
+          borderRadius: radius,
           border: Border.all(color: WanpanColors.border),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Stack(
           children: [
-            Text('攀爬进度', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: _Stat(value: '${stats.totalSends}', label: '完攀线路'),
+            const Positioned(
+              left: 20,
+              top: 0,
+              bottom: 0,
+              child: ExcludeSemantics(
+                child: VerticalDivider(width: 1, thickness: 1),
+              ),
+            ),
+            for (final top in [25.0, 57.0])
+              Positioned(
+                left: 8,
+                top: top,
+                child: const ExcludeSemantics(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: WanpanColors.surfaceMuted,
+                    ),
+                    child: SizedBox.square(dimension: 4),
+                  ),
                 ),
-                Expanded(
-                  child: _Stat(value: 'V${stats.maxGrade}', label: '最高难度'),
-                ),
-                Expanded(
-                  child: _Stat(value: '${stats.gymCount}', label: '去过岩馆'),
-                ),
-              ],
+              ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(34, 17, 16, 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '攀岩记录',
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '看日历',
+                        style: Theme.of(context).textTheme.labelMedium
+                            ?.copyWith(
+                              color: WanpanColors.coralStrong,
+                              fontWeight: FontWeight.w500,
+                            ),
+                      ),
+                      const SizedBox(width: 2),
+                      const Icon(
+                        Icons.chevron_right_rounded,
+                        color: WanpanColors.coralStrong,
+                        size: 17,
+                      ),
+                    ],
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.only(top: 14, bottom: 18),
+                    child: Divider(),
+                  ),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: _Stat(
+                          value: '${stats.totalSends}',
+                          label: '完攀线路',
+                        ),
+                      ),
+                      Expanded(
+                        child: _Stat(
+                          value: 'V${stats.maxGrade}',
+                          label: '最高难度',
+                          color: WanpanColors.coralStrong,
+                        ),
+                      ),
+                      Expanded(
+                        child: _Stat(value: '${stats.gymCount}', label: '去过岩馆'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -476,25 +533,39 @@ class _GrowthCard extends StatelessWidget {
 }
 
 class _Stat extends StatelessWidget {
-  const _Stat({required this.value, required this.label});
+  const _Stat({
+    required this.value,
+    required this.label,
+    this.color = WanpanColors.catBlack,
+  });
+
   final String value;
   final String label;
+  final Color color;
+
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Text(
-          value,
-          style: Theme.of(context).textTheme.headlineMedium
-              ?.copyWith(color: WanpanColors.coralStrong),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            value,
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+              color: color,
+              fontSize: 28,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 6),
         Text(
           label,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
           textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.labelMedium,
+          style: Theme.of(context).textTheme.labelMedium
+              ?.copyWith(fontWeight: FontWeight.w400),
         ),
       ],
     );
@@ -505,51 +576,44 @@ class _ActionTile extends StatelessWidget {
   const _ActionTile({
     required this.icon,
     required this.title,
-    required this.subtitle,
-    this.onTap,
+    required this.onTap,
   });
+
   final IconData icon;
   final String title;
-  final String subtitle;
-  final VoidCallback? onTap;
+  final VoidCallback onTap;
+
   @override
   Widget build(BuildContext context) {
     return WanpanPressable(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(WanpanRadii.medium),
-      pressedScale: .985,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-        child: Row(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: WanpanColors.surfaceSoft,
-                borderRadius: BorderRadius.circular(13),
+      pressedScale: .99,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 62),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 15),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 28,
+                child: Icon(icon, size: 23, color: WanpanColors.inkSecondary),
               ),
-              child: Icon(icon, color: WanpanColors.inkSecondary),
-            ),
-            const SizedBox(width: 13),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: Theme.of(context).textTheme.titleMedium),
-                  Text(
-                    subtitle,
-                    style: Theme.of(context).textTheme.labelMedium,
-                  ),
-                ],
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleMedium
+                      ?.copyWith(fontSize: 15, fontWeight: FontWeight.w500),
+                ),
               ),
-            ),
-            if (onTap != null)
+              const SizedBox(width: 12),
               const Icon(
                 Icons.chevron_right_rounded,
                 color: WanpanColors.muted,
+                size: 19,
               ),
-          ],
+            ],
+          ),
         ),
       ),
     );

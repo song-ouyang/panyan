@@ -100,6 +100,14 @@ GoRouter _createRouter({
         builder: (_, _) => Scaffold(body: Text('互动管理 $name')),
       ),
     GoRoute(
+      path: '/route-submissions',
+      builder: (_, _) => const Scaffold(body: Text('线路发布记录页')),
+    ),
+    GoRoute(
+      path: '/friends',
+      builder: (_, _) => const Scaffold(body: Text('我的岩友页')),
+    ),
+    GoRoute(
       path: '/settings',
       builder: (_, _) => const Scaffold(body: Text('设置页')),
     ),
@@ -151,6 +159,14 @@ void main() {
     await _pumpProfile(tester, router: router);
 
     expect(find.text('我的动态'), findsNothing, reason: '四入口取代重复的动态长行');
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('profile-activity-favorites')),
+        matching: find.byIcon(Icons.star_border_rounded),
+      ),
+      findsOneWidget,
+      reason: '收藏入口使用五角星，和点赞心形区分',
+    );
     for (final name in ['posts', 'comments', 'favorites', 'likes']) {
       final shortcut = find.byKey(Key('profile-activity-$name'));
       await tester.ensureVisible(shortcut);
@@ -163,7 +179,7 @@ void main() {
     }
   });
 
-  testWidgets('昵称旁编辑图标可进入资料页，攀爬进度只显示累计统计', (tester) async {
+  testWidgets('昵称旁编辑图标可进入资料页，攀岩记录显示真实累计统计和日历提示', (tester) async {
     final api = _ProfileApi();
     final session = await _createSession();
     final router = _createRouter(api: api, session: session);
@@ -195,11 +211,20 @@ void main() {
     expect(find.byTooltip('编辑个人资料'), findsOneWidget);
     expect(find.text('编辑资料'), findsNothing);
     expect(growth, findsOneWidget);
-    for (final label in ['攀爬进度', '完攀线路', '最高难度', '去过岩馆', '18', 'V5', '4']) {
+    for (final label in [
+      '攀岩记录',
+      '看日历',
+      '完攀线路',
+      '最高难度',
+      '去过岩馆',
+      '18',
+      'V5',
+      '4',
+    ]) {
       expect(
         find.descendant(of: growth, matching: find.text(label)),
         findsOneWidget,
-        reason: '$label 应展示在同一张成长卡中',
+        reason: '$label 应展示在同一张攀岩记录页中',
       );
     }
     expect(find.text('7'), findsNothing);
@@ -219,7 +244,7 @@ void main() {
     expect(router.state.uri.queryParameters['from'], '/profile');
   });
 
-  testWidgets('成长卡进入攀岩日历，右上角设置进入设置页', (tester) async {
+  testWidgets('攀岩记录进入攀岩日历，右上角设置进入设置页', (tester) async {
     final api = _ProfileApi();
     final session = await _createSession();
     final router = _createRouter(api: api, session: session);
@@ -276,7 +301,7 @@ void main() {
     });
   });
 
-  testWidgets('我的攀岩包含邀请好友入口并进入邀请页', (tester) async {
+  testWidgets('我的攀岩精简功能文案，线路、岩友与邀请入口均可导航', (tester) async {
     final api = _ProfileApi();
     final session = await _createSession();
     final router = _createRouter(api: api, session: session);
@@ -285,14 +310,30 @@ void main() {
     await _pumpProfile(tester, router: router);
 
     expect(find.text('我的攀岩'), findsOneWidget);
-    expect(find.text('邀请好友'), findsOneWidget);
-    await tester.ensureVisible(find.text('邀请好友'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('邀请好友'));
-    await tester.pumpAndSettle();
-
-    expect(router.state.uri.path, '/profile/invite');
-    expect(find.text('邀请好友页'), findsOneWidget);
+    for (final obsoleteCopy in [
+      '查看已发布线路与历史记录',
+      '看看谁最近也在上墙',
+      '扫码或分享链接，一起记录完攀',
+    ]) {
+      expect(find.text(obsoleteCopy), findsNothing);
+    }
+    for (final entry in {
+      '线路发布记录': '/route-submissions',
+      '我的岩友': '/friends',
+      '邀请好友': '/profile/invite',
+    }.entries) {
+      await tester.scrollUntilVisible(
+        find.text(entry.key),
+        180,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(entry.key));
+      await tester.pumpAndSettle();
+      expect(router.state.uri.path, entry.value);
+      router.pop();
+      await tester.pumpAndSettle();
+    }
   });
 
   testWidgets('320px 长中文昵称与最大字号下编辑图标及主要入口可用且无溢出', (tester) async {
@@ -366,14 +407,46 @@ void main() {
         expect(tester.getSize(shortcut).shortestSide, greaterThanOrEqualTo(44));
         expect(tester.getCenter(shortcut).dy, closeTo(rowY, 1));
       }
+      for (final name in ['posts', 'comments', 'favorites', 'likes']) {
+        final shortcut = find.byKey(Key('profile-activity-$name'));
+        await tester.tap(shortcut);
+        await tester.pumpAndSettle();
+        expect(router.state.uri.path, '/profile/$name');
+        router.pop();
+        await tester.pumpAndSettle();
+      }
+      final growth = find.byKey(const Key('profile-growth-card'));
       await tester.scrollUntilVisible(
-        find.text('邀请好友'),
+        growth,
         180,
         scrollable: find.byType(Scrollable).first,
       );
       await tester.pumpAndSettle();
-      expect(find.text('邀请好友').hitTestable(), findsOneWidget);
-      expect(tester.takeException(), isNull);
+      expect(find.text('看日历').hitTestable(), findsOneWidget);
+      await tester.tap(growth);
+      await tester.pumpAndSettle();
+      expect(router.state.uri.path, '/profile/calendar');
+      router.pop();
+      await tester.pumpAndSettle();
+      for (final entry in {
+        '线路发布记录': '/route-submissions',
+        '我的岩友': '/friends',
+        '邀请好友': '/profile/invite',
+      }.entries) {
+        await tester.scrollUntilVisible(
+          find.text(entry.key),
+          180,
+          scrollable: find.byType(Scrollable).first,
+        );
+        await tester.pumpAndSettle();
+        expect(find.text(entry.key).hitTestable(), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        await tester.tap(find.text(entry.key));
+        await tester.pumpAndSettle();
+        expect(router.state.uri.path, entry.value);
+        router.pop();
+        await tester.pumpAndSettle();
+      }
       // The list can dispose the header after scrolling through menu entries.
       await tester.scrollUntilVisible(
         edit,

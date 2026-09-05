@@ -12,6 +12,7 @@ import '../../core/repositories/feed_repository.dart';
 import '../auth/application/session_controller.dart';
 import '../../shared/motion/wanpan_motion.dart';
 import '../../shared/widgets/wanpan_content_safety.dart';
+import '../../shared/widgets/wanpan_cat_mark.dart';
 import '../../shared/widgets/wanpan_notice.dart';
 import '../../shared/widgets/wanpan_video_player.dart';
 
@@ -642,7 +643,7 @@ class _PostScreenState extends State<PostScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 24),
               child: Text(
-                '还没有评论，来聊聊这条线路吧。',
+                post.isMoment ? '还没有评论，聊两句吧。' : '这条线怎么爬？来聊聊吧。',
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
@@ -669,43 +670,79 @@ class _PostScreenState extends State<PostScreen> {
   }
 
   Widget _commentBar() {
-    return SafeArea(
-      top: false,
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(16, 10, 12, 10),
-        decoration: const BoxDecoration(
-          color: WanpanColors.surface,
-          border: Border(top: BorderSide(color: WanpanColors.border)),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _commentController,
-                maxLength: 200,
-                decoration: const InputDecoration(
-                  hintText: '写评论…',
-                  counterText: '',
-                  isDense: true,
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: SafeArea(
+        top: false,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(16, 10, 12, 10),
+          decoration: const BoxDecoration(
+            color: WanpanColors.surface,
+            border: Border(top: BorderSide(color: WanpanColors.border)),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _commentController,
+                  maxLength: 200,
+                  minLines: 1,
+                  maxLines: 3,
+                  textInputAction: TextInputAction.send,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w400,
+                    color: WanpanColors.ink,
+                  ),
+                  decoration: const InputDecoration(
+                    hintText: '聊两句吧…',
+                    hintStyle: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w400,
+                      color: WanpanColors.inkSecondary,
+                    ),
+                    prefixIcon: Padding(
+                      padding: EdgeInsets.fromLTRB(12, 10, 9, 10),
+                      child: WanpanCatMark(size: 27),
+                    ),
+                    prefixIconConstraints: BoxConstraints(
+                      minWidth: 48,
+                      minHeight: 48,
+                    ),
+                    contentPadding: EdgeInsets.fromLTRB(0, 12, 12, 12),
+                    counterText: '',
+                    isDense: true,
+                  ),
+                  onChanged: (_) => setState(() {}),
+                  onSubmitted: (_) => _comment(),
                 ),
-                onChanged: (_) => setState(() {}),
-                onSubmitted: (_) => _comment(),
               ),
-            ),
-            const SizedBox(width: 8),
-            IconButton.filled(
-              onPressed: _commentController.text.trim().isEmpty || _commenting
-                  ? null
-                  : _comment,
-              icon: _commenting
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.arrow_upward_rounded),
-            ),
-          ],
+              const SizedBox(width: 8),
+              IconButton.filled(
+                tooltip: '发送评论',
+                style: IconButton.styleFrom(
+                  backgroundColor: WanpanColors.coral,
+                  foregroundColor: WanpanColors.surface,
+                  disabledBackgroundColor: WanpanColors.surfaceMuted,
+                  disabledForegroundColor: WanpanColors.muted,
+                  minimumSize: const Size(48, 48),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                onPressed: _commentController.text.trim().isEmpty || _commenting
+                    ? null
+                    : _comment,
+                icon: _commenting
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.send_rounded, size: 21),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -743,12 +780,21 @@ class _CommentTile extends StatelessWidget {
               children: [
                 Text(
                   comment.user.nickname,
-                  style: Theme.of(context).textTheme.labelLarge,
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: WanpanColors.inkSecondary,
+                  ),
                 ),
                 const SizedBox(height: 3),
                 Text(
                   comment.content,
-                  style: Theme.of(context).textTheme.bodyMedium,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w400,
+                    color: WanpanColors.ink,
+                    height: 1.5,
+                  ),
                 ),
                 if (comment.isPending) ...[
                   const SizedBox(height: 5),
