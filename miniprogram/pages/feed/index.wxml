@@ -95,7 +95,7 @@
     <view class="composer-head">
       <view class="composer-cancel pressable {{publishing || publishComplete?'is-disabled':''}}" role="button" aria-disabled="{{publishing || publishComplete}}" bindtap="closeComposer">取消</view>
       <view>发表动态</view>
-      <button class="composer-submit pressable primary-action {{publishComplete?'is-complete':''}} {{publishResult==='pending'?'is-pending':''}}" loading="{{publishing}}" disabled="{{publishing || publishComplete}}" bindtap="publish">{{publishComplete?(publishResult==='pending'?'✓ 已提交审核':'✓ 已发表'):(publishing?'处理中':'发表')}}</button>
+      <button class="composer-submit pressable primary-action {{publishComplete?'is-complete':''}} {{publishResult==='pending'?'is-pending':''}}" loading="{{publishing}}" disabled="{{publishing || publishComplete}}" bindtap="publish">{{publishComplete?(publishResult==='approved'?'✓ '+publishStage:publishStage):(publishing?'处理中':'发表')}}</button>
     </view>
     <textarea maxlength="300" focus="{{composerFocused}}" disabled="{{publishing || publishComplete}}" placeholder="分享这次攀爬…" value="{{draft}}" bindinput="draftInput"/>
     <view class="draft-grid">

@@ -113,28 +113,62 @@ suite('comment visibility with isolated local PostgreSQL', () => {
     expect(listing.json().items.find((post: { id: string }) => post.id === sendId)?.comment_count).toBe(ids.length);
   }
 
-  it('returns the saved pending comment with its author and shows it only to that author', async () => {
+  it('publishes new comments with legacy manual configuration while preserving old pending visibility', async () => {
     const approvedId = await insertComment(other, 'approved');
+    const ownPendingId = await insertComment(commenter, 'pending');
     await insertComment(other, 'pending');
     await insertComment(commenter, 'rejected');
+    expect(config.MODERATION_MODE).toBe('manual');
     const response = await postComment(commenter);
     expect(response.statusCode).toBe(200);
     const posted = response.json();
     expect(posted).toMatchObject({
       send_id: sendId, user_id: commenter.id, content: '刚发表的评论',
-      moderation_status: 'pending', nickname: commenter.nickname, avatar_url: commenter.avatar_url
+      moderation_status: 'approved', nickname: commenter.nickname, avatar_url: commenter.avatar_url
     });
     expect(posted.id).toEqual(expect.any(String));
     expect(posted.created_at).toEqual(expect.any(String));
     const saved = await client!.query('SELECT moderation_status FROM comments WHERE id=$1', [posted.id]);
-    expect(saved.rows[0].moderation_status).toBe('pending');
-    await expectVisible(commenter, [approvedId, posted.id]);
+    expect(saved.rows[0].moderation_status).toBe('approved');
+    await expectVisible(commenter, [approvedId, posted.id, ownPendingId]);
     const ownDetail = await detail(commenter);
     expect(ownDetail.json().comments.find((comment: { id: string }) => comment.id === posted.id))
-      .toMatchObject({ moderation_status: 'pending', user_id: commenter.id });
-    await expectVisible(owner, [approvedId]);
-    // Another commenter's pending comment remains private to that commenter.
-    await expectVisible(undefined, [approvedId]);
+      .toMatchObject({ moderation_status: 'approved', user_id: commenter.id });
+    await expectVisible(owner, [approvedId, posted.id]);
+    // Existing pending comments remain private to their authors.
+    await expectVisible(undefined, [approvedId, posted.id]);
+  });
+
+  it.each(['public', 'friends', 'private'])('publishes a new %s moment with legacy manual configuration and preserves its audience', async (visibility) => {
+    await client!.query(
+      "INSERT INTO friendships(requester_id,addressee_id,status) VALUES($1,$2,'accepted')", [owner.id, commenter.id]
+    );
+    const imageUrls = visibility === 'public' ? [] : ['https://example.com/new-moment.png'];
+    expect(config.MODERATION_MODE).toBe('manual');
+    const response = await app!.inject({
+      method: 'POST', url: '/api/sends/moments', headers: headers(commenter),
+      payload: { caption: '发布就展示', imageUrls, visibility }
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      moderationStatus: 'approved', moderation_status: 'approved', visibility, image_urls: imageUrls
+    });
+    sendId = response.json().id;
+    const saved = await client!.query('SELECT moderation_status,visibility FROM sends WHERE id=$1', [sendId]);
+    expect(saved.rows[0]).toEqual({ moderation_status: 'approved', visibility });
+    expect((await detail(commenter)).statusCode).toBe(200);
+    expect((await detail(owner)).statusCode).toBe(visibility === 'private' ? 404 : 200);
+    expect((await detail(other)).statusCode).toBe(visibility === 'public' ? 200 : 404);
+    expect((await detail()).statusCode).toBe(visibility === 'public' ? 200 : 404);
+    const listing = await feed(owner, visibility === 'friends' ? 'friends' : 'square');
+    expect(listing.statusCode).toBe(200);
+    expect(listing.json().items.some((post: { id: string }) => post.id === sendId)).toBe(visibility !== 'private');
+
+    await client!.query(
+      "UPDATE friendships SET status='blocked' WHERE requester_id=$1 AND addressee_id=$2", [owner.id, commenter.id]
+    );
+    expect((await detail(owner)).statusCode).toBe(404);
+    expect((await feed(owner)).json().items.some((post: { id: string }) => post.id === sendId)).toBe(false);
   });
 
   it('reflects approval and rejection without duplicate or stale visible counts', async () => {
@@ -183,15 +217,17 @@ suite('comment visibility with isolated local PostgreSQL', () => {
     expect((await postComment(commenter)).statusCode).toBe(404);
   });
 
-  it('shows an own pending comment on an accessible friends post without exposing it to others', async () => {
+  it('publishes comments within the friends audience while preserving old pending self-only visibility', async () => {
     await client!.query("UPDATE sends SET visibility='friends' WHERE id=$1", [sendId]);
     await client!.query(
       "INSERT INTO friendships(requester_id,addressee_id,status) VALUES($1,$2,'accepted')", [owner.id, commenter.id]
     );
+    const ownPendingId = await insertComment(commenter, 'pending');
     const response = await postComment(commenter);
     expect(response.statusCode).toBe(200);
-    await expectVisible(commenter, [response.json().id], 'friends');
-    await expectVisible(owner, [], 'friends');
+    expect(response.json().moderation_status).toBe('approved');
+    await expectVisible(commenter, [response.json().id, ownPendingId], 'friends');
+    await expectVisible(owner, [response.json().id], 'friends');
     expect((await detail(other)).statusCode).toBe(404);
     expect((await detail()).statusCode).toBe(404);
   });

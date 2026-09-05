@@ -74,7 +74,9 @@ class FeedPost {
     imageUrls: jsonStringList(json['image_urls']),
     caption: jsonNullableString(json['caption']),
     visibility: jsonNullableString(json['visibility']),
-    moderationStatus: jsonNullableString(json['moderation_status']),
+    moderationStatus: jsonNullableString(
+      json['moderation_status'] ?? json['moderationStatus'],
+    ),
     sentAt: jsonDateTime(json['sent_at']),
     likeCount: jsonInt(json['like_count']),
     commentCount: jsonInt(json['comment_count']),

@@ -29,7 +29,7 @@
     <view class="scope-detail">
       <view class="scope-detail-layer national-copy {{scope==='national'?'is-visible':''}}">
         <text>全国榜</text>
-        <label>聚合本月所有已审核完攀</label>
+        <label>聚合本月所有有效完攀</label>
       </view>
       <view class="scope-detail-layer region-pickers {{scope!=='national'?'is-visible':''}} {{scope==='province'?'single':''}}">
         <picker range="{{provinces}}" value="{{provinceIndex}}" bindchange="chooseProvince" disabled="{{regionsState!=='ready'}}">
@@ -133,7 +133,7 @@
     <view class="state-layer {{rankingState==='empty'?'is-visible':''}}">
       <view class="state-orb empty-orb">○</view>
       <view class="state-title">本月榜单还在等第一位岩友</view>
-      <view class="state-copy">完成一条已审核线路后，积分会自动记入</view>
+      <view class="state-copy">完成一条线路后，积分会自动记入</view>
     </view>
   </view>
 

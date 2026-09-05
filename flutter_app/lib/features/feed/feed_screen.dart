@@ -16,6 +16,8 @@ import '../../shared/widgets/wanpan_video_cover.dart';
 import '../auth/application/session_controller.dart';
 import '../../shared/motion/wanpan_motion.dart';
 
+typedef _MomentPublishResult = ({String? moderationStatus, String visibility});
+
 class FeedScreen extends StatefulWidget {
   const FeedScreen({super.key, required this.api, required this.session});
 
@@ -137,7 +139,7 @@ class _FeedScreenState extends State<FeedScreen> {
       await context.push('/login?from=/feed');
       return;
     }
-    final published = await showModalBottomSheet<bool>(
+    final published = await showModalBottomSheet<_MomentPublishResult>(
       context: context,
       isScrollControlled: true,
       isDismissible: true,
@@ -147,8 +149,19 @@ class _FeedScreenState extends State<FeedScreen> {
         initialVisibility: _scope == 'square' ? 'public' : 'friends',
       ),
     );
-    if (published == true && mounted) {
-      _notice('已提交审核，通过后会出现在对应动态里');
+    if (published != null && mounted) {
+      if (published.moderationStatus == 'approved') {
+        setState(() {
+          _scope = published.visibility == 'friends' ? 'friends' : 'square';
+          _scopeCache.clear();
+        });
+      }
+      _notice(switch (published.moderationStatus) {
+        'approved' => '动态已发布',
+        'pending' => '动态已提交，审核后可见',
+        'rejected' => '动态未通过，请调整内容后重新发布',
+        _ => '动态已提交，刷新后查看',
+      });
       await _load();
     }
   }
@@ -637,6 +650,7 @@ class _ComposeSheet extends StatefulWidget {
 }
 
 class _ComposeSheetState extends State<_ComposeSheet> {
+  late final _repository = FeedRepository(widget.api);
   final _controller = TextEditingController();
   final _picker = ImagePicker();
   final List<XFile> _images = [];
@@ -696,14 +710,20 @@ class _ComposeSheetState extends State<_ComposeSheet> {
       if (mounted) {
         setState(() {
           _progress = 1;
-          _stage = '正在提交审核…';
+          _stage = '正在发布…';
         });
       }
-      await widget.api.postJson(
-        '/sends/moments',
-        data: {'caption': text, 'imageUrls': urls, 'visibility': _visibility},
+      final published = await _repository.publishMoment(
+        caption: text,
+        imageUrls: urls,
+        visibility: _visibility,
       );
-      if (mounted) Navigator.pop(context, true);
+      if (mounted) {
+        Navigator.pop(context, (
+          moderationStatus: published.moderationStatus,
+          visibility: _visibility,
+        ));
+      }
     } catch (_) {
       if (!mounted) return;
       setState(() => _submitting = false);
@@ -848,8 +868,8 @@ class _ComposeSheetState extends State<_ComposeSheet> {
                   const SizedBox(height: 6),
                   Text(
                     _visibility == 'public'
-                        ? '通过审核后所有人都可在广场看到'
-                        : '通过审核后仅你和已添加的岩友可见',
+                        ? '发布后所有人都可在广场看到'
+                        : '发布后仅你和已添加的岩友可见',
                     style: Theme.of(context).textTheme.labelMedium,
                   ),
                   if (_submitting) ...[
@@ -866,7 +886,7 @@ class _ComposeSheetState extends State<_ComposeSheet> {
                   ],
                   const SizedBox(height: 20),
                   WanpanButton(
-                    label: '提交发布',
+                    label: '发布动态',
                     loading: _submitting,
                     onPressed: _canSubmit ? _submit : null,
                   ),

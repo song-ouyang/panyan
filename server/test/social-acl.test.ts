@@ -6,15 +6,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   query: vi.fn(),
   clientQuery: vi.fn(),
-  transaction: vi.fn(),
-  initialModerationStatus: vi.fn()
+  transaction: vi.fn()
 }));
 
 vi.mock('../src/db.js', () => ({
   query: mocks.query,
   transaction: mocks.transaction
 }));
-vi.mock('../src/moderation.js', () => ({ initialModerationStatus: mocks.initialModerationStatus }));
 
 import { sendRoutes } from '../src/routes/sends.js';
 import { gymRoutes } from '../src/routes/gyms.js';
@@ -63,14 +61,11 @@ beforeEach(() => {
   mocks.query.mockReset();
   mocks.clientQuery.mockReset();
   mocks.transaction.mockReset();
-  mocks.initialModerationStatus.mockReset();
-  mocks.initialModerationStatus.mockReturnValue('approved');
   mocks.transaction.mockImplementation(async (callback) => callback({ query: mocks.clientQuery }));
 });
 
 describe('send visibility', () => {
-  it.each(['public', 'friends', 'private'])('publishes a %s route check-in immediately in manual moderation mode', async (visibility) => {
-    mocks.initialModerationStatus.mockReturnValue('pending');
+  it.each(['public', 'friends', 'private'])('publishes a %s route check-in immediately', async (visibility) => {
     mocks.query
       .mockResolvedValueOnce(result([{ grade: 'V2', grade_number: 2 }]))
       .mockResolvedValueOnce(result([{ max_grade: 1 }]));
@@ -101,32 +96,29 @@ describe('send visibility', () => {
     expect(mocks.clientQuery.mock.calls[0]![1]).toEqual([
       viewerId, routeId, 1, 'https://example.com/uploaded.mp4', null, visibility, 'approved'
     ]);
-    expect(mocks.initialModerationStatus).not.toHaveBeenCalled();
     await app.close();
   });
 
-  it('keeps standalone moments subject to manual moderation', async () => {
-    mocks.initialModerationStatus.mockReturnValue('pending');
-    mocks.query.mockResolvedValueOnce(result([{ id: sendId, moderation_status: 'pending' }]));
+  it.each(['public', 'friends', 'private'])('publishes a %s standalone moment immediately', async (visibility) => {
+    mocks.query.mockResolvedValueOnce(result([{ id: sendId, moderation_status: 'approved', visibility }]));
     const app = await createApp(sendRoutes, '/api/sends');
 
     const response = await app.inject({
       method: 'POST',
       url: '/api/sends/moments',
-      payload: { caption: '攀岩日常' }
+      payload: { caption: '攀岩日常', visibility }
     });
 
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toMatchObject({ moderationStatus: 'pending' });
-    expect(mocks.query.mock.calls[0]![1]).toEqual([viewerId, '攀岩日常', [], 'public', 'pending']);
+    expect(response.json()).toMatchObject({ moderationStatus: 'approved', visibility });
+    expect(mocks.query.mock.calls[0]![1]).toEqual([viewerId, '攀岩日常', [], visibility, 'approved']);
     await app.close();
   });
 
-  it('keeps comments subject to manual moderation', async () => {
-    mocks.initialModerationStatus.mockReturnValue('pending');
+  it('publishes a comment immediately on an accessible post', async () => {
     mocks.query
       .mockResolvedValueOnce(result([{ id: sendId }]))
-      .mockResolvedValueOnce(result([{ moderation_status: 'pending' }]));
+      .mockResolvedValueOnce(result([{ moderation_status: 'approved' }]));
     const app = await createApp(sendRoutes, '/api/sends');
 
     const response = await app.inject({
@@ -136,13 +128,12 @@ describe('send visibility', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toMatchObject({ moderation_status: 'pending' });
-    expect(mocks.query.mock.calls[1]![1]).toEqual([sendId, viewerId, '这条线路很棒', 'pending']);
+    expect(response.json()).toMatchObject({ moderation_status: 'approved' });
+    expect(mocks.query.mock.calls[1]![1]).toEqual([sendId, viewerId, '这条线路很棒', 'approved']);
     await app.close();
   });
 
   it('updates an existing check-in without deleting its likes or comments', async () => {
-    mocks.initialModerationStatus.mockReturnValue('pending');
     mocks.query
       .mockResolvedValueOnce(result([{ grade: 'V3', grade_number: 3 }]))
       .mockResolvedValueOnce(result([{ max_grade: 3 }]));
@@ -836,8 +827,7 @@ describe('route submission validation', () => {
     await app.close();
   });
 
-  it('publishes the route and its video immediately even in manual moderation mode', async () => {
-    mocks.initialModerationStatus.mockReturnValue('pending');
+  it('publishes the route and its video immediately', async () => {
     mocks.clientQuery
       .mockResolvedValueOnce(result())
       .mockResolvedValueOnce(result([{ id: gymId }]))
@@ -863,7 +853,6 @@ describe('route submission validation', () => {
     });
     const sendCall = mocks.clientQuery.mock.calls.find(([sql]) => (sql as string).includes('INSERT INTO sends'))!;
     expect(sendCall[1]).toEqual([viewerId, routeId, 'https://example.com/route.mp4', null, 'public', 'approved']);
-    expect(mocks.initialModerationStatus).not.toHaveBeenCalled();
     await app.close();
   });
 

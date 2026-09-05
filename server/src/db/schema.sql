@@ -200,7 +200,7 @@ CREATE TABLE IF NOT EXISTS route_submissions (
   caption varchar(300),
   visibility varchar(12) NOT NULL DEFAULT 'public' CHECK (visibility IN ('public','friends','private')),
   points jsonb NOT NULL DEFAULT '[]'::jsonb,
-  status review_status NOT NULL DEFAULT 'pending',
+  status review_status NOT NULL DEFAULT 'approved',
   review_note varchar(300),
   reviewer_id uuid REFERENCES users(id) ON DELETE SET NULL,
   published_route_id uuid REFERENCES routes(id) ON DELETE SET NULL,
@@ -240,6 +240,7 @@ ALTER TABLE route_submissions ADD COLUMN IF NOT EXISTS client_request_id uuid;
 ALTER TABLE route_submissions ADD COLUMN IF NOT EXISTS video_url text;
 ALTER TABLE route_submissions ADD COLUMN IF NOT EXISTS caption varchar(300);
 ALTER TABLE route_submissions ADD COLUMN IF NOT EXISTS visibility varchar(12) NOT NULL DEFAULT 'public';
+ALTER TABLE route_submissions ALTER COLUMN status SET DEFAULT 'approved';
 -- Route photos and annotations are optional for both new and existing clients.
 ALTER TABLE route_submissions ALTER COLUMN cover_url DROP NOT NULL;
 ALTER TABLE routes ALTER COLUMN cover_url DROP NOT NULL;
@@ -308,3 +309,65 @@ WHERE s.route_id=r.id AND r.published=true
     WHERE report.target_type='send' AND report.target_id=s.id
       AND report.status IN ('pending','approved')
   );
+
+-- Publication no longer waits for moderation. This explicitly supersedes the
+-- older check-in repair's published-route/report exclusions for ALL pending
+-- content present at upgrade time. Rejected content and reports stay unchanged.
+-- Keep the marker, route/video publication and status changes in one atomic
+-- block: a failure must leave the repair retryable without partial publication.
+DO $publish_pending_content$
+DECLARE
+  submission route_submissions%ROWTYPE;
+  published_id uuid;
+BEGIN
+  INSERT INTO data_migrations(name)
+  VALUES ('all_pending_content_publish_immediately_v1')
+  ON CONFLICT DO NOTHING;
+  IF NOT FOUND THEN RETURN; END IF;
+
+  FOR submission IN
+    SELECT * FROM route_submissions
+    WHERE status='pending'
+    ORDER BY created_at,id
+    FOR UPDATE
+  LOOP
+    published_id := submission.published_route_id;
+    IF published_id IS NULL THEN
+      INSERT INTO routes(
+        gym_id,route_set_id,name,grade,color,wall_zone,cover_url,points,created_at
+      ) VALUES (
+        submission.gym_id,submission.route_set_id,submission.name,submission.grade,
+        submission.color,submission.wall_zone,submission.cover_url,
+        submission.points,submission.created_at
+      ) RETURNING id INTO published_id;
+    ELSE
+      -- Reuse an already-linked route, including interrupted legacy publication.
+      UPDATE routes SET published=true WHERE id=published_id;
+    END IF;
+
+    IF submission.video_url IS NOT NULL AND submission.video_url<>'' THEN
+      INSERT INTO sends(
+        user_id,route_id,attempts,video_url,caption,visibility,
+        moderation_status,sent_at,created_at
+      ) VALUES (
+        submission.submitter_id,published_id,1,submission.video_url,
+        nullif(submission.caption,''),submission.visibility,'approved',
+        submission.created_at,submission.created_at
+      )
+      -- Existing check-ins own their attempts, media, dates and interactions.
+      -- Preserve them (including rejected records) instead of awarding twice.
+      ON CONFLICT (user_id,route_id) DO NOTHING;
+    END IF;
+
+    UPDATE route_submissions
+    SET status='approved',published_route_id=published_id,
+        reviewed_at=coalesce(reviewed_at,now())
+    WHERE id=submission.id;
+  END LOOP;
+
+  UPDATE sends SET moderation_status='approved'
+  WHERE moderation_status='pending';
+  UPDATE comments SET moderation_status='approved'
+  WHERE moderation_status='pending';
+END
+$publish_pending_content$;

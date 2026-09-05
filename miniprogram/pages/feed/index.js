@@ -355,14 +355,20 @@ Page({
 
       if (this._disposed) return;
       const moderationStatus = created && (created.moderationStatus || created.moderation_status);
-      // Fail closed: only an explicit approval may appear in the public feed.
+      // The server owns visibility. Only explicitly published items enter the feed.
       const approved = moderationStatus === 'approved';
+      const result = ['approved', 'pending', 'rejected'].includes(moderationStatus)
+        ? moderationStatus
+        : 'submitted';
+      const resultLabel = {
+        approved: '已发表', pending: '已提交审核', rejected: '未通过', submitted: '已提交'
+      }[result];
       this.pendingNewItemId = approved && created && created.id ? created.id : '';
       this.setData({
         publishing: false,
         publishComplete: true,
-        publishResult: approved ? 'approved' : 'pending',
-        publishStage: approved ? '发表成功' : '已提交审核',
+        publishResult: result,
+        publishStage: resultLabel,
         uploadProgress: 100
       });
       if (approved) {

@@ -1,6 +1,6 @@
 <view class="page my-posts-page">
   <view class="refreshing" wx:if="{{refreshing}}">
-    <view class="refresh-dot"></view><text>正在更新审核状态</text>
+    <view class="refresh-dot"></view><text>正在更新动态状态</text>
   </view>
 
   <view class="post-skeleton" wx:if="{{loading && !items.length}}" aria-label="正在加载我的动态">

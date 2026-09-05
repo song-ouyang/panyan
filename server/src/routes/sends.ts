@@ -2,7 +2,6 @@ import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { query, transaction } from '../db.js';
 import { commentBody, idParams, pagination, sendBody } from '../schemas.js';
-import { initialModerationStatus } from '../moderation.js';
 
 const feedCursorPayload = z.object({
   version: z.literal(1),
@@ -85,7 +84,7 @@ export const sendRoutes: FastifyPluginAsync = async (app) => {
     const result = await query(
       `INSERT INTO sends(user_id,route_id,attempts,caption,image_urls,visibility,moderation_status)
        VALUES($1,NULL,1,$2,$3,$4,$5) RETURNING *`,
-      [request.user.sub, body.caption || null, body.imageUrls, body.visibility, initialModerationStatus()]
+      [request.user.sub, body.caption || null, body.imageUrls, body.visibility, 'approved']
     );
     const row = result.rows[0]!;
     return { ...row, moderationStatus: row.moderation_status };
@@ -285,7 +284,7 @@ export const sendRoutes: FastifyPluginAsync = async (app) => {
        )
        SELECT c.*,u.nickname,u.avatar_url
        FROM inserted c JOIN users u ON u.id=c.user_id`,
-      [id, request.user.sub, content, initialModerationStatus()]
+      [id, request.user.sub, content, 'approved']
     );
     return result.rows[0];
   });

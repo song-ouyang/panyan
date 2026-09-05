@@ -53,6 +53,8 @@ const schema = z.object({
   OSS_PUBLIC_BASE_URL: z.string().default(''),
   PUBLIC_BASE_URL: z.string().url().default('http://localhost:3000'),
   UPLOAD_DIR: z.string().default('./uploads'),
+  // Legacy deployments may still provide this setting. Publication now always
+  // approves moments, comments, route submissions and check-ins immediately.
   MODERATION_MODE: z.enum(['off', 'manual']).default('off'),
   ALLOW_PRODUCTION_GYM_IMPORT: z.enum(['true', 'false'])
     .default('false')

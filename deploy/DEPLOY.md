@@ -48,7 +48,8 @@ WECHAT_MOBILE_APP_SECRET=
 APPLE_CLIENT_ID=com.wanpan.wanpanDiary
 APPLE_TEAM_ID=Apple开发者TeamID
 
-MODERATION_MODE=manual
+# 仅兼容旧配置；动态、评论、线路、打卡已改为直接通过。
+MODERATION_MODE=off
 UPLOAD_MODE=oss
 OSS_REGION=oss-cn-chengdu
 OSS_BUCKET=Bucket名称
@@ -66,6 +67,8 @@ cd /www/wwwroot/wanpan-diary && bash deploy/server-deploy.sh
 ```
 
 该脚本会依次执行：配置检查、已有数据库备份、`git fetch/fast-forward`、构建带 Git 提交号标签的镜像、幂等数据库 migration、启动容器、数据库就绪检查。失败时会输出最近日志，并在存在上一镜像时自动恢复 API。
+
+图文动态、评论、线路投稿和完攀现已直接通过，旧 `.env.production` 即使保留 `MODERATION_MODE=manual` 也不再阻止发布。升级迁移会一次性通过已有 `pending` 动态、评论和完攀，并为待审线路投稿补建或关联实际线路及附带视频，保留原时间、媒体、成绩和可见范围；`rejected` 内容和举报记录不变。使用上述部署脚本完成备份和迁移即可，无需额外执行 SQL。该数据变更有独立迁移记录，不会在重启时重复执行；只回滚 API 镜像不会恢复之前的待审状态。
 
 新部署的生产配置模板把 PostgreSQL 数据放在命名卷的 `pgdata` 子目录；Compose 的无配置回退值仍保留历史根目录，避免旧部署升级时悄悄连到空库。部署脚本还会检查 `PG_VERSION`，数据布局与配置不一致时直接停止。
 
