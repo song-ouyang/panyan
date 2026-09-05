@@ -13,6 +13,7 @@ import 'package:wanpan_diary/core/models/route_submission_models.dart';
 import 'package:wanpan_diary/core/models/user_models.dart';
 import 'package:wanpan_diary/core/network/api_client.dart';
 import 'package:wanpan_diary/core/repositories/gym_repository.dart';
+import 'package:wanpan_diary/core/repositories/checkin_repository.dart';
 import 'package:wanpan_diary/core/repositories/route_submission_repository.dart';
 import 'package:wanpan_diary/features/auth/application/session_controller.dart';
 import 'package:wanpan_diary/features/auth/data/session_token_store.dart';
@@ -106,6 +107,7 @@ class _RouteSubmissionRepository extends RouteSubmissionRepository {
     String? filename,
     String? mimeType,
     RouteCoverUploadProgress? onProgress,
+    VideoUploadPhaseChanged? onPhaseChanged,
   }) async {
     onProgress?.call(1);
     return 'https://example.com/first-send.mp4';

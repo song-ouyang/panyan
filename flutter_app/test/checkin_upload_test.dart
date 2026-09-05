@@ -11,6 +11,7 @@ import 'package:wanpan_diary/core/config/app_config.dart';
 import 'package:wanpan_diary/core/json/json_helpers.dart';
 import 'package:wanpan_diary/core/models/user_models.dart';
 import 'package:wanpan_diary/core/network/api_client.dart';
+import 'package:wanpan_diary/core/repositories/checkin_repository.dart';
 import 'package:wanpan_diary/features/auth/application/session_controller.dart';
 import 'package:wanpan_diary/features/auth/data/session_token_store.dart';
 import 'package:wanpan_diary/features/auth/domain/auth_session.dart';
@@ -43,6 +44,7 @@ class _CheckinUploadApi extends ApiClient {
   _CheckinUploadApi()
     : super(config: _config, accessTokenProvider: () => 'secure-token');
 
+  Completer<void>? preparationGate;
   final uploads = <_UploadRequest>[];
   final sends = <JsonMap>[];
   final published = Completer<JsonMap>();
@@ -81,11 +83,38 @@ class _CheckinUploadApi extends ApiClient {
   }
 }
 
+class _CheckinUploadRepository extends CheckinRepository {
+  _CheckinUploadRepository(this.api) : super(api);
+  final _CheckinUploadApi api;
+
+  @override
+  Future<String> uploadVideo(
+    String filePath, {
+    UploadProgress? onProgress,
+    VideoUploadPhaseChanged? onPhaseChanged,
+  }) async {
+    onPhaseChanged?.call(VideoUploadPhase.preparing);
+    onProgress?.call(.25);
+    await api.preparationGate?.future;
+    onPhaseChanged?.call(VideoUploadPhase.uploading);
+    onProgress?.call(0);
+    return api.uploadFile(
+      filePath,
+      onSendProgress: (sent, total) {
+        if (total > 0) onProgress?.call(sent / total);
+      },
+    );
+  }
+}
+
 Finder _button(String label) => find.byWidgetPredicate(
   (widget) => widget is WanpanButton && widget.label == label,
 );
 
-Future<void> _showCheckin(WidgetTester tester, _CheckinUploadApi api) async {
+Future<SessionController> _showCheckin(
+  WidgetTester tester,
+  _CheckinUploadApi api,
+) async {
   tester.view.physicalSize = const Size(320, 568);
   tester.view.devicePixelRatio = 1;
   addTearDown(() {
@@ -115,6 +144,7 @@ Future<void> _showCheckin(WidgetTester tester, _CheckinUploadApi api) async {
       ),
       home: CheckinScreen(
         api: api,
+        repository: _CheckinUploadRepository(api),
         session: session,
         routeId: 'route-1',
         routeName: '红色线路',
@@ -123,6 +153,7 @@ Future<void> _showCheckin(WidgetTester tester, _CheckinUploadApi api) async {
     ),
   );
   await tester.pumpAndSettle();
+  return session;
 }
 
 Future<String> _selectVideo(WidgetTester tester) async {
@@ -278,6 +309,72 @@ void main() {
       _expectNoReview(tester);
     },
   );
+
+  testWidgets('compression is shown before upload and publishing waits', (
+    tester,
+  ) async {
+    final api = _CheckinUploadApi()..preparationGate = Completer<void>();
+    await _showCheckin(tester, api);
+    await _selectVideo(tester);
+    await tester.scrollUntilVisible(
+      _button('上传并打卡'),
+      240,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(_button('上传并打卡'));
+    await tester.pump();
+    expect(find.text('正在压缩视频…'), findsOneWidget);
+    expect(_button('压缩中…'), findsOneWidget);
+    expect(api.uploads, isEmpty);
+    expect(api.sends, isEmpty);
+    api.preparationGate!.complete();
+    await tester.pump();
+    expect(api.uploads, hasLength(1));
+    api.uploads.single.completed.complete('https://example.com/compressed.mp4');
+    await tester.pump();
+    api.published.complete(_approvedSend);
+    await tester.pumpAndSettle();
+    expect(api.sends.single['videoUrl'], 'https://example.com/compressed.mp4');
+  });
+
+  testWidgets(
+    'switching account while uploading cannot publish to the new account',
+    (tester) async {
+      final api = _CheckinUploadApi();
+      final session = await _showCheckin(tester, api);
+      await _selectVideo(tester);
+      final upload = await _startUpload(tester, api);
+      await session.acceptSession(
+        const AuthSession(
+          token: 'another-token',
+          user: UserSummary(
+            id: 'another-user',
+            nickname: '另一位岩友',
+            profileCompleted: true,
+          ),
+          needsProfile: false,
+        ),
+      );
+      upload.completed.complete('https://example.com/previous-owner.mp4');
+      await tester.pumpAndSettle();
+      expect(api.sends, isEmpty);
+      expect(find.textContaining('登录账号已切换'), findsOneWidget);
+    },
+  );
+
+  testWidgets('disposing the form while uploading does not publish afterward', (
+    tester,
+  ) async {
+    final api = _CheckinUploadApi();
+    await _showCheckin(tester, api);
+    await _selectVideo(tester);
+    final upload = await _startUpload(tester, api);
+    await tester.pumpWidget(const SizedBox());
+    upload.completed.complete('https://example.com/video.mp4');
+    await tester.pumpAndSettle();
+    expect(api.sends, isEmpty);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('saving without a video retains the ordinary success copy', (
     tester,

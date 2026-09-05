@@ -3,6 +3,7 @@ class ApiException implements Exception {
     required this.message,
     this.code = 'REQUEST_FAILED',
     this.statusCode,
+    this.retryAt,
     this.issues = const [],
     this.cause,
   });
@@ -10,6 +11,9 @@ class ApiException implements Exception {
   final String code;
   final String message;
   final int? statusCode;
+
+  /// Earliest retry time from the server's Retry-After response header.
+  final DateTime? retryAt;
   final List<dynamic> issues;
   final Object? cause;
 

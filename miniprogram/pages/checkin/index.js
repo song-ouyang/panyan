@@ -4,6 +4,12 @@ const { afterPaint, haptic, motionDuration } = require('../../utils/motion');
 const { invalidate, invalidatePrefix } = require('../../utils/page-cache');
 
 const PHASE_COPY_DELAY = 80;
+const UPLOAD_COPY = {
+  preparing: { title: '正在准备视频', description: '正在检查视频和上次的上传进度。' },
+  compressing: { title: '正在压缩视频', description: '压缩完成后会自动上传，请稍候。' },
+  uploading: { title: '正在上传视频', description: '视频已准备好，上传完成后会自动保存这次打卡。' },
+  finishing: { title: '正在确认上传结果', description: '视频分片已传完，正在完成合并。' }
+};
 
 Page({
   data: {
@@ -21,6 +27,7 @@ Page({
     saveFailed: false,
     submitError: '',
     uploadProgress: 0,
+    uploadStage: 'preparing',
     resultVisible: false,
     moderationStatus: '',
     sendId: '',
@@ -32,6 +39,7 @@ Page({
   onLoad({ routeId }) {
     this.routeId = routeId;
     this.cachedVideoUrl = '';
+    this.cachedVideoOwnerId = '';
     this._disposed = false;
   },
 
@@ -69,7 +77,7 @@ Page({
   },
 
   phaseCopy(phase, nextData) {
-    if (phase === 'uploading') return { title: '正在上传视频', description: '上传完成后会自动保存这次打卡。' };
+    if (phase === 'uploading') return UPLOAD_COPY[nextData.uploadStage] || UPLOAD_COPY.uploading;
     if (phase === 'saving') {
       return nextData.saveFailed
         ? { title: '视频已上传，保存失败', description: '不用重新上传，点击“重试保存”即可。' }
@@ -153,6 +161,7 @@ Page({
           return;
         }
         this.cachedVideoUrl = '';
+        this.cachedVideoOwnerId = '';
         this.setData({
           videoPath: file.tempFilePath,
           videoSize: file.size || 0,
@@ -190,23 +199,31 @@ Page({
     this.setData({ submitting: true, saveFailed: false, submitError: '' });
     try {
       if (!this.cachedVideoUrl) {
-        await this.transitionPhase('uploading', { uploadProgress: 0 });
+        await this.transitionPhase('uploading', { uploadProgress: 0, uploadStage: 'preparing' });
         if (this._disposed) return;
         const uploaded = await uploadVideo(
           this.data.videoPath,
           this.data.videoSize,
           uploadProgress => {
             if (!this._disposed) this.setData({ uploadProgress });
+          },
+          uploadStage => {
+            if (this._disposed) return;
+            const copy = UPLOAD_COPY[uploadStage] || UPLOAD_COPY.uploading;
+            this.setData({ uploadStage, stageTitle: copy.title, stageDescription: copy.description });
           }
         );
         if (this._disposed) return;
         this.cachedVideoUrl = uploaded.url;
+        this.cachedVideoOwnerId = uploaded.ownerId;
       }
 
       await this.transitionPhase('saving', { uploadProgress: 100, saveFailed: false });
       if (this._disposed) return;
+      if (!this.cachedVideoOwnerId) throw new Error('无法确认上传账号，请重新选择视频');
       const result = await request('/sends', {
         method: 'POST',
+        expectedUserId: this.cachedVideoOwnerId,
         data: {
           routeId: this.routeId,
           attempts: this.data.attempts,

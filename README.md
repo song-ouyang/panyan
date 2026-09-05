@@ -26,12 +26,12 @@
 - 动态举报、内容待审状态、基础接口限流、用户协议、隐私指引和账号注销
 - 小程序内管理员审核中心、好友/约爬/投稿消息通知和个人打卡内容管理
 - 城市 → 岩馆品牌 → 多门店 → 门店线路的目录层级
-- MP4 完攀视频 OSS 5MB 分片直传、失败重试、合并与实时上传进度条
+- MP4 完攀视频上传前压缩、OSS 5MB 分片三路并发、失败重试、断点续传与上传进度条
 - Docker、PostgreSQL migration 与示例数据
 - Flutter 四 Tab 客户端（岩馆、广场、排行、我的），含品牌门店、线路详情、完攀榜、动态和个人成长
 - 打卡和线路发布成功后自动刷新个人本月/累计统计、岩馆和日历；日期下显示当天完攀条数与最高 V 级
 - 升级时一次性补计旧流程中待审核的已发布线路完攀，保留原日期、视频和可见范围；已拒绝、未发布线路及有待处理或成立举报的记录保留原状态
-- Flutter MP4/MOV 视频选择、OSS 5MB 分片上传、实时进度、线路立即发布与成功/里程碑反馈
+- Flutter MP4/MOV 视频选择、手机端压缩、OSS 三路分片续传、压缩/上传进度、线路立即发布与成功/里程碑反馈
 - Flutter 暖奶油主题、黑猫品牌角色、物理按压反馈、贴底导航、骨架屏、空态和 reduced-motion 适配
 
 ## Flutter 客户端
@@ -141,6 +141,8 @@ ALLOW_PRODUCTION_SQUARE_SEED=true bash deploy/seed-square-experience.sh
 - Apple 服务端只信任已验签 identity token 的 `sub`，并校验 issuer、audience、有效期和 nonce。
 - Android 插件会合并 `${applicationId}.wxapi.WXEntryActivity`，Manifest 已加入微信 package visibility；开放平台的 package/签名不匹配时不会授权成功。
 - Android 正式包不再使用 debug 签名。将 `flutter_app/android/key.properties.example` 复制为 `key.properties` 并填写上架密钥；真实密钥、密码和 `*.jks` 已被 Git 忽略。未配置时只生成未签名的构建验证产物，不能上架。
+
+视频压缩参数、断点续传行为和上线所需 RAM 权限见 [`docs/video-uploads.md`](docs/video-uploads.md)。
 
 开发环境可使用本地上传；生产环境已经支持阿里云 OSS 分片预签名直传。正式上线应使用受限 RAM 密钥，并把人工审核适配层接入微信/腾讯云内容安全；不要把大量视频放在 API 服务器磁盘。
 

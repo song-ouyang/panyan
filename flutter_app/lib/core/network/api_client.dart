@@ -1,7 +1,10 @@
 // ignore_for_file: prefer_initializing_formals
 
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io' show HttpDate, HttpException;
 
+import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 
 import '../config/app_config.dart';
@@ -16,7 +19,7 @@ typedef UnauthorizedHandler = FutureOr<void> Function(
 
 class ApiClient {
   ApiClient({
-    required AppConfig config,
+    required this.config,
     required AccessTokenProvider accessTokenProvider,
     Dio? dio,
   }) : _accessTokenProvider = accessTokenProvider,
@@ -60,9 +63,37 @@ class ApiClient {
   }
 
   final Dio _dio;
+  final AppConfig config;
   final climbingActivity = ClimbingActivityChanges();
   final AccessTokenProvider _accessTokenProvider;
   UnauthorizedHandler? onUnauthorized;
+
+  /// A stable, non-secret namespace for resumable uploads. JWT claims here only
+  /// isolate local caches; the API still authenticates every request normally.
+  Future<String> videoUploadScope() async {
+    final token = await _accessTokenProvider();
+    if (token == null || token.isEmpty) {
+      throw const ApiException(
+        code: 'UPLOAD_SESSION_CHANGED',
+        message: '请登录后继续上传视频',
+        statusCode: 401,
+      );
+    }
+    var identity = token;
+    try {
+      final payload = jsonDecode(
+        utf8.decode(base64Url.decode(base64Url.normalize(token.split('.')[1]))),
+      );
+      if (payload is Map && payload['sub'] is String) {
+        identity = payload['sub'] as String;
+      }
+    } catch (_) {
+      // Opaque tokens remain isolated without persisting the token itself.
+    }
+    return sha256
+        .convert(utf8.encode('${config.apiBaseUrl}\u0000$identity'))
+        .toString();
+  }
 
   void dispose() {
     climbingActivity.dispose();
@@ -125,7 +156,11 @@ class ApiClient {
     };
   }
 
-  Future<String> putBytesAndReadEtag(String url, List<int> bytes) async {
+  Future<String> putBytesAndReadEtag(
+    String url,
+    List<int> bytes, {
+    ProgressCallback? onSendProgress,
+  }) async {
     try {
       final response = await _dio.put<Object?>(
         url,
@@ -133,7 +168,9 @@ class ApiClient {
         options: Options(
           contentType: 'application/octet-stream',
           headers: {'Content-Length': bytes.length},
+          sendTimeout: const Duration(minutes: 3),
         ),
+        onSendProgress: onSendProgress,
       );
       final etag = response.headers.value('etag');
       if (etag == null || etag.isEmpty) {
@@ -190,6 +227,7 @@ class ApiClient {
     }
     return ApiException(
       statusCode: response?.statusCode,
+      retryAt: _retryAt(response?.headers),
       code: jsonNullableString(body?['code']) ?? 'REQUEST_FAILED',
       message:
           jsonNullableString(body?['message']) ??
@@ -202,5 +240,30 @@ class ApiClient {
           : const [],
       cause: error,
     );
+  }
+
+  DateTime? _retryAt(Headers? headers) {
+    final value = headers?['retry-after']?.firstOrNull?.trim();
+    if (value == null || value.isEmpty) return null;
+    final now = DateTime.now();
+    final seconds = int.tryParse(value);
+    if (seconds != null) {
+      return seconds < 0 ? null : now.add(Duration(seconds: seconds));
+    }
+    try {
+      final deadline = HttpDate.parse(value);
+      final serverDate = headers?['date']?.firstOrNull;
+      if (serverDate != null) {
+        try {
+          final delay = deadline.difference(HttpDate.parse(serverDate));
+          return now.add(delay.isNegative ? Duration.zero : delay);
+        } on HttpException {
+          // A malformed Date header must not discard a valid Retry-After.
+        }
+      }
+      return deadline.isBefore(now) ? now : deadline;
+    } on HttpException {
+      return null;
+    }
   }
 }

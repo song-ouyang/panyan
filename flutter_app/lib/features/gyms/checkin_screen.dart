@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -9,6 +8,7 @@ import '../../app/wanpan_theme.dart';
 import '../../core/models/checkin_models.dart';
 import '../../core/models/profile_models.dart';
 import '../../core/network/api_client.dart';
+import '../../core/network/api_exception.dart';
 import '../../core/repositories/checkin_repository.dart';
 import '../../core/repositories/profile_repository.dart';
 import '../auth/application/session_controller.dart';
@@ -28,6 +28,7 @@ class CheckinScreen extends StatefulWidget {
     super.key,
     this.grade,
     this.routeName,
+    this.repository,
   });
 
   final ApiClient api;
@@ -35,13 +36,15 @@ class CheckinScreen extends StatefulWidget {
   final String routeId;
   final String? grade;
   final String? routeName;
+  final CheckinRepository? repository;
 
   @override
   State<CheckinScreen> createState() => _CheckinScreenState();
 }
 
 class _CheckinScreenState extends State<CheckinScreen> {
-  late final CheckinRepository _repository = CheckinRepository(widget.api);
+  late final CheckinRepository _repository =
+      widget.repository ?? CheckinRepository(widget.api);
   late final ProfileRepository _profileRepository = ProfileRepository(
     widget.api,
   );
@@ -52,6 +55,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
   bool _syncToSquare = true;
   bool _submitting = false;
   bool _uploading = false;
+  bool _preparingVideo = false;
   double _progress = 0;
   String _stage = '';
   CheckinResult? _result;
@@ -145,6 +149,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
     // payload stable for the entire upload and avoids touching disposed form
     // controllers if the widget lifecycle changes unexpectedly.
     final selectedVideo = _video;
+    final authorId = widget.session.user?.id;
     final attempts = _attempts;
     final caption = _captionController.text.trim();
     final visibility = _syncToSquare ? 'public' : 'friends';
@@ -157,49 +162,34 @@ class _CheckinScreenState extends State<CheckinScreen> {
     try {
       String? videoUrl;
       if (selectedVideo != null) {
-        final path = selectedVideo.path;
-        final size = await File(path).length();
-        final filename = selectedVideo.name.trim().isEmpty
-            ? File(path).uri.pathSegments.last
-            : selectedVideo.name.trim();
-        final lowerName = filename.toLowerCase();
-        final supportsMultipart =
-            lowerName.endsWith('.mp4') || lowerName.endsWith('.mov');
-        final mimeType = lowerName.endsWith('.mov')
-            ? 'video/quicktime'
-            : 'video/mp4';
-        if (supportsMultipart && size >= 5 * 1024 * 1024) {
-          try {
-            videoUrl = await _repository.uploadVideoMultipart(
-              path,
-              filename: filename,
-              mimeType: mimeType,
-              onProgress: _onProgress,
-            );
-          } catch (_) {
-            if (!mounted) rethrow;
+        videoUrl = await _repository.uploadVideo(
+          selectedVideo.path,
+          onProgress: _onProgress,
+          onPhaseChanged: (phase) {
+            if (!mounted) return;
             setState(() {
+              _preparingVideo = phase == VideoUploadPhase.preparing;
+              _uploading = phase == VideoUploadPhase.uploading;
               _progress = 0;
-              _stage = '视频上传中，正在重试…';
+              _stage = _preparingVideo ? '正在压缩视频…' : '视频上传中…';
             });
-            videoUrl = await _repository.uploadMedia(
-              path,
-              onProgress: _onProgress,
-            );
-          }
-        } else {
-          videoUrl = await _repository.uploadMedia(
-            path,
-            onProgress: _onProgress,
-          );
-        }
+          },
+        );
       }
       if (mounted) {
         setState(() {
           _uploading = false;
+          _preparingVideo = false;
           _stage = videoUrl == null ? '正在保存打卡…' : '视频已上传，正在发布…';
           _progress = 1;
         });
+      }
+      if (!mounted) return;
+      if (widget.session.user?.id != authorId) {
+        throw const ApiException(
+          code: 'UPLOAD_SESSION_CHANGED',
+          message: '登录账号已切换，请重新提交',
+        );
       }
       final result = await _repository.createCheckin(
         routeId: widget.routeId,
@@ -210,12 +200,16 @@ class _CheckinScreenState extends State<CheckinScreen> {
       );
       if (mounted) setState(() => _result = result);
     } catch (error) {
-      if (mounted) _toast('提交失败：$error');
+      if (mounted) {
+        final message = error is ApiException ? error.message : '$error';
+        _toast('提交失败：$message');
+      }
     } finally {
       if (mounted) {
         setState(() {
           _submitting = false;
           _uploading = false;
+          _preparingVideo = false;
         });
       }
     }
@@ -384,7 +378,9 @@ class _CheckinScreenState extends State<CheckinScreen> {
                   const SizedBox(height: 26),
                   WanpanButton(
                     label: _submitting
-                        ? (_uploading ? '上传中…' : '正在保存…')
+                        ? (_preparingVideo
+                              ? '压缩中…'
+                              : (_uploading ? '上传中…' : '正在保存…'))
                         : (_video == null ? '保存完攀' : '上传并打卡'),
                     loading: _submitting,
                     onPressed: _submitting ? null : _submit,

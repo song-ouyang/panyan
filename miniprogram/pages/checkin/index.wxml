@@ -38,19 +38,19 @@
       </view>
     </view>
 
-    <view wx:if="{{phase == 'uploading' || (phase == 'saving' && submitting)}}" class="upload-box card" aria-label="{{phase == 'uploading' ? '视频上传进度 '+uploadProgress+'%' : '正在保存打卡'}}">
+    <view wx:if="{{phase == 'uploading' || (phase == 'saving' && submitting)}}" class="upload-box card" aria-label="{{phase == 'uploading' ? stageTitle+'，'+uploadProgress+'%' : '正在保存打卡'}}">
       <image class="loading-cat" src="/assets/mascot-loading.jpg" mode="aspectFit"/>
       <view class="between">
-        <text class="upload-title">{{phase == 'uploading' ? '小猫正在搬运视频' : '视频已到达，正在保存'}}</text>
-        <text class="percent">{{phase == 'uploading' ? uploadProgress+'%' : '已上传'}}</text>
+        <text class="upload-title">{{phase == 'uploading' ? stageTitle : '视频已到达，正在保存'}}</text>
+        <text class="percent">{{phase == 'uploading' ? (uploadStage == 'preparing' || uploadStage == 'compressing' ? '准备中' : uploadProgress+'%') : '已上传'}}</text>
       </view>
       <view class="progress"><view class="progress-fill" style="transform:scaleX({{uploadProgress / 100}})"></view></view>
       <view class="loading-dots" aria-hidden="true"><text></text><text></text><text></text></view>
-      <view class="muted progress-tip">{{phase == 'uploading' ? '分片失败会自动重试，请不要退出' : '正在记录完攀成绩'}}</view>
+      <view class="muted progress-tip">{{phase == 'uploading' ? (uploadStage == 'uploading' ? '中断后可重试续传，请保持小程序在前台' : stageDescription) : '正在记录完攀成绩'}}</view>
     </view>
 
     <view wx:if="{{submitError}}" class="inline-error" role="alert">
-      <text>{{saveFailed ? '视频已安全上传，只需重试保存。' : '提交未完成，可直接重试。'}}</text>
+      <text>{{saveFailed ? '视频已安全上传，只需重试保存。' : submitError}}</text>
     </view>
 
     <view class="card field"><text>尝试次数</text><input type="number" value="{{attempts}}" bindinput="attempts" aria-label="尝试次数"/></view>
@@ -60,7 +60,7 @@
       disabled="{{submitting}}"
       aria-label="{{!videoPath ? '选择 MP4 视频' : (submitting ? stageTitle : (saveFailed ? '重试保存' : '上传并提交'))}}"
       bindtap="primaryAction"
-    >{{!videoPath ? '选择 MP4 视频' : (submitting ? (phase == 'uploading' ? '正在上传 '+uploadProgress+'%' : '正在保存') : (saveFailed ? '重试保存' : '上传并提交'))}}</button>
+    >{{!videoPath ? '选择 MP4 视频' : (submitting ? (phase == 'uploading' ? (uploadStage == 'uploading' ? '正在上传 '+uploadProgress+'%' : stageTitle) : '正在保存') : (saveFailed ? '重试保存' : '上传并提交'))}}</button>
   </view>
 
   <view

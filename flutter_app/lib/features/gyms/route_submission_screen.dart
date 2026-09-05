@@ -13,6 +13,8 @@ import '../../core/models/gym_models.dart';
 import '../../core/models/route_submission_models.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
+import '../../core/services/video_preparation_service.dart';
+import '../../core/repositories/checkin_repository.dart';
 import '../../core/repositories/gym_repository.dart';
 import '../../core/repositories/route_submission_repository.dart';
 import '../auth/application/session_controller.dart';
@@ -398,6 +400,7 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
     }
 
     final selectedCover = _cover!;
+    final authorId = widget.session.user?.id;
     final selectedVideo = _video;
     final name = _nameController.text;
     final color = _colorController.text;
@@ -428,23 +431,36 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
       if (!mounted) return;
 
       String? videoUrl;
+      if (widget.session.user?.id != authorId) {
+        throw const ApiException(
+          code: 'UPLOAD_SESSION_CHANGED',
+          message: '登录账号已切换，请重新提交',
+        );
+      }
       if (selectedVideo != null) {
         setState(() {
           _stage = '正在上传首条完攀视频…';
           _progress = .44;
         });
-        final filename = selectedVideo.name.trim().isEmpty
-            ? File(selectedVideo.path).uri.pathSegments.last
-            : selectedVideo.name.trim();
-        final mimeType = filename.toLowerCase().endsWith('.mov')
-            ? 'video/quicktime'
-            : 'video/mp4';
         videoUrl = await _submissionRepository.uploadVideo(
           selectedVideo.path,
-          filename: filename,
-          mimeType: mimeType,
+          onPhaseChanged: (phase) {
+            if (!mounted) return;
+            setState(() {
+              _stage = phase == VideoUploadPhase.preparing
+                  ? '正在压缩完攀视频…'
+                  : '正在上传首条完攀视频…';
+              _progress = phase == VideoUploadPhase.preparing ? .44 : .56;
+            });
+          },
           onProgress: (progress) {
-            if (mounted) setState(() => _progress = .44 + progress * .46);
+            if (!mounted) return;
+            final preparing = _stage == '正在压缩完攀视频…';
+            setState(
+              () => _progress = preparing
+                  ? .44 + progress * .10
+                  : .56 + progress * .34,
+            );
           },
         );
         if (!mounted) return;
@@ -454,6 +470,12 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
         _stage = selectedVideo == null ? '正在发布线路…' : '正在发布线路与首条完攀…';
         _progress = .92;
       });
+      if (widget.session.user?.id != authorId) {
+        throw const ApiException(
+          code: 'UPLOAD_SESSION_CHANGED',
+          message: '登录账号已切换，请重新提交',
+        );
+      }
       await _submissionRepository.create(
         RouteSubmissionDraft(
           clientRequestId: _clientRequestId,
@@ -480,7 +502,11 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
       });
     } catch (error) {
       if (!mounted) return;
-      final message = error is ApiException ? error.message : '发布没有完成，请稍后重试';
+      final message = error is ApiException
+          ? error.message
+          : error is VideoPreparationException
+          ? error.message
+          : '发布没有完成，请稍后重试';
       _notice(message);
     } finally {
       if (mounted && !_published) {

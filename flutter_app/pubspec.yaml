@@ -39,6 +39,8 @@ dependencies:
   shared_preferences: ^2.5.5
   image_picker: ^1.2.3
   video_player: 2.11.1
+  v_video_compressor: 2.2.1
+  path_provider: ^2.1.5
   sign_in_with_apple: ^8.2.0
   flutter_secure_storage: ^10.0.0
   crypto: ^3.0.7

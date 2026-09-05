@@ -242,7 +242,8 @@ curl -fsS http://127.0.0.1:3100/ready
 ## OSS 与客户端配置
 
 - 使用只允许目标 Bucket（推荐进一步限制 `videos/*`）的独立 RAM 用户，不使用阿里云主账号 AccessKey。
-- 客户端使用 5MB 分片和 15 分钟预签名 URL 直传 OSS；AccessKey Secret 只存在后端。
+- 客户端上传前压缩视频，使用 5MB 分片、最多三路并发和 15 分钟预签名 URL 直传 OSS；AccessKey Secret 只存在后端。
+- 续传版本需先为 RAM 补充目标 `videos/*` 范围的 `oss:ListParts` / `oss:GetObject`（HEAD）权限，再部署后端，最后发布客户端。完整参数、续传边界和验证步骤见 [`docs/video-uploads.md`](../docs/video-uploads.md)。
 - 当前 App 直接保存并展示 `OSS_PUBLIC_BASE_URL` 下的 URL，因此该域名必须可经 HTTPS 读取对象；如果 Bucket 为私有读，需要后续增加 CDN 鉴权或读取签名。
 - OSS CORS 至少允许 `PUT/GET/HEAD`，Headers 为 `*`，暴露 `ETag` 和 `x-oss-request-id`。
 - 微信公众平台把 API HTTPS 域名加入 `request/uploadFile/downloadFile` 合法域名，把 OSS HTTPS 域名加入 `request/downloadFile` 合法域名。
