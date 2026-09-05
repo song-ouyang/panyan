@@ -37,7 +37,16 @@ const schema = z.object({
   ALIYUN_SMS_TEMPLATE_CODE: z.string().default(''),
   ALIYUN_SMS_TEMPLATE_MIN: z.coerce.number().int().min(1).max(30).default(5),
   UPLOAD_MODE: z.enum(['local', 'oss']).default('local'),
-  OSS_REGION: z.string().default('oss-cn-shenzhen'),
+  OSS_REGION: z.string().trim().toLowerCase().regex(
+    /^[a-z0-9]+(?:-[a-z0-9]+)+$/,
+    'OSS_REGION 请填写地域 ID（如 cn-chengdu 或 oss-cn-chengdu），不要填写域名或 URL'
+  ).transform((region) => {
+    // The OSS SDK uses this value directly in its endpoint hostname. Alibaba's
+    // console also shows bare region IDs, which need the OSS service prefix.
+    return region.startsWith('oss-') || region.startsWith('vpc100-oss-')
+      ? region
+      : `oss-${region}`;
+  }).default('oss-cn-shenzhen'),
   OSS_BUCKET: z.string().default(''),
   OSS_ACCESS_KEY_ID: z.string().default(''),
   OSS_ACCESS_KEY_SECRET: z.string().default(''),

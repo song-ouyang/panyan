@@ -12,7 +12,7 @@ const body = z.object({
   // Accept null for compatibility with older mini-program builds; new clients
   // omit the field when the optional wall zone is empty.
   wallZone: z.string().trim().max(40).nullable().optional(),
-  coverUrl: z.string().url(),
+  coverUrl: z.string().url().nullable().optional(),
   videoUrl: z.string().url().nullable().optional(),
   caption: z.string().trim().max(300).nullable().optional(),
   visibility: z.enum(['public', 'friends', 'private']).default('public'),
@@ -21,8 +21,12 @@ const body = z.object({
     x: z.number().min(0).max(1),
     y: z.number().min(0).max(1),
     type: z.enum(['start','hold','finish'])
-  })).min(2).max(80)
+  })).max(80).default([])
 }).superRefine((submission, context) => {
+  if (submission.points.length === 0) return;
+  if (!submission.coverUrl) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: '标记线路点需要先添加线路照片', path: ['coverUrl'] });
+  }
   if (!submission.points.some((point) => point.type === 'start')) {
     context.addIssue({ code: z.ZodIssueCode.custom, message: '请至少标记一个起点', path: ['points'] });
   }
@@ -70,7 +74,7 @@ export const submissionRoutes: FastifyPluginAsync = async (app) => {
          RETURNING *`,
         [
           request.user.sub,b.clientRequestId??null,b.gymId,b.routeSetId??null,b.name,b.grade,b.color,
-          b.wallZone??null,b.coverUrl,b.videoUrl??null,b.caption||null,b.visibility,JSON.stringify(b.points)
+          b.wallZone??null,b.coverUrl??null,b.videoUrl??null,b.caption||null,b.visibility,JSON.stringify(b.points)
         ]
       );
       if (!inserted.rowCount) {
@@ -88,7 +92,7 @@ export const submissionRoutes: FastifyPluginAsync = async (app) => {
       const route = await client.query<{ id: string }>(
         `INSERT INTO routes(gym_id,route_set_id,name,grade,color,wall_zone,cover_url,points)
          VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
-        [b.gymId,b.routeSetId??null,b.name,b.grade,b.color,b.wallZone??null,b.coverUrl,JSON.stringify(b.points)]
+        [b.gymId,b.routeSetId??null,b.name,b.grade,b.color,b.wallZone??null,b.coverUrl??null,JSON.stringify(b.points)]
       );
       const routeId = route.rows[0]!.id;
       if (b.videoUrl) {

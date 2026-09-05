@@ -195,7 +195,7 @@ CREATE TABLE IF NOT EXISTS route_submissions (
   grade varchar(8) NOT NULL CHECK (grade ~ '^V([0-9]|1[0-7])$'),
   color varchar(24) NOT NULL,
   wall_zone varchar(40),
-  cover_url text NOT NULL,
+  cover_url text,
   video_url text,
   caption varchar(300),
   visibility varchar(12) NOT NULL DEFAULT 'public' CHECK (visibility IN ('public','friends','private')),
@@ -240,6 +240,9 @@ ALTER TABLE route_submissions ADD COLUMN IF NOT EXISTS client_request_id uuid;
 ALTER TABLE route_submissions ADD COLUMN IF NOT EXISTS video_url text;
 ALTER TABLE route_submissions ADD COLUMN IF NOT EXISTS caption varchar(300);
 ALTER TABLE route_submissions ADD COLUMN IF NOT EXISTS visibility varchar(12) NOT NULL DEFAULT 'public';
+-- Route photos and annotations are optional for both new and existing clients.
+ALTER TABLE route_submissions ALTER COLUMN cover_url DROP NOT NULL;
+ALTER TABLE routes ALTER COLUMN cover_url DROP NOT NULL;
 
 DO $$ BEGIN
   ALTER TABLE route_submissions

@@ -711,6 +711,98 @@ describe('route submission validation', () => {
     await app.close();
   });
 
+  const optionalPhotoCases: { label: string; photo: Record<string, unknown>; videoUrl?: string }[] = [
+    { label: 'omitted photo and markers', photo: {} },
+    { label: 'null photo with omitted markers', photo: { coverUrl: null } },
+    { label: 'omitted photo with empty markers', photo: { points: [] } },
+    { label: 'null photo with empty markers and a video', photo: { coverUrl: null, points: [] }, videoUrl: 'https://example.com/first-send.mp4' },
+    { label: 'omitted photo and markers with a video', photo: {}, videoUrl: 'https://example.com/first-send.mov' },
+    { label: 'photo without markers', photo: { coverUrl: validBody.coverUrl } },
+    { label: 'photo with empty markers and a video', photo: { coverUrl: validBody.coverUrl, points: [] }, videoUrl: 'https://example.com/first-send.mp4' }
+  ];
+
+  it.each(optionalPhotoCases)('publishes with $label', async ({ photo, videoUrl }) => {
+    const { coverUrl: _coverUrl, points: _points, ...withoutPhoto } = validBody;
+    const expectedCover = photo.coverUrl ?? null;
+    const published = {
+      id: submissionId,
+      status: 'approved',
+      cover_url: expectedCover,
+      points: [],
+      published_route_id: routeId,
+      video_url: videoUrl ?? null,
+      send_id: videoUrl ? sendId : null,
+      send_moderation_status: videoUrl ? 'approved' : null
+    };
+    mocks.clientQuery
+      .mockResolvedValueOnce(result())
+      .mockResolvedValueOnce(result([{ id: gymId }]))
+      .mockResolvedValueOnce(result([{ id: routeSetId }]))
+      .mockResolvedValueOnce(result([{ id: submissionId }]))
+      .mockResolvedValueOnce(result([{ id: routeId }]));
+    if (videoUrl) mocks.clientQuery.mockResolvedValueOnce(result([{ id: sendId }]));
+    mocks.clientQuery
+      .mockResolvedValueOnce(result())
+      .mockResolvedValueOnce(result([published]));
+    const app = await createApp(submissionRoutes, '/api/submissions');
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/submissions',
+      payload: { ...withoutPhoto, ...photo, videoUrl }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual(published);
+    const submissionCall = mocks.clientQuery.mock.calls.find(([sql]) => (sql as string).includes('INSERT INTO route_submissions'))!;
+    const routeCall = mocks.clientQuery.mock.calls.find(([sql]) => (sql as string).includes('INSERT INTO routes'))!;
+    expect(submissionCall[1][8]).toBe(expectedCover);
+    expect(submissionCall[1][12]).toBe('[]');
+    expect(routeCall[1][6]).toBe(expectedCover);
+    expect(routeCall[1][7]).toBe('[]');
+    const sendCalls = mocks.clientQuery.mock.calls.filter(([sql]) => (sql as string).includes('INSERT INTO sends'));
+    expect(sendCalls).toHaveLength(videoUrl ? 1 : 0);
+    if (videoUrl) expect(sendCalls[0]![1]).toEqual([viewerId, routeId, videoUrl, null, 'public', 'approved']);
+    await app.close();
+  });
+
+  it.each([
+    ['omitted photo', { coverUrl: undefined }],
+    ['null photo', { coverUrl: null }],
+    ['missing start', { points: [{ x: 0.5, y: 0.5, type: 'finish' }] }],
+    ['missing finish', { points: [{ x: 0.5, y: 0.5, type: 'start' }] }],
+    ['negative coordinate', { points: [{ x: -0.01, y: 0.5, type: 'start' }, validBody.points[1]] }],
+    ['coordinate above one', { points: [validBody.points[0], { x: 0.5, y: 1.01, type: 'finish' }] }],
+    ['more than eighty markers', { points: [...validBody.points, ...Array.from({ length: 79 }, () => ({ x: 0.5, y: 0.5, type: 'hold' }))] }]
+  ])('rejects nonempty annotations with %s before creating records', async (_label, invalid) => {
+    const app = await createApp(submissionRoutes, '/api/submissions');
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/submissions',
+      payload: { ...validBody, ...(invalid as Record<string, unknown>) }
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(mocks.transaction).not.toHaveBeenCalled();
+    expect(mocks.clientQuery).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('keeps photo-free publication idempotent when its response is retried', async () => {
+    const { coverUrl: _coverUrl, points: _points, ...withoutPhoto } = validBody;
+    const published = { id: submissionId, cover_url: null, points: [], status: 'approved', published_route_id: routeId };
+    mocks.clientQuery.mockResolvedValueOnce(result([published]));
+    const app = await createApp(submissionRoutes, '/api/submissions');
+
+    const response = await app.inject({ method: 'POST', url: '/api/submissions', payload: withoutPhoto });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual(published);
+    expect(mocks.clientQuery).toHaveBeenCalledTimes(1);
+    expect(mocks.clientQuery.mock.calls[0]![1]).toEqual([viewerId, clientRequestId]);
+    await app.close();
+  });
+
   it('stores an optional video and publishes its approved send with the chosen visibility', async () => {
     const videoBody = {
       ...validBody,
