@@ -103,16 +103,20 @@ class CheckinRepository {
     String? videoUrl,
     String? caption,
     String visibility = 'public',
-  }) async => CheckinResult.fromJson(
-    await _apiClient.postJson(
-      '/sends',
-      data: {
-        'routeId': routeId,
-        'attempts': attempts,
-        'videoUrl': videoUrl,
-        'caption': caption,
-        'visibility': visibility,
-      },
-    ),
-  );
+  }) async {
+    final result = CheckinResult.fromJson(
+      await _apiClient.postJson(
+        '/sends',
+        data: {
+          'routeId': routeId,
+          'attempts': attempts,
+          'videoUrl': videoUrl,
+          'caption': caption,
+          'visibility': visibility,
+        },
+      ),
+    );
+    _apiClient.climbingActivity.recordChanged();
+    return result;
+  }
 }

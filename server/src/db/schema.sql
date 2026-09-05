@@ -274,3 +274,32 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_route_submissions_idempotency ON route_sub
 CREATE INDEX IF NOT EXISTS idx_gym_admins_gym ON gym_admins(gym_id,user_id);
 CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status,created_at);
 CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id,created_at DESC);
+
+-- Record one-time data repairs independently of repeatable schema setup.
+CREATE TABLE IF NOT EXISTS data_migrations (
+  name text PRIMARY KEY,
+  applied_at timestamptz NOT NULL DEFAULT now()
+);
+
+-- Older clients saved completed route videos as pending. Publish those legacy
+-- check-ins without changing their original calendar day or visibility. Keep
+-- rejected, unpublished and reported content under the existing review rules.
+-- The marker and update are one atomic statement; subsequent startups must not
+-- release content put back into review after this migration has run.
+WITH migration AS (
+  INSERT INTO data_migrations(name)
+  VALUES ('route_checkins_publish_immediately_v1')
+  ON CONFLICT DO NOTHING
+  RETURNING name
+)
+UPDATE sends s
+SET moderation_status='approved'
+FROM routes r
+WHERE s.route_id=r.id AND r.published=true
+  AND s.moderation_status='pending'
+  AND EXISTS (SELECT 1 FROM migration)
+  AND NOT EXISTS (
+    SELECT 1 FROM reports report
+    WHERE report.target_type='send' AND report.target_id=s.id
+      AND report.status IN ('pending','approved')
+  );

@@ -6,6 +6,7 @@ import 'package:dio/dio.dart';
 
 import '../config/app_config.dart';
 import '../json/json_helpers.dart';
+import '../services/climbing_activity_changes.dart';
 import 'api_exception.dart';
 
 typedef AccessTokenProvider = FutureOr<String?> Function();
@@ -59,8 +60,14 @@ class ApiClient {
   }
 
   final Dio _dio;
+  final climbingActivity = ClimbingActivityChanges();
   final AccessTokenProvider _accessTokenProvider;
   UnauthorizedHandler? onUnauthorized;
+
+  void dispose() {
+    climbingActivity.dispose();
+    _dio.close();
+  }
 
   Future<JsonMap> getJson(
     String path, {

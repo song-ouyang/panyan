@@ -16,7 +16,7 @@ suite('real PostgreSQL API flow', () => {
   let app: FastifyInstance;
   const suffix = randomUUID();
   const createdUserIds: string[] = [];
-  let gymId = '';
+  const createdGymIds: string[] = [];
   let uploadedRelativePath = '';
 
   const authHeader = (session: Session) => ({ authorization: `Bearer ${session.token}` });
@@ -42,7 +42,7 @@ suite('real PostgreSQL API flow', () => {
   });
 
   afterAll(async () => {
-    if (gymId) await query('DELETE FROM gyms WHERE id=$1', [gymId]);
+    if (createdGymIds.length) await query('DELETE FROM gyms WHERE id=ANY($1::uuid[])', [createdGymIds]);
     if (createdUserIds.length) await query('DELETE FROM users WHERE id=ANY($1::uuid[])', [createdUserIds]);
     if (uploadedRelativePath) {
       await rm(resolve(config.UPLOAD_DIR, uploadedRelativePath), { force: true });
@@ -94,7 +94,8 @@ suite('real PostgreSQL API flow', () => {
        VALUES($1,'深圳市','广东省','南山区','E2E 测试地址',true) RETURNING id`,
       [`E2E 岩馆 ${suffix}`]
     );
-    gymId = gym.rows[0]!.id;
+    const gymId = gym.rows[0]!.id;
+    createdGymIds.push(gymId);
     const routeSet = await query<{ id: string }>(
       `INSERT INTO route_sets(gym_id,name,starts_on,active) VALUES($1,'E2E 换线周期',current_date,true) RETURNING id`,
       [gymId]
@@ -244,8 +245,12 @@ suite('real PostgreSQL API flow', () => {
       }
     });
     expect(updatedCheckin.statusCode).toBe(200);
-    expect(updatedCheckin.json().sendId).toBe(checkinId);
-    await query("UPDATE sends SET moderation_status='approved' WHERE id=$1", [checkinId]);
+    expect(updatedCheckin.json()).toMatchObject({
+      sendId: checkinId,
+      moderationStatus: 'approved',
+      pointsEarned: 25,
+      pendingPoints: 0
+    });
 
     const preserved = await app.inject({ method: 'GET', url: `/api/sends/${checkinId}`, headers: authHeader(friend) });
     expect(preserved.statusCode).toBe(200);
@@ -255,6 +260,13 @@ suite('real PostgreSQL API flow', () => {
     const routeDetail = await app.inject({ method: 'GET', url: `/api/routes/${routeId}` });
     expect(routeDetail.statusCode).toBe(200);
     expect(routeDetail.json().featuredSend).toMatchObject({ id: checkinId, video_url: 'https://cdn.example.com/e2e-route-updated.mp4' });
+
+    const publishedFeed = await app.inject({ method: 'GET', url: '/api/sends/feed?scope=square' });
+    expect(publishedFeed.statusCode).toBe(200);
+    expect(publishedFeed.json().items).toContainEqual(expect.objectContaining({
+      id: checkinId,
+      video_url: 'https://cdn.example.com/e2e-route-updated.mp4'
+    }));
 
     const publicProfile = await app.inject({
       method: 'GET',
@@ -576,4 +588,85 @@ suite('real PostgreSQL API flow', () => {
     const deletedCount = await query<{ count: number }>('SELECT count(*)::int count FROM users WHERE id=$1', [disposable.user.id]);
     expect(deletedCount.rows[0]!.count).toBe(0);
   }, 30_000);
+
+  it('updates profile totals and the calendar immediately after the first V2 check-in', async () => {
+    const owner = await devLogin('first-v2');
+    const headers = authHeader(owner);
+    const gymName = `首次完攀岩馆 ${suffix}`;
+    const gym = await query<{ id: string }>(
+      `INSERT INTO gyms(name,city,address) VALUES($1,'深圳市','E2E 测试地址') RETURNING id`, [gymName]
+    );
+    const gymId = gym.rows[0]!.id;
+    createdGymIds.push(gymId);
+    const routes = await query<{ id: string; grade: string }>(
+      `INSERT INTO routes(gym_id,name,grade,color)
+       VALUES($1,'第一次 V2','V2','红色'),($1,'同一天 V10','V10','紫色') RETURNING id,grade`, [gymId]
+    );
+    const v2Id = routes.rows.find((route) => route.grade === 'V2')!.id;
+    const v10Id = routes.rows.find((route) => route.grade === 'V10')!.id;
+
+    const emptyProfile = await app.inject({ url: '/api/users/me', headers });
+    expect(emptyProfile.statusCode).toBe(200);
+    expect(emptyProfile.json().stats).toEqual({
+      total_sends: 0, monthly_sends: 0, max_grade: 0, monthly_max_grade: 0, gym_count: 0
+    });
+    const emptyCalendar = await app.inject({ url: '/api/users/me/month-dashboard', headers });
+    expect(emptyCalendar.statusCode).toBe(200);
+    expect(emptyCalendar.json()).toMatchObject({ days: [], summary: { sends: 0, gyms: 0, climbing_days: 0 } });
+
+    const first = await app.inject({
+      method: 'POST', url: '/api/sends', headers,
+      payload: { routeId: v2Id, attempts: 1, videoUrl: 'https://cdn.example.com/first-v2.mp4' }
+    });
+    expect(first.statusCode).toBe(200);
+    expect(first.json()).toMatchObject({ moderationStatus: 'approved', pointsEarned: 25, pendingPoints: 0 });
+    const sentAt = first.json().send.sent_at as string;
+    const day = new Date(new Date(sentAt).getTime() + 8 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const calendarUrl = `/api/users/me/month-dashboard?month=${day.slice(0, 7)}`;
+
+    const profile = await app.inject({ url: '/api/users/me', headers });
+    expect(profile.statusCode).toBe(200);
+    expect(profile.json().stats).toEqual({
+      total_sends: 1, monthly_sends: 1, max_grade: 2, monthly_max_grade: 2, gym_count: 1
+    });
+    const calendar = await app.inject({ url: calendarUrl, headers });
+    expect(calendar.statusCode).toBe(200);
+    expect(calendar.json()).toMatchObject({
+      days: [{ day, gym_name: gymName, grade: 'V2', sends: 1 }],
+      summary: { climbing_days: 1, sends: 1, gyms: 1, max_grade: 2, flashes: 1, videos: 1 },
+      byGrade: [{ grade: 'V2', sends: 1 }],
+      byGym: [{ gym_id: gymId, gym_name: gymName, sends: 1 }]
+    });
+
+    const retry = await app.inject({
+      method: 'POST', url: '/api/sends', headers,
+      payload: { routeId: v2Id, attempts: 1, videoUrl: 'https://cdn.example.com/first-v2.mp4' }
+    });
+    expect(retry.statusCode).toBe(200);
+    expect(retry.json().sendId).toBe(first.json().sendId);
+    const afterRetry = await app.inject({ url: '/api/users/me', headers });
+    expect(afterRetry.json().stats).toEqual(profile.json().stats);
+
+    const second = await app.inject({
+      method: 'POST', url: '/api/sends', headers,
+      payload: { routeId: v10Id, attempts: 2, visibility: 'private' }
+    });
+    expect(second.statusCode).toBe(200);
+    // Fix both fixture records to the same Shanghai day, including a midnight run.
+    await query('UPDATE sends SET sent_at=$2 WHERE user_id=$1', [owner.user.id, sentAt]);
+    const twoSendsProfile = await app.inject({ url: '/api/users/me', headers });
+    expect(twoSendsProfile.json().stats).toEqual({
+      total_sends: 2, monthly_sends: 2, max_grade: 10, monthly_max_grade: 10, gym_count: 1
+    });
+    const twoSendsCalendar = await app.inject({ url: calendarUrl, headers });
+    expect(twoSendsCalendar.json()).toMatchObject({
+      days: [
+        { day, gym_name: gymName, grade: 'V2', sends: 1 },
+        { day, gym_name: gymName, grade: 'V10', sends: 1 }
+      ],
+      summary: { climbing_days: 1, sends: 2, gyms: 1, max_grade: 10, flashes: 1, videos: 1 },
+      byGrade: [{ grade: 'V10', sends: 1 }, { grade: 'V2', sends: 1 }],
+      byGym: [{ gym_id: gymId, gym_name: gymName, sends: 2 }]
+    });
+  });
 });

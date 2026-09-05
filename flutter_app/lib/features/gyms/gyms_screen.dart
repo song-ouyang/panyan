@@ -36,10 +36,36 @@ class _GymsScreenState extends State<GymsScreen> {
   bool _loading = true;
   int _requestId = 0;
 
+  String? _sessionUserId;
+
   @override
   void initState() {
     super.initState();
+    _sessionUserId = widget.session.user?.id;
+    widget.session.addListener(_onSessionChanged);
+    widget.api.climbingActivity.addListener(_onActivityChanged);
     _load();
+  }
+
+  @override
+  void dispose() {
+    widget.session.removeListener(_onSessionChanged);
+    widget.api.climbingActivity.removeListener(_onActivityChanged);
+    super.dispose();
+  }
+
+  void _onActivityChanged() {
+    if (!mounted) return;
+    _globalItems = const [];
+    _load();
+  }
+
+  void _onSessionChanged() {
+    final userId = widget.session.user?.id;
+    if (userId == _sessionUserId) return;
+    _sessionUserId = userId;
+    _profile = null;
+    _onActivityChanged();
   }
 
   Future<UserProfile?> _tryLoadProfile() async {

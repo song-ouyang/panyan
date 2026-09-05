@@ -69,7 +69,80 @@ beforeEach(() => {
 });
 
 describe('send visibility', () => {
+  it.each(['public', 'friends', 'private'])('publishes a %s route check-in immediately in manual moderation mode', async (visibility) => {
+    mocks.initialModerationStatus.mockReturnValue('pending');
+    mocks.query
+      .mockResolvedValueOnce(result([{ grade: 'V2', grade_number: 2 }]))
+      .mockResolvedValueOnce(result([{ max_grade: 1 }]));
+    mocks.clientQuery.mockResolvedValueOnce(result([{
+      id: sendId,
+      route_id: routeId,
+      video_url: 'https://example.com/uploaded.mp4',
+      visibility,
+      moderation_status: 'approved'
+    }]));
+    const app = await createApp(sendRoutes, '/api/sends');
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/sends',
+      payload: { routeId, videoUrl: 'https://example.com/uploaded.mp4', visibility }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      sendId,
+      send: { moderation_status: 'approved', visibility },
+      moderationStatus: 'approved',
+      pointsEarned: 25,
+      pendingPoints: 0,
+      milestone: { type: 'first_grade', grade: 'V2' }
+    });
+    expect(mocks.clientQuery.mock.calls[0]![1]).toEqual([
+      viewerId, routeId, 1, 'https://example.com/uploaded.mp4', null, visibility, 'approved'
+    ]);
+    expect(mocks.initialModerationStatus).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('keeps standalone moments subject to manual moderation', async () => {
+    mocks.initialModerationStatus.mockReturnValue('pending');
+    mocks.query.mockResolvedValueOnce(result([{ id: sendId, moderation_status: 'pending' }]));
+    const app = await createApp(sendRoutes, '/api/sends');
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/sends/moments',
+      payload: { caption: '攀岩日常' }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({ moderationStatus: 'pending' });
+    expect(mocks.query.mock.calls[0]![1]).toEqual([viewerId, '攀岩日常', [], 'public', 'pending']);
+    await app.close();
+  });
+
+  it('keeps comments subject to manual moderation', async () => {
+    mocks.initialModerationStatus.mockReturnValue('pending');
+    mocks.query
+      .mockResolvedValueOnce(result([{ id: sendId }]))
+      .mockResolvedValueOnce(result([{ moderation_status: 'pending' }]));
+    const app = await createApp(sendRoutes, '/api/sends');
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/sends/${sendId}/comments`,
+      payload: { content: '这条线路很棒' }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({ moderation_status: 'pending' });
+    expect(mocks.query.mock.calls[1]![1]).toEqual([sendId, viewerId, '这条线路很棒', 'pending']);
+    await app.close();
+  });
+
   it('updates an existing check-in without deleting its likes or comments', async () => {
+    mocks.initialModerationStatus.mockReturnValue('pending');
     mocks.query
       .mockResolvedValueOnce(result([{ grade: 'V3', grade_number: 3 }]))
       .mockResolvedValueOnce(result([{ max_grade: 3 }]));
@@ -97,7 +170,7 @@ describe('send visibility', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toMatchObject({ sendId, pointsEarned: 25, milestone: null });
+    expect(response.json()).toMatchObject({ sendId, moderationStatus: 'approved', pointsEarned: 25, pendingPoints: 0, milestone: null });
     expect(mocks.clientQuery).toHaveBeenCalledTimes(1);
     const [sql, values] = mocks.clientQuery.mock.calls[0]!;
     expect(sql).toContain('ON CONFLICT(user_id,route_id) DO UPDATE');

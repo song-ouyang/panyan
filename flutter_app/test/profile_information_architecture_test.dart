@@ -126,7 +126,7 @@ Future<void> _withSemantics(
 }
 
 void main() {
-  testWidgets('编辑资料收入个人卡，成长数据合并且旧入口不重复', (tester) async {
+  testWidgets('编辑资料收入个人卡，本月和累计统计切换且不重复', (tester) async {
     final api = _ProfileApi();
     final session = await _createSession();
     final router = _createRouter(api: api, session: session);
@@ -147,13 +147,38 @@ void main() {
       reason: '编辑资料应是顶部个人卡的内部操作',
     );
     expect(growth, findsOneWidget);
-    for (final label in ['本月攀爬进度', '本月最高', '累计完攀', '最高难度', '去过岩馆']) {
+    for (final label in ['攀爬进度', '完攀线路', '最高难度', '攀岩日历', '7', 'V4']) {
       expect(
         find.descendant(of: growth, matching: find.text(label)),
         findsOneWidget,
-        reason: '$label 应合并在同一张成长卡中',
+        reason: '$label 应展示在同一张成长卡中',
       );
     }
+    expect(find.text('18'), findsNothing);
+    expect(find.text('V5'), findsNothing);
+    expect(find.text('去过岩馆'), findsNothing);
+
+    await tester.tap(find.byKey(const Key('profile-growth-period-lifetime')));
+    await tester.pumpAndSettle();
+    expect(router.state.uri.path, '/profile');
+    for (final value in ['18', 'V5', '4', '去过岩馆']) {
+      expect(
+        find.descendant(of: growth, matching: find.text(value)),
+        findsOneWidget,
+      );
+    }
+    expect(find.text('7'), findsNothing);
+    expect(find.text('V4'), findsNothing);
+    expect(find.text('完攀线路'), findsOneWidget);
+    expect(find.text('最高难度'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('profile-growth-period-month')));
+    await tester.pumpAndSettle();
+    expect(router.state.uri.path, '/profile');
+    expect(find.text('7'), findsOneWidget);
+    expect(find.text('V4'), findsOneWidget);
+    expect(find.text('18'), findsNothing);
+    expect(find.text('去过岩馆'), findsNothing);
 
     expect(find.text('成长入口'), findsNothing);
     expect(find.text('难度成长'), findsNothing);
@@ -260,6 +285,19 @@ void main() {
         expect(rect.left, greaterThanOrEqualTo(0));
         expect(rect.right, lessThanOrEqualTo(320));
         expect(tester.takeException(), isNull);
+      }
+      for (final period in ['lifetime', 'month']) {
+        final selector = find.byKey(Key('profile-growth-period-$period'));
+        await tester.ensureVisible(selector);
+        await tester.pumpAndSettle();
+        expect(tester.getSize(selector).shortestSide, greaterThanOrEqualTo(44));
+        await tester.tap(selector);
+        await tester.pumpAndSettle();
+        expect(router.state.uri.path, '/profile');
+        expect(tester.takeException(), isNull);
+        final semantics = tester.getSemantics(selector).getSemanticsData();
+        expect(semantics.flagsCollection.isSelected, ui.Tristate.isTrue);
+        expect(semantics.hasAction(ui.SemanticsAction.tap), isTrue);
       }
       expect(tester.takeException(), isNull);
     });

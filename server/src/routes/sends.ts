@@ -95,7 +95,9 @@ export const sendRoutes: FastifyPluginAsync = async (app) => {
     const body = sendBody.parse(request.body);
     const route = await query(`SELECT grade,substring(grade from 2)::int grade_number FROM routes WHERE id=$1`, [body.routeId]);
     if (!route.rowCount) throw app.httpErrors.notFound('线路不存在');
-    const moderationStatus = initialModerationStatus();
+    // Route check-ins publish as soon as the client finishes uploading, just
+    // like the video attached to a route submission.
+    const moderationStatus = 'approved';
     const previous = await query(
       `SELECT coalesce(max(substring(r.grade from 2)::int),-1)::int max_grade
        FROM sends s JOIN routes r ON r.id=s.route_id
@@ -122,8 +124,8 @@ export const sendRoutes: FastifyPluginAsync = async (app) => {
       sendId: send.id,
       moderationStatus,
       milestone,
-      pointsEarned: moderationStatus === 'approved' ? points : 0,
-      pendingPoints: moderationStatus === 'pending' ? points : 0
+      pointsEarned: points,
+      pendingPoints: 0
     };
   });
 

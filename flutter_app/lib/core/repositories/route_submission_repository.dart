@@ -25,10 +25,13 @@ class RouteSubmissionRepository {
           },
   );
 
-  Future<RouteSubmission> create(RouteSubmissionDraft draft) async =>
-      RouteSubmission.fromJson(
-        await _apiClient.postJson('/submissions', data: draft.toJson()),
-      );
+  Future<RouteSubmission> create(RouteSubmissionDraft draft) async {
+    final result = RouteSubmission.fromJson(
+      await _apiClient.postJson('/submissions', data: draft.toJson()),
+    );
+    _apiClient.climbingActivity.recordChanged();
+    return result;
+  }
 
   Future<String> uploadVideo(
     String filePath, {

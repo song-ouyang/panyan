@@ -46,13 +46,19 @@ class _GymScreenState extends State<GymScreen> {
   void initState() {
     super.initState();
     _repository = widget.gymRepository ?? GymRepository(widget.api);
+    widget.api.climbingActivity.addListener(_handleActivityChanged);
     _loadAll();
   }
 
   @override
   void dispose() {
+    widget.api.climbingActivity.removeListener(_handleActivityChanged);
     _routeSearchController.dispose();
     super.dispose();
+  }
+
+  void _handleActivityChanged() {
+    if (mounted) _loadAll();
   }
 
   List<ClimbingRoute> get _visibleRoutes {

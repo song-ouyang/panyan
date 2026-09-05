@@ -23,27 +23,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
   UserProfile? _profile;
   bool _loading = true;
   String? _error;
-  late bool _wasAuthenticated;
+  String? _sessionUserId;
+  int _requestId = 0;
 
   @override
   void initState() {
     super.initState();
-    _wasAuthenticated = widget.session.isAuthenticated;
+    _sessionUserId = widget.session.user?.id;
     widget.session.addListener(_handleSessionChanged);
+    widget.api.climbingActivity.addListener(_handleActivityChanged);
     _load();
   }
 
   @override
   void dispose() {
     widget.session.removeListener(_handleSessionChanged);
+    widget.api.climbingActivity.removeListener(_handleActivityChanged);
     super.dispose();
   }
 
   void _handleSessionChanged() {
-    final authenticated = widget.session.isAuthenticated;
-    if (authenticated == _wasAuthenticated) return;
-    _wasAuthenticated = authenticated;
-    if (authenticated) {
+    final userId = widget.session.user?.id;
+    if (userId == _sessionUserId) return;
+    _sessionUserId = userId;
+    ++_requestId;
+    _profile = null;
+    if (widget.session.isAuthenticated) {
       _load();
     } else if (mounted) {
       setState(() {
@@ -54,26 +59,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  void _handleActivityChanged() {
+    if (mounted) _load();
+  }
+
   Future<void> _load() async {
+    final requestId = ++_requestId;
     if (!widget.session.isAuthenticated) {
       if (mounted) setState(() => _loading = false);
       return;
     }
     setState(() {
-      _loading = true;
+      _loading = _profile == null;
       _error = null;
     });
     try {
       final profile = UserProfile.fromJson(
         await widget.api.getJson('/users/me'),
       );
-      if (!mounted) return;
+      if (!mounted || requestId != _requestId) return;
       setState(() {
         _profile = profile;
         _loading = false;
       });
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted || requestId != _requestId) return;
       setState(() {
         _loading = false;
         _error = '成长记录暂时没有加载出来';
@@ -320,23 +330,34 @@ class _ProfileHeader extends StatelessWidget {
   }
 }
 
-class _GrowthCard extends StatelessWidget {
+enum _GrowthPeriod { month, lifetime }
+
+class _GrowthCard extends StatefulWidget {
   const _GrowthCard({required this.stats, required this.onTap});
 
   final UserStats stats;
   final VoidCallback onTap;
 
   @override
+  State<_GrowthCard> createState() => _GrowthCardState();
+}
+
+class _GrowthCardState extends State<_GrowthCard> {
+  _GrowthPeriod _period = _GrowthPeriod.month;
+
+  @override
   Widget build(BuildContext context) {
+    final stats = widget.stats;
+    final monthly = _period == _GrowthPeriod.month;
     return WanpanPressable(
       key: const Key('profile-growth-card'),
       semanticLabel: '查看攀岩日历',
-      onTap: onTap,
+      onTap: widget.onTap,
       enableHaptics: true,
       pressedScale: .985,
       borderRadius: BorderRadius.circular(WanpanRadii.large),
       child: Container(
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: WanpanColors.coralSoft,
           borderRadius: BorderRadius.circular(WanpanRadii.large),
@@ -345,77 +366,120 @@ class _GrowthCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: .72),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.local_fire_department_rounded,
-                    color: WanpanColors.coral,
-                  ),
-                ),
-                const SizedBox(width: 11),
-                Expanded(
-                  child: Column(
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final title = Text(
+                  '攀爬进度',
+                  style: Theme.of(context).textTheme.titleMedium,
+                );
+                final selector = _periodSelector(context);
+                if (constraints.maxWidth < 280 ||
+                    MediaQuery.textScalerOf(context).scale(1) > 1.15) {
+                  return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '本月攀爬进度',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 1),
-                      Text(
-                        '点开查看攀岩日历',
-                        style: Theme.of(context).textTheme.labelMedium,
-                      ),
-                    ],
-                  ),
-                ),
-                const Icon(
-                  Icons.chevron_right_rounded,
-                  color: WanpanColors.coralStrong,
-                ),
-              ],
+                    children: [title, const SizedBox(height: 8), selector],
+                  );
+                }
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [title, const SizedBox(width: 12), selector],
+                );
+              },
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             Row(
               children: [
                 Expanded(
-                  child: _Stat(value: '${stats.monthlySends}', label: '本月完攀'),
+                  child: _Stat(
+                    value: '${monthly ? stats.monthlySends : stats.totalSends}',
+                    label: '完攀线路',
+                  ),
                 ),
                 Expanded(
                   child: _Stat(
-                    value: 'V${stats.monthlyMaxGrade}',
-                    label: '本月最高',
+                    value:
+                        'V${monthly ? stats.monthlyMaxGrade : stats.maxGrade}',
+                    label: '最高难度',
                   ),
                 ),
+                if (!monthly)
+                  Expanded(
+                    child: _Stat(value: '${stats.gymCount}', label: '去过岩馆'),
+                  ),
               ],
             ),
-            const SizedBox(height: 14),
-            Divider(color: WanpanColors.coral.withValues(alpha: .2)),
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
             Row(
+              mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                Expanded(
-                  child: _Stat(value: '${stats.totalSends}', label: '累计完攀'),
+                Text(
+                  '攀岩日历',
+                  style: Theme.of(context).textTheme.labelMedium
+                      ?.copyWith(color: WanpanColors.coralStrong),
                 ),
-                const SizedBox(height: 46, child: VerticalDivider()),
-                Expanded(
-                  child: _Stat(value: 'V${stats.maxGrade}', label: '最高难度'),
-                ),
-                const SizedBox(height: 46, child: VerticalDivider()),
-                Expanded(
-                  child: _Stat(value: '${stats.gymCount}', label: '去过岩馆'),
+                const SizedBox(width: 2),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  size: 18,
+                  color: WanpanColors.coralStrong,
                 ),
               ],
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _periodSelector(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: .45),
+        borderRadius: BorderRadius.circular(WanpanRadii.pill),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final period in _GrowthPeriod.values)
+            Semantics(
+              key: Key('profile-growth-period-${period.name}'),
+              container: true,
+              button: true,
+              selected: _period == period,
+              label: period == _GrowthPeriod.month ? '本月统计' : '累计统计',
+              onTap: () => setState(() => _period = period),
+              child: ExcludeSemantics(
+                child: WanpanPressable(
+                  onTap: () => setState(() => _period = period),
+                  pressedScale: .985,
+                  borderRadius: BorderRadius.circular(WanpanRadii.pill),
+                  child: Container(
+                    constraints: const BoxConstraints(
+                      minWidth: 56,
+                      minHeight: 44,
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: _period == period
+                          ? WanpanColors.surface
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(WanpanRadii.pill),
+                    ),
+                    child: Text(
+                      period == _GrowthPeriod.month ? '本月' : '累计',
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        color: _period == period
+                            ? WanpanColors.coralStrong
+                            : WanpanColors.inkSecondary,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

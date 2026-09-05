@@ -239,7 +239,7 @@ void main() {
 
     expect(router.routeInformationProvider.value.uri.path, '/profile');
     expect(find.text('小欧'), findsOneWidget);
-    expect(find.text('本月攀爬进度'), findsOneWidget);
+    expect(find.text('攀爬进度'), findsOneWidget);
 
     await tester.ensureVisible(find.byKey(const Key('profile-growth-card')));
     await tester.pumpAndSettle();
@@ -254,7 +254,7 @@ void main() {
 
     expect(router.state.uri.path, '/profile/calendar');
     expect(find.text('攀岩日历'), findsOneWidget);
-    expect(find.text('第一次记录会在日历里亮起来'), findsOneWidget);
+    expect(find.textContaining('这个月还没有记录'), findsOneWidget);
 
     router.pop();
     await tester.pumpAndSettle();

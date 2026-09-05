@@ -36,9 +36,20 @@ class _ClimbingCalendarScreenState extends State<ClimbingCalendarScreen> {
   void initState() {
     super.initState();
     _repository = widget.repository ?? ProfileRepository(widget.api);
-    final initial = widget.initialMonth ?? DateTime.now();
+    final initial = widget.initialMonth ?? _shanghaiNow();
     _visibleMonth = DateTime(initial.year, initial.month);
+    widget.api.climbingActivity.addListener(_handleActivityChanged);
     _loadMonth();
+  }
+
+  @override
+  void dispose() {
+    widget.api.climbingActivity.removeListener(_handleActivityChanged);
+    super.dispose();
+  }
+
+  void _handleActivityChanged() {
+    if (mounted) _loadMonth();
   }
 
   Future<void> _loadMonth() async {
@@ -52,18 +63,24 @@ class _ClimbingCalendarScreenState extends State<ClimbingCalendarScreen> {
         _monthKey(_visibleMonth),
       );
       if (!mounted || requestId != _requestId) return;
+      if (dashboard.month != _monthKey(_visibleMonth)) {
+        throw const FormatException('Unexpected calendar month');
+      }
       final datedRecords =
           dashboard.days
-              .where((item) => item.day != null)
+              .where((item) => item.day != null && item.sends > 0)
               .toList(growable: false)
             ..sort((a, b) => a.day!.compareTo(b.day!));
-      final today = DateUtils.dateOnly(DateTime.now());
+      final today = DateUtils.dateOnly(_shanghaiNow());
       final todayHasRecord = datedRecords.any(
         (item) => DateUtils.isSameDay(item.day, today),
       );
       setState(() {
         _dashboard = dashboard;
-        _selectedDay = _isSameMonth(today, _visibleMonth)
+        _selectedDay =
+            _selectedDay != null && _isSameMonth(_selectedDay!, _visibleMonth)
+            ? _selectedDay
+            : _isSameMonth(today, _visibleMonth)
             ? today
             : todayHasRecord
             ? today
@@ -83,7 +100,8 @@ class _ClimbingCalendarScreenState extends State<ClimbingCalendarScreen> {
 
   void _changeMonth(int offset) {
     final next = DateTime(_visibleMonth.year, _visibleMonth.month + offset);
-    final current = DateTime(DateTime.now().year, DateTime.now().month);
+    final now = _shanghaiNow();
+    final current = DateTime(now.year, now.month);
     if (next.isAfter(current)) return;
     setState(() {
       _visibleMonth = next;
@@ -124,7 +142,7 @@ class _ClimbingCalendarScreenState extends State<ClimbingCalendarScreen> {
     final recordsByDay = <DateTime, List<MonthlyDayStat>>{};
     for (final record in dashboard.days) {
       final date = record.day;
-      if (date == null) continue;
+      if (date == null || record.sends <= 0) continue;
       recordsByDay
           .putIfAbsent(DateUtils.dateOnly(date), () => <MonthlyDayStat>[])
           .add(record);
@@ -140,7 +158,10 @@ class _ClimbingCalendarScreenState extends State<ClimbingCalendarScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
         children: [
-          _MonthHero(summary: dashboard.summary),
+          _MonthHero(
+            summary: dashboard.summary,
+            monthHasRecords: recordsByDay.isNotEmpty,
+          ),
           const SizedBox(height: 14),
           _CalendarCard(
             month: _visibleMonth,
@@ -151,10 +172,14 @@ class _ClimbingCalendarScreenState extends State<ClimbingCalendarScreen> {
             onNext: () => _changeMonth(1),
             onSelect: (day) => setState(() => _selectedDay = day),
           ),
-          const SizedBox(height: 14),
-          _SelectedDayCard(day: _selectedDay, records: selectedRecords),
-          const SizedBox(height: 14),
-          _MonthBreakdown(grades: dashboard.byGrade, gyms: dashboard.byGym),
+          if (recordsByDay.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            _SelectedDayCard(day: _selectedDay, records: selectedRecords),
+          ],
+          if (dashboard.byGrade.isNotEmpty || dashboard.byGym.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            _MonthBreakdown(grades: dashboard.byGrade, gyms: dashboard.byGym),
+          ],
         ],
       ),
     );
@@ -162,13 +187,15 @@ class _ClimbingCalendarScreenState extends State<ClimbingCalendarScreen> {
 }
 
 class _MonthHero extends StatelessWidget {
-  const _MonthHero({required this.summary});
+  const _MonthHero({required this.summary, required this.monthHasRecords});
 
   final MonthlySummary summary;
+  final bool monthHasRecords;
 
   @override
   Widget build(BuildContext context) {
     return Container(
+      key: const Key('calendar-month-hero'),
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: WanpanColors.coralSoft,
@@ -178,60 +205,95 @@ class _MonthHero extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
+          if (!monthHasRecords)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '这个月，也在认真上墙',
+                  style: Theme.of(context).textTheme.titleMedium,
                 ),
-                child: const Icon(
-                  Icons.calendar_month_rounded,
-                  color: WanpanColors.coral,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                const SizedBox(height: 6),
+                Row(
                   children: [
-                    Text(
-                      '这个月，也在认真上墙',
-                      style: Theme.of(context).textTheme.titleMedium,
+                    Expanded(
+                      child: Text(
+                        '这个月还没有记录，\n完成一条线路后就会亮起来。',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      summary.climbingDays == 0
-                          ? '第一次记录会在日历里亮起来'
-                          : '已经点亮 ${summary.climbingDays} 天',
-                      style: Theme.of(context).textTheme.bodyMedium,
+                    const SizedBox(width: 8),
+                    Image.asset(
+                      AppAssets.routeMapCat,
+                      width: 112,
+                      height: 80,
+                      cacheWidth: 336,
+                      fit: BoxFit.contain,
+                      filterQuality: FilterQuality.medium,
+                      excludeFromSemantics: true,
                     ),
                   ],
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
-          Row(
-            children: [
-              Expanded(
-                child: _HeroStat(
-                  value: '${summary.climbingDays}',
-                  label: '攀爬天数',
+              ],
+            )
+          else
+            Row(
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.calendar_month_rounded,
+                    color: WanpanColors.coral,
+                  ),
                 ),
-              ),
-              Expanded(
-                child: _HeroStat(value: '${summary.sends}', label: '完成线路'),
-              ),
-              Expanded(
-                child: _HeroStat(value: 'V${summary.maxGrade}', label: '最高难度'),
-              ),
-              Expanded(
-                child: _HeroStat(value: '${summary.videos}', label: '视频记录'),
-              ),
-            ],
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '这个月，也在认真上墙',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '已经点亮 ${summary.climbingDays} 天',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          const SizedBox(height: 18),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final columns =
+                  constraints.maxWidth <
+                      MediaQuery.textScalerOf(context).scale(4 * 64)
+                  ? 2
+                  : 4;
+              return Wrap(
+                runSpacing: 12,
+                children: [
+                  for (final stat in [
+                    _HeroStat(value: '${summary.climbingDays}', label: '攀爬天数'),
+                    _HeroStat(value: '${summary.sends}', label: '完成线路'),
+                    _HeroStat(value: 'V${summary.maxGrade}', label: '最高难度'),
+                    _HeroStat(value: '${summary.videos}', label: '视频记录'),
+                  ])
+                    SizedBox(
+                      width: constraints.maxWidth / columns,
+                      child: stat,
+                    ),
+                ],
+              );
+            },
           ),
         ],
       ),
@@ -291,7 +353,7 @@ class _CalendarCard extends StatelessWidget {
     final firstDay = DateTime(month.year, month.month);
     final leading = firstDay.weekday % 7;
     final days = DateUtils.getDaysInMonth(month.year, month.month);
-    final today = DateUtils.dateOnly(DateTime.now());
+    final today = DateUtils.dateOnly(_shanghaiNow());
 
     return Card(
       child: Padding(
@@ -340,9 +402,9 @@ class _CalendarCard extends StatelessWidget {
             GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 7,
-                childAspectRatio: .82,
+                mainAxisExtent: 44 + MediaQuery.textScalerOf(context).scale(26),
                 mainAxisSpacing: 4,
                 crossAxisSpacing: 2,
               ),
@@ -357,10 +419,10 @@ class _CalendarCard extends StatelessWidget {
                 final records = recordsByDay[day] ?? const <MonthlyDayStat>[];
                 return _CalendarDay(
                   day: day,
-                  hasRecord: records.isNotEmpty,
                   isSelected: DateUtils.isSameDay(day, selectedDay),
                   isToday: DateUtils.isSameDay(day, today),
                   sends: records.fold(0, (sum, item) => sum + item.sends),
+                  maxGrade: _highestGrade(records),
                   onTap: day.isAfter(today) ? null : () => onSelect(day),
                 );
               },
@@ -375,19 +437,21 @@ class _CalendarCard extends StatelessWidget {
 class _CalendarDay extends StatelessWidget {
   const _CalendarDay({
     required this.day,
-    required this.hasRecord,
     required this.isSelected,
     required this.isToday,
     required this.sends,
+    required this.maxGrade,
     required this.onTap,
   });
 
   final DateTime day;
-  final bool hasRecord;
   final bool isSelected;
   final bool isToday;
   final int sends;
+  final int maxGrade;
   final VoidCallback? onTap;
+
+  bool get hasRecord => sends > 0;
 
   @override
   Widget build(BuildContext context) {
@@ -397,54 +461,77 @@ class _CalendarDay extends StatelessWidget {
         ? WanpanColors.coralStrong
         : WanpanColors.inkSecondary;
     return Semantics(
-      button: hasRecord,
+      button: onTap != null,
+      selected: isSelected,
+      onTap: onTap,
+      excludeSemantics: true,
       label: hasRecord
-          ? '${day.month}月${day.day}日，完成$sends条线路'
+          ? '${day.month}月${day.day}日，完成$sends条线路，最高V$maxGrade'
           : '${day.month}月${day.day}日，无攀岩记录',
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           key: Key('calendar-day-${_dateKey(day)}'),
           onTap: onTap,
-          customBorder: const CircleBorder(),
-          child: AnimatedContainer(
-            duration: WanpanMotion.duration(context, WanpanMotion.press),
-            curve: WanpanMotion.curve(context),
-            margin: const EdgeInsets.all(2),
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? WanpanColors.coral
-                  : hasRecord
-                  ? WanpanColors.coralSoft
-                  : Colors.transparent,
-              shape: BoxShape.circle,
-              border: isToday
-                  ? Border.all(color: WanpanColors.coral, width: 1.5)
-                  : null,
-            ),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Text(
+          borderRadius: BorderRadius.circular(18),
+          child: Column(
+            children: [
+              AnimatedContainer(
+                duration: WanpanMotion.duration(context, WanpanMotion.press),
+                curve: WanpanMotion.curve(context),
+                width: 36,
+                height: 36,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? WanpanColors.coral
+                      : hasRecord
+                      ? WanpanColors.coralSoft
+                      : Colors.transparent,
+                  shape: BoxShape.circle,
+                  border: isToday
+                      ? Border.all(color: WanpanColors.coral, width: 1.5)
+                      : null,
+                ),
+                child: Text(
                   '${day.day}',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: foreground,
                     fontWeight: hasRecord ? FontWeight.w900 : FontWeight.w600,
                   ),
                 ),
-                if (hasRecord && !isSelected)
-                  const Positioned(
-                    bottom: 5,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: WanpanColors.coral,
-                        shape: BoxShape.circle,
-                      ),
-                      child: SizedBox(width: 4, height: 4),
+              ),
+              if (hasRecord) ...[
+                const SizedBox(height: 3),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    '$sends条',
+                    key: Key('calendar-day-count-${_dateKey(day)}'),
+                    maxLines: 1,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      fontSize: 10,
+                      height: 1.2,
+                      color: WanpanColors.inkSecondary,
                     ),
                   ),
+                ),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    'V$maxGrade',
+                    key: Key('calendar-day-grade-${_dateKey(day)}'),
+                    maxLines: 1,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      fontSize: 10,
+                      height: 1.2,
+                      fontWeight: FontWeight.w800,
+                      color: WanpanColors.coralStrong,
+                    ),
+                  ),
+                ),
               ],
-            ),
+            ],
           ),
         ),
       ),
@@ -498,7 +585,7 @@ class _SelectedDayCard extends StatelessWidget {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      '这个月还没有记录，\n完成一条线路后\n这里就会亮起来。',
+                      '这一天还没有记录，\n换一天看看吧。',
                       style: Theme.of(context).textTheme.bodyLarge,
                     ),
                   ),
@@ -520,6 +607,11 @@ class _SelectedDayCard extends StatelessWidget {
             Text(
               '${day!.month} 月 ${day!.day} 日 · 完成 $sends 条',
               style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '最高难度 V${_highestGrade(records)}',
+              style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 12),
             for (var index = 0; index < records.length; index++) ...[
@@ -702,10 +794,18 @@ class _CalendarError extends StatelessWidget {
   }
 }
 
+int _highestGrade(List<MonthlyDayStat> records) => records.fold(0, (max, item) {
+  final grade =
+      int.tryParse(item.grade.replaceFirst(RegExp(r'^[Vv]'), '')) ?? 0;
+  return item.sends > 0 && grade > max ? grade : max;
+});
+
 bool _isCurrentMonth(DateTime month) {
-  final now = DateTime.now();
+  final now = _shanghaiNow();
   return month.year == now.year && month.month == now.month;
 }
+
+DateTime _shanghaiNow() => DateTime.now().toUtc().add(const Duration(hours: 8));
 
 bool _isSameMonth(DateTime a, DateTime b) =>
     a.year == b.year && a.month == b.month;

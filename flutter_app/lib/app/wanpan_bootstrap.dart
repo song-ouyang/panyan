@@ -170,6 +170,7 @@ class _WanpanDependencies {
 
   void dispose() {
     router.dispose();
+    api.dispose();
     onboarding.dispose();
     session.dispose();
   }

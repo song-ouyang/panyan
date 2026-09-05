@@ -51,6 +51,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
   int _attempts = 1;
   bool _syncToSquare = true;
   bool _submitting = false;
+  bool _uploading = false;
   double _progress = 0;
   String _stage = '';
   CheckinResult? _result;
@@ -149,8 +150,9 @@ class _CheckinScreenState extends State<CheckinScreen> {
     final visibility = _syncToSquare ? 'public' : 'friends';
     setState(() {
       _submitting = true;
+      _uploading = selectedVideo != null;
       _progress = 0;
-      _stage = selectedVideo == null ? '正在保存打卡…' : '正在上传视频…';
+      _stage = selectedVideo == null ? '正在保存打卡…' : '视频上传中…';
     });
     try {
       String? videoUrl;
@@ -178,7 +180,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
             if (!mounted) rethrow;
             setState(() {
               _progress = 0;
-              _stage = '分片上传不可用，切换普通上传…';
+              _stage = '视频上传中，正在重试…';
             });
             videoUrl = await _repository.uploadMedia(
               path,
@@ -194,7 +196,8 @@ class _CheckinScreenState extends State<CheckinScreen> {
       }
       if (mounted) {
         setState(() {
-          _stage = '正在生成完攀记录…';
+          _uploading = false;
+          _stage = videoUrl == null ? '正在保存打卡…' : '视频已上传，正在发布…';
           _progress = 1;
         });
       }
@@ -209,7 +212,12 @@ class _CheckinScreenState extends State<CheckinScreen> {
     } catch (error) {
       if (mounted) _toast('提交失败：$error');
     } finally {
-      if (mounted) setState(() => _submitting = false);
+      if (mounted) {
+        setState(() {
+          _submitting = false;
+          _uploading = false;
+        });
+      }
     }
   }
 
@@ -234,6 +242,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
               routeName: widget.routeName,
               grade: widget.grade,
               attempts: _attempts,
+              hasVideo: _video != null,
               milestoneSequence: MilestoneGradeSequenceResolver.resolve(
                 currentMonth: _currentMonthDashboard,
                 latestGrade: _result!.milestone?.grade,
@@ -374,7 +383,9 @@ class _CheckinScreenState extends State<CheckinScreen> {
                   ],
                   const SizedBox(height: 26),
                   WanpanButton(
-                    label: _video == null ? '保存完攀' : '上传并打卡',
+                    label: _submitting
+                        ? (_uploading ? '上传中…' : '正在保存…')
+                        : (_video == null ? '保存完攀' : '上传并打卡'),
                     loading: _submitting,
                     onPressed: _submitting ? null : _submit,
                   ),
@@ -481,6 +492,7 @@ class _SuccessView extends StatefulWidget {
     required this.routeName,
     required this.grade,
     required this.attempts,
+    required this.hasVideo,
     required this.milestoneSequence,
   });
 
@@ -488,6 +500,7 @@ class _SuccessView extends StatefulWidget {
   final String? routeName;
   final String? grade;
   final int attempts;
+  final bool hasVideo;
   final MilestoneGradeSequence milestoneSequence;
 
   @override
@@ -535,15 +548,14 @@ class _SuccessViewState extends State<_SuccessView> {
 
   @override
   Widget build(BuildContext context) {
-    final pending = widget.result.moderationStatus == 'pending';
+    final videoPublished =
+        widget.hasVideo && widget.result.moderationStatus == 'approved';
     final milestone = widget.result.milestone;
     final headline = milestone == null
         ? '完攀记录已保存！'
         : '新的最高难度 ${milestone.grade}！';
     final grade = milestone?.grade ?? widget.grade ?? 'V?';
-    final points = pending
-        ? '${widget.result.pendingPoints} 分待结算'
-        : '+${widget.result.pointsEarned} 积分';
+    final points = '+${widget.result.pointsEarned} 积分';
     return Scaffold(
       body: SafeArea(
         child: CustomScrollView(
@@ -597,7 +609,7 @@ class _SuccessViewState extends State<_SuccessView> {
                     ),
                     const SizedBox(height: 9),
                     Text(
-                      pending ? '视频正在审核，通过后会进入线路榜单。' : '这次上墙，已经好好记下来了。',
+                      videoPublished ? '视频已上传，可在线路中查看。' : '这次上墙，已经好好记下来了。',
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.bodyLarge
                           ?.copyWith(color: WanpanColors.inkSecondary),
@@ -666,33 +678,23 @@ class _SuccessViewState extends State<_SuccessView> {
                         vertical: 10,
                       ),
                       decoration: BoxDecoration(
-                        color: pending
-                            ? WanpanColors.sunflowerSoft
-                            : WanpanColors.mintSoft,
+                        color: WanpanColors.mintSoft,
                         borderRadius: BorderRadius.circular(WanpanRadii.pill),
                         border: Border.all(color: WanpanColors.border),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(
-                            pending
-                                ? Icons.schedule_rounded
-                                : Icons.check_circle_rounded,
+                          const Icon(
+                            Icons.check_circle_rounded,
                             size: 20,
-                            color: pending
-                                ? WanpanColors.coralStrong
-                                : WanpanColors.success,
+                            color: WanpanColors.success,
                           ),
                           const SizedBox(width: 7),
                           Text(
-                            pending ? '视频审核中' : '完攀记录已保存',
+                            videoPublished ? '视频已发布' : '完攀记录已保存',
                             style: Theme.of(context).textTheme.labelLarge
-                                ?.copyWith(
-                                  color: pending
-                                      ? WanpanColors.coralStrong
-                                      : WanpanColors.success,
-                                ),
+                                ?.copyWith(color: WanpanColors.success),
                           ),
                         ],
                       ),

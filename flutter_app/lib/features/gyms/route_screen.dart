@@ -34,14 +34,27 @@ class _RouteScreenState extends State<RouteScreen> {
   ClimbingRoute? _route;
   RouteLeaderboard? _leaderboard;
   Object? _error;
+  int _requestId = 0;
 
   @override
   void initState() {
     super.initState();
+    widget.api.climbingActivity.addListener(_handleActivityChanged);
     _load();
   }
 
+  @override
+  void dispose() {
+    widget.api.climbingActivity.removeListener(_handleActivityChanged);
+    super.dispose();
+  }
+
+  void _handleActivityChanged() {
+    if (mounted) _load();
+  }
+
   Future<void> _load() async {
+    final requestId = ++_requestId;
     setState(() => _error = null);
     try {
       final route = await _repository.getRoute(widget.routeId);
@@ -49,13 +62,15 @@ class _RouteScreenState extends State<RouteScreen> {
       if (widget.session.isAuthenticated) {
         leaderboard = await _repository.getRouteLeaderboard(widget.routeId);
       }
-      if (!mounted) return;
+      if (!mounted || requestId != _requestId) return;
       setState(() {
         _route = route;
         _leaderboard = leaderboard;
       });
     } catch (error) {
-      if (mounted) setState(() => _error = error);
+      if (mounted && requestId == _requestId) {
+        setState(() => _error = error);
+      }
     }
   }
 
