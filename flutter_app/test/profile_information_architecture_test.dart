@@ -14,7 +14,7 @@ import 'package:wanpan_diary/features/auth/data/session_token_store.dart';
 import 'package:wanpan_diary/features/auth/domain/auth_session.dart';
 import 'package:wanpan_diary/features/profile/profile_screen.dart';
 import 'package:wanpan_diary/shared/widgets/wanpan_cartoon_icon.dart';
-import 'package:wanpan_diary/shared/widgets/wanpan_cat_mark.dart';
+import 'package:wanpan_diary/shared/widgets/wanpan_cat_avatar.dart';
 
 const _config = AppConfig(
   environment: AppEnvironment.development,
@@ -362,12 +362,7 @@ void main() {
     expect(find.text('邀请好友').hitTestable(), findsOneWidget);
     expect(find.text('看日历').hitTestable(), findsOneWidget);
     expect(
-      find.descendant(
-        of: header,
-        matching: find.byWidgetPredicate(
-          (widget) => widget is WanpanCatMark && widget.peeking,
-        ),
-      ),
+      find.descendant(of: header, matching: find.byType(WanpanCatAvatar)),
       findsOneWidget,
     );
     for (final name in ['posts', 'comments', 'favorites', 'likes']) {

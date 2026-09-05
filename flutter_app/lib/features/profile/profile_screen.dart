@@ -8,7 +8,7 @@ import '../auth/application/session_controller.dart';
 import '../../shared/app_assets.dart';
 import '../../shared/motion/wanpan_motion.dart';
 import '../../shared/widgets/wanpan_cartoon_icon.dart';
-import '../../shared/widgets/wanpan_cat_mark.dart';
+import '../../shared/widgets/wanpan_cat_avatar.dart';
 import '../../shared/widgets/wanpan_mascot.dart';
 import '../../shared/widgets/wanpan_pressable.dart';
 
@@ -363,7 +363,7 @@ class _ProfileHeader extends StatelessWidget {
         final compact = constraints.maxWidth < 330 || textScale > 1.15;
         return Container(
           key: const Key('profile-header-card'),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
             color: WanpanColors.surface,
             borderRadius: BorderRadius.circular(24),
@@ -371,40 +371,19 @@ class _ProfileHeader extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  CircleAvatar(
-                    radius: compact ? 28 : 30,
-                    backgroundColor: WanpanColors.coralSoft,
-                    backgroundImage: user.avatarUrl == null
-                        ? null
-                        : ResizeImage.resizeIfNeeded(
-                            224,
-                            224,
-                            NetworkImage(user.avatarUrl!),
-                          ),
-                    child: user.avatarUrl == null
-                        ? Text(
-                            user.nickname.isEmpty
-                                ? '岩'
-                                : user.nickname.characters.first,
-                            style: const TextStyle(
-                              fontSize: 23,
-                              fontWeight: FontWeight.w900,
-                              color: WanpanColors.coralStrong,
-                            ),
-                          )
-                        : null,
+              WanpanCatAvatar(
+                diameter: compact ? 56 : 60,
+                image: user.avatarUrl == null
+                    ? null
+                    : NetworkImage(user.avatarUrl!),
+                placeholder: Text(
+                  user.nickname.isEmpty ? '岩' : user.nickname.characters.first,
+                  style: const TextStyle(
+                    fontSize: 23,
+                    fontWeight: FontWeight.w900,
+                    color: WanpanColors.coralStrong,
                   ),
-                  const Positioned(
-                    left: 0,
-                    top: -17,
-                    child: IgnorePointer(
-                      child: WanpanCatMark(size: 38, peeking: true),
-                    ),
-                  ),
-                ],
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(

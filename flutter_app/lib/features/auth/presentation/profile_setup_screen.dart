@@ -8,7 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../app/wanpan_theme.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_exception.dart';
-import '../../../shared/app_assets.dart';
+import '../../../shared/widgets/wanpan_cat_avatar.dart';
 import '../../../shared/widgets/wanpan_pressable.dart';
 import '../application/session_controller.dart';
 import '../data/auth_repository.dart';
@@ -150,86 +150,10 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                       child: WanpanPressable(
                         onTap: _saving ? null : _pickAvatar,
                         borderRadius: BorderRadius.circular(WanpanRadii.pill),
-                        child: SizedBox(
-                          width: 276,
-                          height: 246,
-                          child: Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              Positioned(
-                                left: 69,
-                                top: 46,
-                                child: Container(
-                                  width: 164,
-                                  height: 164,
-                                  decoration: BoxDecoration(
-                                    color: WanpanColors.coralSoft,
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: const Color(0x66F3BBA9),
-                                      width: 2,
-                                    ),
-                                    image: _avatarImage == null
-                                        ? null
-                                        : DecorationImage(
-                                            image: ResizeImage.resizeIfNeeded(
-                                              512,
-                                              512,
-                                              _avatarImage!,
-                                            ),
-                                            fit: BoxFit.cover,
-                                          ),
-                                  ),
-                                  alignment: Alignment.center,
-                                  child: _avatarImage == null
-                                      ? const Icon(
-                                          Icons.person_rounded,
-                                          size: 70,
-                                          color: WanpanColors.coral,
-                                        )
-                                      : null,
-                                ),
-                              ),
-                              Positioned.fill(
-                                child: IgnorePointer(
-                                  child: Image.asset(
-                                    AppAssets.profilePeekCat,
-                                    cacheWidth: 780,
-                                    fit: BoxFit.contain,
-                                    filterQuality: FilterQuality.high,
-                                  ),
-                                ),
-                              ),
-                              Positioned(
-                                right: 34,
-                                bottom: 24,
-                                child: Container(
-                                  width: 58,
-                                  height: 58,
-                                  decoration: BoxDecoration(
-                                    color: WanpanColors.coral,
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: Colors.white,
-                                      width: 5,
-                                    ),
-                                    boxShadow: const [
-                                      BoxShadow(
-                                        color: Color(0x22000000),
-                                        offset: Offset(0, 5),
-                                        blurRadius: 9,
-                                      ),
-                                    ],
-                                  ),
-                                  child: const Icon(
-                                    Icons.camera_alt_rounded,
-                                    color: Colors.white,
-                                    size: 28,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+                        child: WanpanCatAvatar(
+                          diameter: 164,
+                          image: _avatarImage,
+                          showCameraBadge: true,
                         ),
                       ),
                     ),
