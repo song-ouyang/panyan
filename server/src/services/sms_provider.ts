@@ -81,8 +81,6 @@ function createClient() {
 }
 
 export async function sendSmsCode(phone: string): Promise<void> {
-  // App Review must be able to enter the app even if the SMS provider has an outage.
-  if (isReviewLoginPhone(phone)) return;
   if (!hasAliyunConfiguration()) {
     throw new SmsProviderError('短信服务暂不可用，请稍后重试。');
   }
@@ -115,10 +113,9 @@ export async function sendSmsCode(phone: string): Promise<void> {
 }
 
 export async function verifySmsCode(phone: string, code: string): Promise<{ isReview: boolean }> {
-  if (isReviewLoginPhone(phone)) {
-    if (!isSameSecret(code, config.APP_REVIEW_LOGIN_CODE)) {
-      throw new SmsProviderError('验证码错误或已过期。', 401);
-    }
+  // The fixed review code is an additional login option. Other codes, including
+  // those sent to the review phone, must still go through normal SMS verification.
+  if (isReviewLoginPhone(phone) && isSameSecret(code, config.APP_REVIEW_LOGIN_CODE)) {
     return { isReview: true };
   }
   if (!hasAliyunConfiguration()) {
