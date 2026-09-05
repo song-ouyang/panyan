@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync, FastifyReply } from 'fastify';
 
 const contactEmail = 'ouyangsong8@gmail.com';
+const developerName = 'guoba';
 const effectiveDate = '2026年9月1日';
 
 type PublicPage = {
@@ -59,7 +60,7 @@ function renderPage(page: PublicPage): string {
       </nav>
     </header>
     <article class="content">${page.content}</article>
-    <footer>完攀日记 · 开发者：欧阳松 · <a href="mailto:${contactEmail}">${contactEmail}</a></footer>
+    <footer>完攀日记 · 开发者：${developerName} · <a href="mailto:${contactEmail}">${contactEmail}</a></footer>
   </main>
 </body>
 </html>`;
@@ -83,7 +84,7 @@ const privacyPage: PublicPage = {
   content: `
     <section>
       <h2>1. 适用范围与服务提供者</h2>
-      <p>本政策适用于“完攀日记”移动应用及相关服务。服务提供者及个人信息处理者为个人开发者欧阳松。如有问题，可通过 <a href="mailto:${contactEmail}">${contactEmail}</a> 联系。</p>
+      <p>本政策适用于“完攀日记”移动应用及相关服务。服务提供者及个人信息处理者为个人开发者 ${developerName}。如有问题，可通过 <a href="mailto:${contactEmail}">${contactEmail}</a> 联系。</p>
     </section>
     <section>
       <h2>2. 我们处理的信息</h2>
@@ -131,7 +132,7 @@ const privacyPage: PublicPage = {
     <section>
       <h2>8. 政策更新与联系我们</h2>
       <p>功能、权限或处理方式发生重要变化时，我们会更新本政策，并通过应用内提示或其他合理方式告知。对本政策或个人信息处理有任何疑问、意见或请求，请联系：</p>
-      <div class="callout"><strong>个人开发者：欧阳松</strong><br>联系邮箱：<a href="mailto:${contactEmail}">${contactEmail}</a></div>
+      <div class="callout"><strong>个人开发者：${developerName}</strong><br>联系邮箱：<a href="mailto:${contactEmail}">${contactEmail}</a></div>
     </section>`
 };
 
