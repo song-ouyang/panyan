@@ -10,6 +10,8 @@ import '../../core/network/api_client.dart';
 import '../../core/repositories/feed_repository.dart';
 import '../../shared/app_assets.dart';
 import '../../shared/widgets/wanpan_card.dart';
+import '../../shared/widgets/wanpan_cat_mark.dart';
+import '../../shared/widgets/wanpan_cartoon_icon.dart';
 import '../../shared/widgets/wanpan_content_safety.dart';
 import '../../shared/widgets/wanpan_mascot.dart';
 import '../../shared/widgets/wanpan_notice.dart';
@@ -326,18 +328,55 @@ class _FeedScreenState extends State<FeedScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('广场'),
+        toolbarHeight: 52,
         actions: [
           if (widget.session.isAuthenticated) ...[
             Padding(
               padding: const EdgeInsets.only(right: 12),
-              child: IconButton.filled(
-                tooltip: '发布动态',
-                onPressed: _compose,
-                style: IconButton.styleFrom(
-                  backgroundColor: WanpanColors.coral,
-                  foregroundColor: Colors.white,
+              child: Tooltip(
+                message: '发布动态',
+                child: WanpanPressable(
+                  semanticLabel: '发布动态',
+                  onTap: _compose,
+                  pressedOffset: 3,
+                  enableHaptics: true,
+                  child: SizedBox.square(
+                    dimension: 48,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Positioned.fill(
+                          top: 3,
+                          bottom: 3,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: WanpanColors.coral,
+                              borderRadius: BorderRadius.circular(15),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: WanpanColors.coralStrong,
+                                  offset: Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.add_rounded,
+                              size: 29,
+                              color: WanpanColors.surface,
+                            ),
+                          ),
+                        ),
+                        const Positioned(
+                          top: 0,
+                          left: -13,
+                          child: IgnorePointer(
+                            child: WanpanCatMark(size: 25, peeking: true),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-                icon: const Icon(Icons.add_rounded, size: 28),
               ),
             ),
           ] else
@@ -353,7 +392,7 @@ class _FeedScreenState extends State<FeedScreen> {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 6),
             child: _ScopePicker(value: _scope, onChanged: _changeScope),
           ),
           Expanded(
@@ -412,7 +451,7 @@ class _FeedScreenState extends State<FeedScreen> {
       key: const ValueKey('list'),
       onRefresh: _load,
       child: ListView.separated(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+        padding: const EdgeInsets.fromLTRB(20, 6, 20, 24),
         itemCount: _items.length + (_scope == 'friends' ? 1 : 0),
         separatorBuilder: (_, _) => const SizedBox(height: 12),
         itemBuilder: (context, index) {
@@ -455,48 +494,26 @@ class _FriendsActivityBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) => WanpanCard(
     onTap: onTap,
+    semanticLabel: '我的岩友',
+    hasShadow: false,
     color: WanpanColors.sunflowerSoft.withValues(alpha: .42),
-    borderColor: WanpanColors.sunflower.withValues(alpha: .4),
-    padding: EdgeInsets.zero,
-    child: SizedBox(
-      height: 88,
-      child: Stack(
+    borderColor: WanpanColors.border,
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 32),
+      child: Row(
         children: [
-          Positioned(
-            left: -10,
-            bottom: -38,
-            width: 128,
-            height: 126,
-            child: Image.asset(
-              AppAssets.profilePeekCat,
-              cacheWidth: 420,
-              fit: BoxFit.contain,
-              filterQuality: FilterQuality.medium,
-            ),
+          const WanpanCartoonIcon(
+            kind: WanpanCartoonIconKind.friends,
+            size: 26,
           ),
-          Positioned(
-            left: 116,
-            top: 29,
-            child: Text(
-              '看看岩友最近在爬什么',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text('我的岩友', style: Theme.of(context).textTheme.labelLarge),
           ),
-          const Positioned(
-            right: 16,
-            top: 28,
-            child: Row(
-              children: [
-                Text(
-                  '我的岩友',
-                  style: TextStyle(
-                    color: WanpanColors.coral,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                Icon(Icons.chevron_right_rounded, color: WanpanColors.coral),
-              ],
-            ),
+          const Icon(
+            Icons.chevron_right_rounded,
+            color: WanpanColors.inkSecondary,
           ),
         ],
       ),
@@ -573,17 +590,17 @@ class _ScopeButton extends StatelessWidget {
     child: AnimatedContainer(
       duration: WanpanMotion.duration(context, WanpanMotion.exit),
       curve: WanpanMotion.curve(context),
-      padding: const EdgeInsets.symmetric(vertical: 10),
+      constraints: const BoxConstraints(minHeight: 44),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
         color: selected ? WanpanColors.surface : Colors.transparent,
+        border: Border.all(
+          color: selected ? WanpanColors.border : Colors.transparent,
+        ),
         borderRadius: BorderRadius.circular(13),
         boxShadow: selected
             ? const [
-                BoxShadow(
-                  color: Color(0x1217191C),
-                  offset: Offset(0, 2),
-                  blurRadius: 8,
-                ),
+                BoxShadow(color: WanpanColors.border, offset: Offset(0, 2)),
               ]
             : const [],
       ),
@@ -596,10 +613,14 @@ class _ScopeButton extends StatelessWidget {
             color: selected ? WanpanColors.coral : WanpanColors.muted,
           ),
           const SizedBox(width: 7),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              color: selected ? WanpanColors.ink : WanpanColors.muted,
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                color: selected ? WanpanColors.ink : WanpanColors.muted,
+              ),
             ),
           ),
         ],
@@ -639,7 +660,8 @@ class _PostCard extends StatelessWidget {
     return WanpanCard(
       onTap: onOpen,
       semanticLabel: '打开$nickname的动态',
-      padding: const EdgeInsets.all(16),
+      hasShadow: false,
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -704,38 +726,67 @@ class _PostCard extends StatelessWidget {
             ],
           ),
           if ((post.caption ?? '').isNotEmpty) ...[
-            const SizedBox(height: 14),
-            Text(post.caption!, style: Theme.of(context).textTheme.bodyLarge),
+            const SizedBox(height: 10),
+            Text(
+              post.caption!,
+              style: Theme.of(context).textTheme.bodyLarge
+                  ?.copyWith(fontWeight: FontWeight.w400, height: 1.45),
+            ),
           ],
           if (post.imageUrls.isNotEmpty) ...[
-            const SizedBox(height: 14),
+            const SizedBox(height: 10),
             _ImageGrid(urls: post.imageUrls),
           ] else if (post.videoUrl != null) ...[
-            const SizedBox(height: 14),
+            const SizedBox(height: 10),
             WanpanVideoCover(url: post.videoUrl!),
           ],
-          const SizedBox(height: 12),
-          Row(
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 12,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               _LikeButton(
                 liked: entry.liked,
                 count: entry.likeCount,
                 onTap: liking || deleting ? null : onLike,
               ),
-              const SizedBox(width: 16),
-              const Icon(
-                Icons.chat_bubble_outline_rounded,
-                size: 20,
-                color: WanpanColors.inkSecondary,
+              Semantics(
+                label: '查看评论',
+                onTap: onOpen,
+                enabled: onOpen != null,
+                value: '${post.commentCount}条评论',
+                button: true,
+                child: ExcludeSemantics(
+                  child: InkWell(
+                    onTap: onOpen,
+                    borderRadius: BorderRadius.circular(14),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(
+                        minHeight: 44,
+                        minWidth: 44,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.chat_bubble_outline_rounded,
+                            size: 22,
+                            color: WanpanColors.inkSecondary,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            '${post.commentCount}',
+                            style: Theme.of(context).textTheme.labelLarge,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
               ),
-              const SizedBox(width: 6),
-              Text(
-                '${post.commentCount}',
-                style: Theme.of(context).textTheme.labelLarge,
-              ),
-              const SizedBox(width: 12),
               IconButton(
                 tooltip: entry.favorited ? '取消收藏' : '收藏',
+                style: IconButton.styleFrom(minimumSize: const Size(44, 44)),
                 onPressed: favoriting || deleting ? null : onFavorite,
                 icon: Icon(
                   entry.favorited
@@ -746,14 +797,9 @@ class _PostCard extends StatelessWidget {
                     ? WanpanColors.coral
                     : WanpanColors.inkSecondary,
               ),
-              const Spacer(),
-              Flexible(
-                child: Text(
-                  _relativeTime(post.sentAt),
-                  style: Theme.of(context).textTheme.labelMedium,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+              Text(
+                _relativeTime(post.sentAt),
+                style: Theme.of(context).textTheme.labelMedium,
               ),
             ],
           ),
@@ -775,34 +821,48 @@ class _LikeButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(WanpanRadii.pill),
+    return Semantics(
+      label: liked ? '取消点赞' : '点赞',
+      value: '$count个赞',
       onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AnimatedScale(
-              scale: liked ? 1.08 : 1,
-              duration: WanpanMotion.duration(context, WanpanMotion.press),
-              curve: WanpanMotion.curve(context),
-              child: Icon(
-                liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                size: 21,
-                color: liked ? WanpanColors.coral : WanpanColors.inkSecondary,
-              ),
+      enabled: onTap != null,
+      button: true,
+      toggled: liked,
+      child: ExcludeSemantics(
+        child: InkWell(
+          borderRadius: BorderRadius.circular(WanpanRadii.pill),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 11),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AnimatedScale(
+                  scale: liked ? 1.08 : 1,
+                  duration: WanpanMotion.duration(context, WanpanMotion.press),
+                  curve: WanpanMotion.curve(context),
+                  child: Icon(
+                    liked
+                        ? Icons.favorite_rounded
+                        : Icons.favorite_border_rounded,
+                    size: 24,
+                    color: liked
+                        ? WanpanColors.coral
+                        : WanpanColors.inkSecondary,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                AnimatedSwitcher(
+                  duration: WanpanMotion.duration(context, WanpanMotion.exit),
+                  child: Text(
+                    '$count',
+                    key: ValueKey(count),
+                    style: Theme.of(context).textTheme.labelLarge,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 6),
-            AnimatedSwitcher(
-              duration: WanpanMotion.duration(context, WanpanMotion.exit),
-              child: Text(
-                '$count',
-                key: ValueKey(count),
-                style: Theme.of(context).textTheme.labelLarge,
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

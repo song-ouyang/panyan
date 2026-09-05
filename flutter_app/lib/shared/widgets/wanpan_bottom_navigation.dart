@@ -36,7 +36,10 @@ class WanpanBottomNavigation extends StatelessWidget {
       child: SafeArea(
         top: false,
         child: SizedBox(
-          height: 78,
+          height: math.max(
+            72,
+            53 + MediaQuery.textScalerOf(context).scale(13) * 1.2,
+          ),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(8, 5, 8, 3),
             child: Row(
@@ -82,6 +85,7 @@ class _WanpanBottomTab extends StatelessWidget {
       button: true,
       selected: selected,
       label: label,
+      onTap: onTap,
       child: ExcludeSemantics(
         child: WanpanPressable(
           onTap: onTap,
@@ -94,7 +98,7 @@ class _WanpanBottomTab extends StatelessWidget {
             curve: WanpanMotion.curve(context),
             builder: (context, selection, _) {
               final foreground = Color.lerp(
-                WanpanColors.inkSecondary,
+                WanpanColors.ink,
                 WanpanColors.coral,
                 selection,
               )!;
@@ -102,46 +106,30 @@ class _WanpanBottomTab extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   SizedBox(
-                    width: 76,
-                    height: 45,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        RepaintBoundary(
-                          child: CustomPaint(
-                            size: const Size(72, 45),
-                            painter: _SelectionPatchPainter(selection),
-                          ),
-                        ),
-                        Transform.translate(
-                          offset: Offset(0, -2 * selection),
-                          child: Transform.scale(
-                            scale: 1 + selection * .06,
-                            child: WanpanTabIcon(
-                              kind: kind,
-                              color: foreground,
-                              selection: selection,
-                            ),
-                          ),
-                        ),
-                      ],
+                    height: 38,
+                    child: Center(
+                      child: WanpanTabIcon(
+                        kind: kind,
+                        color: foreground,
+                        selection: selection,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 1),
+                  const SizedBox(height: 3),
                   Text(
                     label,
                     maxLines: 1,
                     overflow: TextOverflow.clip,
                     style: TextStyle(
                       color: Color.lerp(
-                        WanpanColors.inkSecondary,
-                        WanpanColors.coralStrong,
+                        WanpanColors.ink,
+                        WanpanColors.coral,
                         selection,
                       ),
-                      fontSize: 12,
-                      height: 1.15,
+                      fontSize: 13,
+                      height: 1.2,
                       fontWeight: FontWeight.lerp(
-                        FontWeight.w600,
+                        FontWeight.w700,
                         FontWeight.w800,
                         selection,
                       ),
@@ -172,7 +160,7 @@ class WanpanTabIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) => RepaintBoundary(
     child: CustomPaint(
-      size: const Size.square(30),
+      size: const Size.square(34),
       painter: _WanpanTabIconPainter(
         kind: kind,
         color: color,
@@ -180,71 +168,6 @@ class WanpanTabIcon extends StatelessWidget {
       ),
     ),
   );
-}
-
-class _SelectionPatchPainter extends CustomPainter {
-  const _SelectionPatchPainter(this.selection);
-
-  final double selection;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (selection <= 0) return;
-    final scale = .9 + selection * .1;
-    canvas
-      ..save()
-      ..translate(size.width / 2, size.height / 2)
-      ..scale(scale)
-      ..translate(-size.width / 2, -size.height / 2);
-
-    final patch = Path()
-      ..moveTo(size.width * .14, size.height * .12)
-      ..cubicTo(
-        size.width * .31,
-        -size.height * .02,
-        size.width * .72,
-        size.height * .01,
-        size.width * .87,
-        size.height * .17,
-      )
-      ..cubicTo(
-        size.width * 1.01,
-        size.height * .32,
-        size.width * .96,
-        size.height * .76,
-        size.width * .82,
-        size.height * .9,
-      )
-      ..cubicTo(
-        size.width * .64,
-        size.height * 1.04,
-        size.width * .29,
-        size.height * 1.01,
-        size.width * .12,
-        size.height * .85,
-      )
-      ..cubicTo(
-        -size.width * .02,
-        size.height * .69,
-        size.width * .01,
-        size.height * .29,
-        size.width * .14,
-        size.height * .12,
-      )
-      ..close();
-
-    canvas.drawPath(
-      patch,
-      Paint()
-        ..color = WanpanColors.coralSoft.withValues(alpha: selection * .72)
-        ..style = PaintingStyle.fill,
-    );
-    canvas.restore();
-  }
-
-  @override
-  bool shouldRepaint(_SelectionPatchPainter oldDelegate) =>
-      oldDelegate.selection != selection;
 }
 
 class _WanpanTabIconPainter extends CustomPainter {
@@ -261,7 +184,7 @@ class _WanpanTabIconPainter extends CustomPainter {
   Paint get _stroke => Paint()
     ..color = color
     ..style = PaintingStyle.stroke
-    ..strokeWidth = 2.5
+    ..strokeWidth = 2.2
     ..strokeCap = StrokeCap.round
     ..strokeJoin = StrokeJoin.round
     ..isAntiAlias = true;
@@ -334,8 +257,15 @@ class _WanpanTabIconPainter extends CustomPainter {
       ..lineTo(3.9, 11.3)
       ..cubicTo(3.9, 8.4, 6.2, 6.1, 9.2, 6.1)
       ..close();
-    canvas.drawPath(front, _stroke);
-    _hold(canvas, const Offset(13, 12.7), WanpanColors.coral, 2.2);
+    canvas
+      ..drawPath(front, Paint()..color = WanpanColors.surface)
+      ..drawPath(front, _stroke)
+      ..drawCircle(
+        const Offset(11.1, 12.9),
+        1.85,
+        Paint()..color = WanpanColors.coral,
+      )
+      ..drawCircle(const Offset(17.2, 12.9), 1.85, Paint()..color = color);
   }
 
   void _paintRanking(Canvas canvas) {
@@ -361,7 +291,7 @@ class _WanpanTabIconPainter extends CustomPainter {
     canvas
       ..drawPath(leftHandle, _stroke)
       ..drawPath(rightHandle, _stroke)
-      ..drawLine(const Offset(16, 19.3), const Offset(16, 25), _stroke)
+      ..drawLine(const Offset(16, 19.3), const Offset(16, 27), _stroke)
       ..drawLine(const Offset(10.4, 27), const Offset(21.6, 27), _stroke);
 
     canvas.drawPath(
@@ -398,45 +328,11 @@ class _WanpanTabIconPainter extends CustomPainter {
   }
 
   void _hold(Canvas canvas, Offset center, Color fill, double radius) {
-    final hold = Path()
-      ..moveTo(center.dx - radius, center.dy + radius * .1)
-      ..quadraticBezierTo(
-        center.dx - radius * .72,
-        center.dy - radius * .88,
-        center.dx + radius * .08,
-        center.dy - radius,
-      )
-      ..quadraticBezierTo(
-        center.dx + radius,
-        center.dy - radius * .74,
-        center.dx + radius,
-        center.dy + radius * .1,
-      )
-      ..quadraticBezierTo(
-        center.dx + radius * .7,
-        center.dy + radius,
-        center.dx - radius * .22,
-        center.dy + radius * .86,
-      )
-      ..quadraticBezierTo(
-        center.dx - radius,
-        center.dy + radius * .72,
-        center.dx - radius,
-        center.dy + radius * .1,
-      )
-      ..close();
-    canvas.drawPath(
-      hold,
-      Paint()
-        ..color = fill
-        ..style = PaintingStyle.fill
-        ..isAntiAlias = true,
-    );
     canvas.drawCircle(
       center,
-      radius * .25,
+      radius,
       Paint()
-        ..color = WanpanColors.catBlack.withValues(alpha: .82)
+        ..color = fill
         ..style = PaintingStyle.fill
         ..isAntiAlias = true,
     );

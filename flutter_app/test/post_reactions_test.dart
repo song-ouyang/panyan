@@ -28,7 +28,10 @@ AuthSession _account(String id) => AuthSession(
 );
 
 class _Api extends ApiClient {
-  _Api() : super(config: _config, accessTokenProvider: () => 'test');
+  _Api({this.baseLikeCount = 0, this.commentCount = 0})
+    : super(config: _config, accessTokenProvider: () => 'test');
+  final int baseLikeCount;
+  final int commentCount;
   String Function() viewer = () => 'me';
   final likes = <String>{}, favorites = <String>{};
   final writes = <String>[];
@@ -43,10 +46,10 @@ class _Api extends ApiClient {
     'image_urls': <String>[],
     'visibility': 'public',
     'moderation_status': 'approved',
-    'like_count': likes.length,
+    'like_count': baseLikeCount + likes.length,
     'liked': likes.contains(viewer()),
     'favorited': favorites.contains(viewer()),
-    'comment_count': 0,
+    'comment_count': commentCount,
     'comments': <Object>[],
     'sent_at': '2026-09-05T08:00:00Z',
     'activity_at': '2026-09-06T08:00:00Z',
@@ -130,8 +133,10 @@ Future<({SessionController session, GoRouter router})> _open(
   _Api api, {
   bool detail = false,
   bool guest = false,
+  Size size = const Size(430, 932),
+  double textScale = 1,
 }) async {
-  await tester.binding.setSurfaceSize(const Size(430, 932));
+  await tester.binding.setSurfaceSize(size);
   SharedPreferences.setMockInitialValues({});
   final session = SessionController(
     preferences: await SharedPreferences.getInstance(),
@@ -169,7 +174,15 @@ Future<({SessionController session, GoRouter router})> _open(
     await tester.binding.setSurfaceSize(null);
   });
   await tester.pumpWidget(
-    MaterialApp.router(theme: WanpanTheme.light(), routerConfig: router),
+    MaterialApp.router(
+      theme: WanpanTheme.light(),
+      routerConfig: router,
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(context)
+            .copyWith(textScaler: TextScaler.linear(textScale)),
+        child: child!,
+      ),
+    ),
   );
   await tester.pumpAndSettle();
   return (session: session, router: router);
@@ -243,6 +256,13 @@ void main() {
     await tester.tap(find.text('周末的攀岩记录'));
     await tester.pumpAndSettle();
     expect(find.text('已收藏'), findsOneWidget);
+    expect(
+      (tester.getCenter(find.byIcon(Icons.favorite_rounded)).dy -
+              tester.getCenter(find.text('已收藏')).dy)
+          .abs(),
+      lessThan(8),
+      reason: '普通字号下点赞与收藏应共用一行，避免占用评论空间',
+    );
     await tester.tap(find.text('已收藏'));
     await tester.pumpAndSettle();
     await tester.pageBack();
@@ -252,6 +272,52 @@ void main() {
     expect(api.likes, {'me'});
     expect(tester.takeException(), isNull);
   });
+  testWidgets(
+    'compact friends feed keeps large reaction counts readable and tappable',
+    (tester) async {
+      final api = _Api(baseLikeCount: 3210, commentCount: 6789);
+      await _open(tester, api, size: const Size(320, 640), textScale: 2.5);
+      expect(tester.takeException(), isNull);
+
+      await tester.tap(find.text('朋友圈'));
+      await tester.pumpAndSettle();
+      expect(api.query?['scope'], 'friends');
+      expect(find.text('3210'), findsOneWidget);
+      expect(find.text('6789'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+
+      final likeIcon = find.byIcon(Icons.favorite_border_rounded);
+      await tester.ensureVisible(likeIcon);
+      await tester.pumpAndSettle();
+      final likeTarget = find
+          .ancestor(of: likeIcon, matching: find.byType(InkWell))
+          .first;
+      final likeBounds = tester.getRect(likeTarget);
+      expect(likeBounds.width, greaterThanOrEqualTo(44));
+      expect(likeBounds.height, greaterThanOrEqualTo(44));
+      await tester.tap(likeIcon);
+      await tester.pumpAndSettle();
+      expect(api.likes, {'me'});
+      expect(find.text('3211'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+
+      final favorite = find.byTooltip('收藏');
+      await tester.ensureVisible(favorite);
+      await tester.pumpAndSettle();
+      final favoriteBounds = tester.getRect(favorite);
+      expect(favoriteBounds.width, greaterThanOrEqualTo(44));
+      expect(favoriteBounds.height, greaterThanOrEqualTo(44));
+      await tester.tap(favorite);
+      await tester.pumpAndSettle();
+      expect(api.favorites, {'me'});
+      expect(find.byTooltip('取消收藏'), findsOneWidget);
+      expect(
+        api.writes,
+        containsAll(['POST /sends/post-1/like', 'POST /sends/post-1/favorite']),
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
   for (final detail in [false, true]) {
     testWidgets(
       '${detail ? 'detail' : 'feed'} serializes taps and rolls back rejected save',

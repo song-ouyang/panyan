@@ -124,14 +124,14 @@ class _NoticeState extends State<_Notice> with SingleTickerProviderStateMixin {
         key: const Key('wanpan-top-notice'),
         color: WanpanColors.mintSoft,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(18),
           side: const BorderSide(color: WanpanColors.mint),
         ),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 7, 5, 7),
+          padding: const EdgeInsets.fromLTRB(12, 3, 5, 3),
           child: Row(
             children: [
-              const WanpanCatMark(size: 34),
+              const WanpanCatMark(size: 38, peeking: true),
               const SizedBox(width: 10),
               Expanded(
                 child: Semantics(
@@ -179,12 +179,12 @@ class _NoticeState extends State<_Notice> with SingleTickerProviderStateMixin {
                   ).animate(_animation),
             child: DecoratedBox(
               decoration: const BoxDecoration(
-                borderRadius: BorderRadius.all(Radius.circular(22)),
+                borderRadius: BorderRadius.all(Radius.circular(18)),
                 boxShadow: [
                   BoxShadow(
                     color: Color(0x142B5B3A),
-                    blurRadius: 16,
-                    offset: Offset(0, 5),
+                    blurRadius: 12,
+                    offset: Offset(0, 4),
                   ),
                 ],
               ),

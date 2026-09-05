@@ -265,7 +265,7 @@ void main() {
 
     expect(router.routeInformationProvider.value.uri.path, '/profile');
     expect(find.text('小欧'), findsOneWidget);
-    expect(find.text('攀爬进度'), findsOneWidget);
+    expect(find.text('攀岩记录'), findsOneWidget);
 
     await tester.ensureVisible(find.byKey(const Key('profile-growth-card')));
     await tester.pumpAndSettle();

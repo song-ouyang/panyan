@@ -52,6 +52,10 @@ void main() {
           .first,
     );
     expect(feedSemantics.properties.selected, isTrue);
+    expect(rankingSemantics.properties.onTap, isNotNull);
+    rankingSemantics.properties.onTap!();
+    await tester.pumpAndSettle();
+    expect(selected, 2);
     expect(tester.takeException(), isNull);
   });
 
@@ -68,7 +72,7 @@ void main() {
           data: MediaQuery.of(context).copyWith(
             padding: const EdgeInsets.only(bottom: 20),
             viewPadding: const EdgeInsets.only(bottom: 20),
-            textScaler: const TextScaler.linear(1.25),
+            textScaler: const TextScaler.linear(2.5),
           ),
           child: child!,
         ),
@@ -86,6 +90,14 @@ void main() {
     expect(navigation.left, 0);
     expect(navigation.right, 320);
     expect(navigation.bottom, 568);
+    expect(navigation.height, greaterThanOrEqualTo(92));
+    for (var index = 0; index < 4; index++) {
+      final tab = tester.getRect(
+        find.byKey(ValueKey('wanpan-bottom-tab-$index')),
+      );
+      expect(tab.width, greaterThanOrEqualTo(44));
+      expect(tab.height, greaterThanOrEqualTo(44));
+    }
     expect(tester.takeException(), isNull);
   });
 }

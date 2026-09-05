@@ -12,7 +12,6 @@ import '../../core/repositories/feed_repository.dart';
 import '../auth/application/session_controller.dart';
 import '../../shared/motion/wanpan_motion.dart';
 import '../../shared/widgets/wanpan_content_safety.dart';
-import '../../shared/widgets/wanpan_cat_mark.dart';
 import '../../shared/widgets/wanpan_notice.dart';
 import '../../shared/widgets/wanpan_video_player.dart';
 
@@ -399,6 +398,7 @@ class _PostScreenState extends State<PostScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('动态详情'),
+        toolbarHeight: 52,
         actions: [
           if (_ownsPost)
             PopupMenuButton<String>(
@@ -499,7 +499,7 @@ class _PostScreenState extends State<PostScreen> {
       key: ValueKey(post.id),
       onRefresh: _load,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
         children: [
           InkWell(
             onTap: post.user == null ? null : () => _openUser(post.user!.id),
@@ -509,7 +509,7 @@ class _PostScreenState extends State<PostScreen> {
               child: Row(
                 children: [
                   CircleAvatar(
-                    radius: 24,
+                    radius: 22,
                     backgroundColor: WanpanColors.coralSoft,
                     backgroundImage: avatarUrl == null
                         ? null
@@ -533,13 +533,14 @@ class _PostScreenState extends State<PostScreen> {
                           nickname,
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
-                        Text(
-                          [
-                            post.gymName,
-                            post.grade,
-                          ].whereType<String>().join(' · '),
-                          style: Theme.of(context).textTheme.labelMedium,
-                        ),
+                        if (post.gymName != null || post.grade != null)
+                          Text(
+                            [
+                              post.gymName,
+                              post.grade,
+                            ].whereType<String>().join(' · '),
+                            style: Theme.of(context).textTheme.labelMedium,
+                          ),
                       ],
                     ),
                   ),
@@ -553,11 +554,11 @@ class _PostScreenState extends State<PostScreen> {
             ),
           ),
           if ((post.caption ?? '').isNotEmpty) ...[
-            const SizedBox(height: 20),
+            const SizedBox(height: 10),
             Text(post.caption!, style: Theme.of(context).textTheme.bodyLarge),
           ],
           if (post.imageUrls.isNotEmpty) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: 10),
             ...post.imageUrls.map(
               (url) => Padding(
                 padding: const EdgeInsets.only(bottom: 8),
@@ -576,21 +577,24 @@ class _PostScreenState extends State<PostScreen> {
             ),
           ],
           if (post.videoUrl != null) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: 10),
             WanpanVideoPlayer(url: post.videoUrl!),
           ],
-          const SizedBox(height: 16),
-          Row(
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 20,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               InkWell(
                 onTap: _liking || _deletingPost ? null : _toggleLike,
                 borderRadius: BorderRadius.circular(WanpanRadii.pill),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
-                    vertical: 8,
+                    vertical: 10,
                     horizontal: 4,
                   ),
                   child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       AnimatedScale(
                         scale: _liked ? 1.1 : 1,
@@ -616,7 +620,6 @@ class _PostScreenState extends State<PostScreen> {
                   ),
                 ),
               ),
-              const SizedBox(width: 20),
               TextButton.icon(
                 onPressed: _favoriting || _deletingPost
                     ? null
@@ -633,7 +636,7 @@ class _PostScreenState extends State<PostScreen> {
               ),
             ],
           ),
-          const Divider(height: 36),
+          const Divider(height: 24),
           Text(
             '评论 ${_comments.length}',
             style: Theme.of(context).textTheme.titleMedium,
@@ -670,6 +673,7 @@ class _PostScreenState extends State<PostScreen> {
   }
 
   Widget _commentBar() {
+    final canSend = _commentController.text.trim().isNotEmpty && !_commenting;
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
       child: SafeArea(
@@ -701,15 +705,10 @@ class _PostScreenState extends State<PostScreen> {
                       fontWeight: FontWeight.w400,
                       color: WanpanColors.inkSecondary,
                     ),
-                    prefixIcon: Padding(
-                      padding: EdgeInsets.fromLTRB(12, 10, 9, 10),
-                      child: WanpanCatMark(size: 27),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
                     ),
-                    prefixIconConstraints: BoxConstraints(
-                      minWidth: 48,
-                      minHeight: 48,
-                    ),
-                    contentPadding: EdgeInsets.fromLTRB(0, 12, 12, 12),
                     counterText: '',
                     isDense: true,
                   ),
@@ -718,28 +717,39 @@ class _PostScreenState extends State<PostScreen> {
                 ),
               ),
               const SizedBox(width: 8),
-              IconButton.filled(
-                tooltip: '发送评论',
-                style: IconButton.styleFrom(
-                  backgroundColor: WanpanColors.coral,
-                  foregroundColor: WanpanColors.surface,
-                  disabledBackgroundColor: WanpanColors.surfaceMuted,
-                  disabledForegroundColor: WanpanColors.muted,
-                  minimumSize: const Size(48, 48),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: canSend
+                      ? const [
+                          BoxShadow(
+                            color: WanpanColors.coralStrong,
+                            offset: Offset(0, 3),
+                          ),
+                        ]
+                      : const [],
                 ),
-                onPressed: _commentController.text.trim().isEmpty || _commenting
-                    ? null
-                    : _comment,
-                icon: _commenting
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.send_rounded, size: 21),
+                child: IconButton.filled(
+                  tooltip: '发送评论',
+                  style: IconButton.styleFrom(
+                    backgroundColor: WanpanColors.coral,
+                    foregroundColor: WanpanColors.surface,
+                    disabledBackgroundColor: WanpanColors.surfaceMuted,
+                    disabledForegroundColor: WanpanColors.muted,
+                    minimumSize: const Size(48, 48),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  onPressed: canSend ? _comment : null,
+                  icon: _commenting
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.send_rounded, size: 21),
+                ),
               ),
             ],
           ),
@@ -759,7 +769,7 @@ class _CommentTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -781,9 +791,9 @@ class _CommentTile extends StatelessWidget {
                 Text(
                   comment.user.nickname,
                   style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: WanpanColors.inkSecondary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: WanpanColors.ink,
                   ),
                 ),
                 const SizedBox(height: 3),

@@ -8,9 +8,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wanpan_diary/app/wanpan_theme.dart';
 import 'package:wanpan_diary/core/config/app_config.dart';
 import 'package:wanpan_diary/core/json/json_helpers.dart';
+import 'package:wanpan_diary/core/models/user_models.dart';
 import 'package:wanpan_diary/core/network/api_client.dart';
 import 'package:wanpan_diary/features/auth/application/session_controller.dart';
 import 'package:wanpan_diary/features/auth/data/session_token_store.dart';
+import 'package:wanpan_diary/features/auth/domain/auth_session.dart';
 import 'package:wanpan_diary/features/gyms/application/home_city_controller.dart';
 import 'package:wanpan_diary/features/ranking/ranking_screen.dart';
 
@@ -28,10 +30,17 @@ class _CapturedRequest {
 }
 
 class _RegionRankingApi extends ApiClient {
-  _RegionRankingApi({this.regionsResponse})
-    : super(config: _config, accessTokenProvider: () => null);
+  _RegionRankingApi({
+    this.regionsResponse,
+    this.includeMyRank = false,
+    this.nickname = '天府岩友',
+    this.points = 168,
+  }) : super(config: _config, accessTokenProvider: () => null);
 
   final Future<JsonMap>? regionsResponse;
+  final bool includeMyRank;
+  final String nickname;
+  final int points;
   final requests = <_CapturedRequest>[];
 
   @override
@@ -52,21 +61,20 @@ class _RegionRankingApi extends ApiClient {
       };
     }
     if (path == '/rankings') {
+      final entry = {
+        'rank': 1,
+        'user_id': 'user-chengdu',
+        'nickname': nickname,
+        'avatar_url': null,
+        'send_count': 12,
+        'total_likes': 28,
+        'points': points,
+        'max_grade': 6,
+        'last_send': '2026-09-04T08:00:00.000Z',
+      };
       return {
-        'items': [
-          {
-            'rank': 1,
-            'user_id': 'user-chengdu',
-            'nickname': '天府岩友',
-            'avatar_url': null,
-            'send_count': 12,
-            'total_likes': 28,
-            'points': 168,
-            'max_grade': 6,
-            'last_send': '2026-09-04T08:00:00.000Z',
-          },
-        ],
-        'myRank': null,
+        'items': [entry],
+        'myRank': includeMyRank ? entry : null,
         'scoring': {'completion': 10, 'gradeStep': 5, 'flash': 5, 'like': 2},
       };
     }
@@ -97,13 +105,23 @@ class _RegionRankingApi extends ApiClient {
       requests.lastWhere((request) => request.path == path);
 }
 
-Future<SessionController> _createSession() async {
+Future<SessionController> _createSession({bool authenticated = false}) async {
   SharedPreferences.setMockInitialValues({});
-  return SessionController(
+  final session = SessionController(
     preferences: await SharedPreferences.getInstance(),
     config: _config,
     tokenStore: MemorySessionTokenStore(),
   );
+  if (authenticated) {
+    await session.acceptSession(
+      const AuthSession(
+        token: 'ranking-test-token',
+        user: UserSummary(id: 'user-chengdu', nickname: '天府岩友'),
+        needsProfile: false,
+      ),
+    );
+  }
+  return session;
 }
 
 GoRouter _createRouter({
@@ -112,6 +130,7 @@ GoRouter _createRouter({
   bool compactShell = false,
   HomeCityController? cityController,
   bool retainedTabs = false,
+  int initialSegment = 1,
 }) {
   final rankingRoute = GoRoute(
     path: '/ranking',
@@ -119,7 +138,7 @@ GoRouter _createRouter({
       final ranking = RankingScreen(
         api: api,
         session: session,
-        initialSegment: 1,
+        initialSegment: initialSegment,
         cityController: cityController,
       );
       if (!compactShell) return ranking;
@@ -155,6 +174,12 @@ GoRouter _createRouter({
           body: Center(child: Text('线路详情 ${state.pathParameters['routeId']}')),
         ),
       ),
+      GoRoute(
+        path: '/users/:userId',
+        builder: (_, state) => Scaffold(
+          body: Center(child: Text('岩友主页 ${state.pathParameters['userId']}')),
+        ),
+      ),
     ],
   );
 }
@@ -186,6 +211,92 @@ Future<void> _pumpRanking(
 }
 
 void main() {
+  testWidgets('我的排名保持紧凑横条，首行前移且真实积分和主页入口保留', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final api = _RegionRankingApi(includeMyRank: true);
+    final session = await _createSession(authenticated: true);
+    final cityController = HomeCityController();
+    await cityController.selectManually('成都');
+    final router = _createRouter(
+      api: api,
+      session: session,
+      cityController: cityController,
+      initialSegment: 0,
+      compactShell: true,
+    );
+    addTearDown(router.dispose);
+    addTearDown(session.dispose);
+    addTearDown(cityController.dispose);
+
+    await _pumpRanking(tester, router: router, compact: true, textScale: 1);
+
+    final summary = find.byKey(const Key('ranking-my-summary'));
+    final firstRow = find.byKey(const Key('ranked-person-user-chengdu'));
+    expect(tester.getSize(summary).height, inInclusiveRange(62, 64));
+    expect(tester.getTopLeft(firstRow).dy, lessThan(300));
+    expect(firstRow.hitTestable(), findsOneWidget);
+    expect(find.text('我的成都排名 #1'), findsOneWidget);
+    expect(find.text('168'), findsNWidgets(2));
+    expect(find.text('本月攀岩记录'), findsOneWidget);
+    expect(find.textContaining('首攀'), findsNothing);
+    expect(
+      tester.getSize(find.byKey(const Key('ranking-segment-0'))).height,
+      greaterThanOrEqualTo(44),
+    );
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(firstRow);
+    await tester.pumpAndSettle();
+    expect(find.text('岩友主页 user-chengdu'), findsOneWidget);
+  });
+
+  for (final scale in [1.35, 2.0]) {
+    testWidgets('320 窄屏 $scale 倍字号的我的排名和长昵称榜单可读可点', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(320, 568));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final api = _RegionRankingApi(
+        includeMyRank: true,
+        nickname: '每个周末都想去攀岩的成都岩友',
+        points: 123456789,
+      );
+      final session = await _createSession(authenticated: true);
+      final router = _createRouter(
+        api: api,
+        session: session,
+        initialSegment: 0,
+        compactShell: true,
+      );
+      addTearDown(router.dispose);
+      addTearDown(session.dispose);
+
+      await _pumpRanking(
+        tester,
+        router: router,
+        compact: true,
+        textScale: scale,
+      );
+
+      final filter = find.byKey(const Key('ranking-region-button'));
+      final summary = find.byKey(const Key('ranking-my-summary'));
+      final firstRow = find.byKey(const Key('ranked-person-user-chengdu'));
+      expect(filter.hitTestable(), findsOneWidget);
+      expect(tester.getSize(filter).height, greaterThanOrEqualTo(44));
+      expect(tester.getSize(summary).height, greaterThanOrEqualTo(62));
+      expect(find.text('123456789'), findsNWidgets(2));
+      expect(find.text('12 条完攀 · 最高 V6'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+
+      await tester.ensureVisible(firstRow);
+      await tester.pumpAndSettle();
+      expect(firstRow.hitTestable(), findsOneWidget);
+      await tester.tap(firstRow);
+      await tester.pumpAndSettle();
+      expect(find.text('岩友主页 user-chengdu'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
   testWidgets('首次进入跟随首页成都，两种榜单均使用匹配省市且兼容市后缀', (tester) async {
     final api = _RegionRankingApi();
     final session = await _createSession();

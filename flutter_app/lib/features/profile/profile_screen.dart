@@ -7,6 +7,8 @@ import '../../core/network/api_client.dart';
 import '../auth/application/session_controller.dart';
 import '../../shared/app_assets.dart';
 import '../../shared/motion/wanpan_motion.dart';
+import '../../shared/widgets/wanpan_cartoon_icon.dart';
+import '../../shared/widgets/wanpan_cat_mark.dart';
 import '../../shared/widgets/wanpan_mascot.dart';
 import '../../shared/widgets/wanpan_pressable.dart';
 
@@ -180,43 +182,49 @@ class _ProfileScreenState extends State<ProfileScreen> {
       key: ValueKey(profile.user.id),
       onRefresh: _load,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+        padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
         children: [
           _ProfileHeader(profile: profile, onEdit: _openProfileEditor),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           const _ActivityShortcuts(),
           const SizedBox(height: 14),
           _GrowthCard(
             stats: profile.stats,
             onTap: () => context.push<void>('/profile/calendar'),
           ),
-          const SizedBox(height: 26),
-          Padding(
-            padding: const EdgeInsets.only(left: 4, bottom: 4),
-            child: Text(
-              '我的攀岩',
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: WanpanColors.inkSecondary,
-                fontWeight: FontWeight.w500,
+          const SizedBox(height: 16),
+          Semantics(
+            key: const Key('profile-climbing-actions'),
+            container: true,
+            label: '我的攀岩',
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: WanpanColors.surface,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: WanpanColors.border, width: 1.5),
+              ),
+              child: Column(
+                children: [
+                  _ActionTile(
+                    icon: WanpanCartoonIconKind.route,
+                    title: '线路发布记录',
+                    onTap: () => context.push('/route-submissions'),
+                  ),
+                  const Divider(indent: 54, endIndent: 14),
+                  _ActionTile(
+                    icon: WanpanCartoonIconKind.friends,
+                    title: '我的岩友',
+                    onTap: () => context.push('/friends'),
+                  ),
+                  const Divider(indent: 54, endIndent: 14),
+                  _ActionTile(
+                    icon: WanpanCartoonIconKind.invite,
+                    title: '邀请好友',
+                    onTap: () => context.push('/profile/invite'),
+                  ),
+                ],
               ),
             ),
-          ),
-          _ActionTile(
-            icon: Icons.alt_route_rounded,
-            title: '线路发布记录',
-            onTap: () => context.push('/route-submissions'),
-          ),
-          const Divider(indent: 44, endIndent: 4),
-          _ActionTile(
-            icon: Icons.people_outline_rounded,
-            title: '我的岩友',
-            onTap: () => context.push('/friends'),
-          ),
-          const Divider(indent: 44, endIndent: 4),
-          _ActionTile(
-            icon: Icons.qr_code_rounded,
-            title: '邀请好友',
-            onTap: () => context.push('/profile/invite'),
           ),
         ],
       ),
@@ -235,32 +243,40 @@ class _ActivityShortcuts extends StatelessWidget {
   @override
   Widget build(BuildContext context) => const Padding(
     key: Key('profile-activity-shortcuts'),
-    padding: EdgeInsets.symmetric(horizontal: 2, vertical: 6),
+    padding: EdgeInsets.symmetric(vertical: 4),
     child: Row(
       children: [
         _ActivityShortcut(
           name: 'posts',
           label: '动态',
           semanticLabel: '我的动态',
-          icon: Icons.article_outlined,
+          icon: WanpanCartoonIconKind.post,
+          color: WanpanColors.coralSoft,
+          depth: Color(0xFFE8AD96),
         ),
         _ActivityShortcut(
           name: 'comments',
           label: '评论',
           semanticLabel: '我的评论',
-          icon: Icons.chat_bubble_outline_rounded,
+          icon: WanpanCartoonIconKind.comment,
+          color: WanpanColors.mint,
+          depth: Color(0xFF6AA57E),
         ),
         _ActivityShortcut(
           name: 'favorites',
           label: '收藏',
           semanticLabel: '我的收藏',
-          icon: Icons.star_border_rounded,
+          icon: WanpanCartoonIconKind.favorite,
+          color: WanpanColors.sunflowerSoft,
+          depth: Color(0xFFD7A743),
         ),
         _ActivityShortcut(
           name: 'likes',
           label: '点赞',
           semanticLabel: '我的点赞',
-          icon: Icons.favorite_border_rounded,
+          icon: WanpanCartoonIconKind.like,
+          color: WanpanColors.coral,
+          depth: WanpanColors.coralStrong,
         ),
       ],
     ),
@@ -273,12 +289,16 @@ class _ActivityShortcut extends StatelessWidget {
     required this.label,
     required this.semanticLabel,
     required this.icon,
+    required this.color,
+    required this.depth,
   });
 
   final String name;
   final String label;
   final String semanticLabel;
-  final IconData icon;
+  final WanpanCartoonIconKind icon;
+  final Color color;
+  final Color depth;
 
   @override
   Widget build(BuildContext context) => Expanded(
@@ -286,19 +306,39 @@ class _ActivityShortcut extends StatelessWidget {
       key: Key('profile-activity-$name'),
       semanticLabel: semanticLabel,
       onTap: () => context.push('/profile/$name'),
+      enableHaptics: true,
+      pressedScale: .97,
+      pressedOffset: 3,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 10),
+        padding: const EdgeInsets.symmetric(vertical: 4),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 24, color: WanpanColors.catBlack),
-            const SizedBox(height: 7),
+            Container(
+              width: 54,
+              height: 54,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: WanpanColors.catBlack, width: 1.8),
+                boxShadow: [
+                  const BoxShadow(
+                    color: WanpanColors.catBlack,
+                    offset: Offset(0, 4),
+                  ),
+                  BoxShadow(color: depth, offset: const Offset(0, 2)),
+                ],
+              ),
+              child: WanpanCartoonIcon(kind: icon, size: 34),
+            ),
+            const SizedBox(height: 10),
             Text(
               label,
               style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                color: WanpanColors.inkSecondary,
+                color: WanpanColors.ink,
                 fontSize: 13,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ],
@@ -323,46 +363,57 @@ class _ProfileHeader extends StatelessWidget {
         final compact = constraints.maxWidth < 330 || textScale > 1.15;
         return Container(
           key: const Key('profile-header-card'),
-          padding: EdgeInsets.fromLTRB(18, 18, compact ? 18 : 14, 18),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
             color: WanpanColors.surface,
-            borderRadius: BorderRadius.circular(WanpanRadii.large),
-            border: Border.all(color: WanpanColors.border),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: WanpanColors.border, width: 1.5),
           ),
           child: Row(
             children: [
-              CircleAvatar(
-                radius: compact ? 32 : 36,
-                backgroundColor: WanpanColors.coralSoft,
-                backgroundImage: user.avatarUrl == null
-                    ? null
-                    : ResizeImage.resizeIfNeeded(
-                        224,
-                        224,
-                        NetworkImage(user.avatarUrl!),
-                      ),
-                child: user.avatarUrl == null
-                    ? Text(
-                        user.nickname.isEmpty
-                            ? '岩'
-                            : user.nickname.characters.first,
-                        style: TextStyle(
-                          fontSize: compact ? 23 : 26,
-                          fontWeight: FontWeight.w900,
-                          color: WanpanColors.coralStrong,
-                        ),
-                      )
-                    : null,
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  CircleAvatar(
+                    radius: compact ? 28 : 30,
+                    backgroundColor: WanpanColors.coralSoft,
+                    backgroundImage: user.avatarUrl == null
+                        ? null
+                        : ResizeImage.resizeIfNeeded(
+                            224,
+                            224,
+                            NetworkImage(user.avatarUrl!),
+                          ),
+                    child: user.avatarUrl == null
+                        ? Text(
+                            user.nickname.isEmpty
+                                ? '岩'
+                                : user.nickname.characters.first,
+                            style: const TextStyle(
+                              fontSize: 23,
+                              fontWeight: FontWeight.w900,
+                              color: WanpanColors.coralStrong,
+                            ),
+                          )
+                        : null,
+                  ),
+                  const Positioned(
+                    left: 0,
+                    top: -17,
+                    child: IgnorePointer(
+                      child: WanpanCatMark(size: 38, peeking: true),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
-                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Flexible(
+                        Expanded(
                           child: Text(
                             user.nickname,
                             maxLines: 1,
@@ -381,37 +432,62 @@ class _ProfileHeader extends StatelessWidget {
                             borderRadius: BorderRadius.circular(
                               WanpanRadii.pill,
                             ),
-                            child: const SizedBox.square(
-                              dimension: 44,
-                              child: Icon(
-                                Icons.edit_outlined,
-                                size: 18,
-                                color: WanpanColors.inkSecondary,
+                            child: Container(
+                              constraints: const BoxConstraints(
+                                minWidth: 44,
+                                minHeight: 44,
+                              ),
+                              padding: EdgeInsets.symmetric(
+                                horizontal: compact ? 0 : 10,
+                              ),
+                              alignment: Alignment.center,
+                              decoration: compact
+                                  ? null
+                                  : BoxDecoration(
+                                      color: WanpanColors.surfaceSoft,
+                                      borderRadius: BorderRadius.circular(22),
+                                      border: Border.all(
+                                        color: WanpanColors.border,
+                                      ),
+                                    ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.edit_outlined,
+                                    size: 17,
+                                    color: WanpanColors.inkSecondary,
+                                  ),
+                                  if (!compact) ...[
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '编辑资料',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelMedium
+                                          ?.copyWith(
+                                            color: WanpanColors.inkSecondary,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                    ),
+                                  ],
+                                ],
                               ),
                             ),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 3),
                     Text(
                       user.bio?.isNotEmpty == true ? user.bio! : '每一次上墙，都算成长。',
-                      maxLines: compact ? 1 : 2,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodyMedium,
+                      style: Theme.of(context).textTheme.bodyMedium
+                          ?.copyWith(fontSize: 13),
                     ),
                   ],
                 ),
               ),
-              if (!compact) ...[
-                const SizedBox(width: 8),
-                const WanpanMascot(
-                  asset: AppAssets.mascotWelcome,
-                  width: 64,
-                  height: 76,
-                  radius: 18,
-                ),
-              ],
             ],
           ),
         );
@@ -428,7 +504,7 @@ class _GrowthCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const radius = BorderRadius.all(Radius.circular(16));
+    const radius = BorderRadius.all(Radius.circular(24));
     return WanpanPressable(
       key: const Key('profile-growth-card'),
       semanticLabel: '查看攀岩日历',
@@ -440,69 +516,56 @@ class _GrowthCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: WanpanColors.surface,
           borderRadius: radius,
-          border: Border.all(color: WanpanColors.border),
+          border: Border.all(color: WanpanColors.border, width: 1.5),
         ),
         child: Stack(
+          clipBehavior: Clip.none,
           children: [
             const Positioned(
-              left: 20,
-              top: 0,
-              bottom: 0,
-              child: ExcludeSemantics(
-                child: VerticalDivider(width: 1, thickness: 1),
-              ),
+              left: -4,
+              top: -5,
+              child: _RecordHold(color: WanpanColors.coral),
             ),
-            for (final top in [25.0, 57.0])
-              Positioned(
-                left: 8,
-                top: top,
-                child: const ExcludeSemantics(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: WanpanColors.surfaceMuted,
-                    ),
-                    child: SizedBox.square(dimension: 4),
-                  ),
-                ),
-              ),
+            const Positioned(
+              right: -3,
+              bottom: -4,
+              child: _RecordHold(color: WanpanColors.grape),
+            ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(34, 17, 16, 20),
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          '攀岩记录',
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w700),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 12),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            '攀岩记录',
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w800),
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '看日历',
-                        style: Theme.of(context).textTheme.labelMedium
-                            ?.copyWith(
-                              color: WanpanColors.coralStrong,
-                              fontWeight: FontWeight.w500,
-                            ),
-                      ),
-                      const SizedBox(width: 2),
-                      const Icon(
-                        Icons.chevron_right_rounded,
-                        color: WanpanColors.coralStrong,
-                        size: 17,
-                      ),
-                    ],
+                        const SizedBox(width: 6),
+                        Text(
+                          '看日历',
+                          style: Theme.of(context).textTheme.labelMedium
+                              ?.copyWith(
+                                color: WanpanColors.coralStrong,
+                                fontWeight: FontWeight.w600,
+                              ),
+                        ),
+                        const Icon(
+                          Icons.chevron_right_rounded,
+                          color: WanpanColors.coralStrong,
+                          size: 18,
+                        ),
+                      ],
+                    ),
                   ),
-                  const Padding(
-                    padding: EdgeInsets.only(top: 14, bottom: 18),
-                    child: Divider(),
-                  ),
+                  const SizedBox(height: 12),
                   Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
                         child: _Stat(
@@ -510,12 +573,20 @@ class _GrowthCard extends StatelessWidget {
                           label: '完攀线路',
                         ),
                       ),
+                      const SizedBox(
+                        height: 40,
+                        child: VerticalDivider(width: 1),
+                      ),
                       Expanded(
                         child: _Stat(
                           value: 'V${stats.maxGrade}',
                           label: '最高难度',
                           color: WanpanColors.coralStrong,
                         ),
+                      ),
+                      const SizedBox(
+                        height: 40,
+                        child: VerticalDivider(width: 1),
                       ),
                       Expanded(
                         child: _Stat(value: '${stats.gymCount}', label: '去过岩馆'),
@@ -530,6 +601,47 @@ class _GrowthCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _RecordHold extends StatelessWidget {
+  const _RecordHold({required this.color});
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => ExcludeSemantics(
+    child: IgnorePointer(
+      child: Transform.rotate(
+        angle: -.4,
+        child: Container(
+          width: 26,
+          height: 23,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(14),
+              topRight: Radius.circular(12),
+              bottomLeft: Radius.circular(8),
+              bottomRight: Radius.circular(13),
+            ),
+            border: Border.all(color: WanpanColors.catBlack, width: 1.5),
+            boxShadow: const [
+              BoxShadow(color: WanpanColors.border, offset: Offset(0, 2)),
+            ],
+          ),
+          child: Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(
+              color: WanpanColors.catBlack,
+              shape: BoxShape.circle,
+              border: Border.all(color: WanpanColors.surface, width: .8),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 class _Stat extends StatelessWidget {
@@ -554,18 +666,21 @@ class _Stat extends StatelessWidget {
             style: Theme.of(context).textTheme.headlineMedium?.copyWith(
               color: color,
               fontSize: 28,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w800,
             ),
           ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 4),
         Text(
           label,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
           textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.labelMedium
-              ?.copyWith(fontWeight: FontWeight.w400),
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+            color: WanpanColors.inkSecondary,
+            fontSize: 11.5,
+            fontWeight: FontWeight.w500,
+          ),
         ),
       ],
     );
@@ -579,7 +694,7 @@ class _ActionTile extends StatelessWidget {
     required this.onTap,
   });
 
-  final IconData icon;
+  final WanpanCartoonIconKind icon;
   final String title;
   final VoidCallback onTap;
 
@@ -589,27 +704,24 @@ class _ActionTile extends StatelessWidget {
       onTap: onTap,
       pressedScale: .99,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: 62),
+        constraints: const BoxConstraints(minHeight: 58),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 15),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
           child: Row(
             children: [
-              SizedBox(
-                width: 28,
-                child: Icon(icon, size: 23, color: WanpanColors.inkSecondary),
-              ),
+              WanpanCartoonIcon(kind: icon, size: 30),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   title,
                   style: Theme.of(context).textTheme.titleMedium
-                      ?.copyWith(fontSize: 15, fontWeight: FontWeight.w500),
+                      ?.copyWith(fontSize: 15, fontWeight: FontWeight.w700),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
               const Icon(
                 Icons.chevron_right_rounded,
-                color: WanpanColors.muted,
+                color: WanpanColors.ink,
                 size: 19,
               ),
             ],

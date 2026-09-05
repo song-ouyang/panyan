@@ -13,6 +13,8 @@ import 'package:wanpan_diary/features/auth/application/session_controller.dart';
 import 'package:wanpan_diary/features/auth/data/session_token_store.dart';
 import 'package:wanpan_diary/features/auth/domain/auth_session.dart';
 import 'package:wanpan_diary/features/profile/profile_screen.dart';
+import 'package:wanpan_diary/shared/widgets/wanpan_cartoon_icon.dart';
+import 'package:wanpan_diary/shared/widgets/wanpan_cat_mark.dart';
 
 const _config = AppConfig(
   environment: AppEnvironment.development,
@@ -162,7 +164,11 @@ void main() {
     expect(
       find.descendant(
         of: find.byKey(const Key('profile-activity-favorites')),
-        matching: find.byIcon(Icons.star_border_rounded),
+        matching: find.byWidgetPredicate(
+          (widget) =>
+              widget is WanpanCartoonIcon &&
+              widget.kind == WanpanCartoonIconKind.favorite,
+        ),
       ),
       findsOneWidget,
       reason: '收藏入口使用五角星，和点赞心形区分',
@@ -209,7 +215,7 @@ void main() {
       closeTo(tester.getCenter(nickname).dy, 1),
     );
     expect(find.byTooltip('编辑个人资料'), findsOneWidget);
-    expect(find.text('编辑资料'), findsNothing);
+    expect(find.text('编辑资料'), findsOneWidget);
     expect(growth, findsOneWidget);
     for (final label in [
       '攀岩记录',
@@ -309,7 +315,7 @@ void main() {
     addTearDown(session.dispose);
     await _pumpProfile(tester, router: router);
 
-    expect(find.text('我的攀岩'), findsOneWidget);
+    expect(find.byKey(const Key('profile-climbing-actions')), findsOneWidget);
     for (final obsoleteCopy in [
       '查看已发布线路与历史记录',
       '看看谁最近也在上墙',
@@ -334,6 +340,42 @@ void main() {
       router.pop();
       await tester.pumpAndSettle();
     }
+  });
+
+  testWidgets('390px 个人页保持紧凑，首屏可见资料、四入口、统计和三个功能', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final api = _ProfileApi();
+    final session = await _createSession();
+    final router = _createRouter(api: api, session: session);
+    addTearDown(router.dispose);
+    addTearDown(session.dispose);
+    await _pumpProfile(tester, router: router);
+
+    final header = find.byKey(const Key('profile-header-card'));
+    final growth = find.byKey(const Key('profile-growth-card'));
+    final actions = find.byKey(const Key('profile-climbing-actions'));
+    expect(tester.getSize(header).height, lessThanOrEqualTo(110));
+    expect(tester.getSize(growth).height, lessThanOrEqualTo(150));
+    // Reserve room for the actual app's bottom navigation and safe area.
+    expect(tester.getRect(actions).bottom, lessThanOrEqualTo(734));
+    expect(find.text('邀请好友').hitTestable(), findsOneWidget);
+    expect(find.text('看日历').hitTestable(), findsOneWidget);
+    expect(
+      find.descendant(
+        of: header,
+        matching: find.byWidgetPredicate(
+          (widget) => widget is WanpanCatMark && widget.peeking,
+        ),
+      ),
+      findsOneWidget,
+    );
+    for (final name in ['posts', 'comments', 'favorites', 'likes']) {
+      final shortcut = find.byKey(Key('profile-activity-$name'));
+      expect(shortcut.hitTestable(), findsOneWidget);
+      expect(tester.getSize(shortcut).shortestSide, greaterThanOrEqualTo(44));
+    }
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('320px 长中文昵称与最大字号下编辑图标及主要入口可用且无溢出', (tester) async {
