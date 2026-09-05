@@ -88,8 +88,10 @@ JWT 使用 iOS Keychain / Android 加密存储；旧版 SharedPreferences token 
 dart format lib test
 dart analyze lib test
 flutter test
-flutter build ios --simulator --debug --no-codesign
+flutter build ios --simulator --debug --codesign
 flutter build apk --debug
 ```
+
+模拟器的登录验证也需要保留签名，以便 `Runner.entitlements` 中的本 App 钥匙串权限生效。安装前应使用上述签名构建；`--no-codesign` 产物缺少这项权限时，验证码验证成功后仍会因无法保存登录凭证而失败。登录后完全退出并重新打开 App，确认登录状态能够恢复。
 
 视频上传会在 MP4 文件大于等于 5 MiB 时优先走 OSS 分片流程；本地未配置 OSS 时自动回退为普通上传。
