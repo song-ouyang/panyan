@@ -84,13 +84,17 @@ class DeploymentTests(unittest.TestCase):
         return result.stdout.strip()
 
     def mark_ready(self, revision):
-        self.git("tag", "server-ready-" + revision[:12], revision)
+        self.git("update-ref", "refs/wanpan-auto-deploy/tags/server-ready-" + revision[:12], revision)
 
     def test_no_ready_tag_waits(self):
         self.assertEqual(self.ready(), "")
 
     def test_bundle_tag_alone_does_not_authorize_deployment(self):
-        self.git("tag", "server-bundle-" + self.backend[:12], self.backend)
+        self.git("update-ref", "refs/wanpan-auto-deploy/tags/server-bundle-" + self.backend[:12], self.backend)
+        self.assertEqual(self.ready(), "")
+
+    def test_local_ready_tag_does_not_authorize_deployment(self):
+        self.git("tag", "server-ready-" + self.backend[:12], self.backend)
         self.assertEqual(self.ready(), "")
 
     def test_ready_backend_survives_client_only_push(self):
@@ -108,7 +112,7 @@ class DeploymentTests(unittest.TestCase):
         self.assertEqual(self.ready(newest), newest)
 
     def test_wrong_ready_tag_target_is_ignored(self):
-        self.git("tag", "server-ready-" + self.backend[:12], self.latest)
+        self.git("update-ref", "refs/wanpan-auto-deploy/tags/server-ready-" + self.backend[:12], self.latest)
         self.assertEqual(self.ready(), "")
 
     def test_side_branch_ready_tag_cannot_bypass_merged_tests(self):
@@ -190,6 +194,35 @@ printf '%s\\n' "${WANPAN_EXPECT_REVISION:0:12}" > .deploy/current-image-tag
     def attempts(self):
         path = self.checkout / ".deploy/attempts"
         return len(path.read_text().splitlines()) if path.exists() else 0
+
+    def test_remote_tag_deletion_prunes_mirror_but_preserves_local_tags(self):
+        revision = self.publish("ready marker revoked before deployment")
+        # Fetch while an invalid target prevents deployment, then remove the
+        # remote marker. The next poll must remove the previously mirrored ref.
+        tag = "server-ready-" + revision[:12]
+        self.git("tag", "-f", tag, self.backend)
+        subprocess.run(["git", "tag", tag, "HEAD"], cwd=self.checkout, check=True)
+        subprocess.run(["git", "tag", "operator-local", "HEAD"], cwd=self.checkout, check=True)
+        result = self.poll()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        mirror = "refs/wanpan-auto-deploy/tags/" + tag
+        self.assertEqual(subprocess.check_output(
+            ["git", "rev-parse", "--verify", mirror], cwd=self.checkout, text=True).strip(), self.backend)
+        self.git("tag", "-d", tag)
+        result = self.poll()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotEqual(subprocess.run(
+            ["git", "rev-parse", "--verify", mirror], cwd=self.checkout, capture_output=True).returncode, 0)
+        for local in [tag, "operator-local"]:
+            self.assertEqual(subprocess.run(
+                ["git", "rev-parse", "--verify", "refs/tags/" + local],
+                cwd=self.checkout, capture_output=True).returncode, 0)
+        self.assertEqual(self.attempts(), 0)
+        # Reinstating the correct remote marker permits the next poll to deploy.
+        self.git("tag", tag, revision)
+        result = self.poll()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.attempts(), 1)
 
     def test_poll_fetch_deploy_failure_freeze_and_probe_retry(self):
         # An empty ready-tag namespace must not make git fetch fail.

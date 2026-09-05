@@ -27,10 +27,13 @@ fi
 # password prompts or automatic acceptance of an unknown SSH host key.
 export GIT_TERMINAL_PROMPT=0
 export GIT_SSH_COMMAND='ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=20'
+# CentOS 7 Git 1.8 requires a whole path component for wildcard refspecs.
+# Mirror remote tags in a private namespace: pruning must not delete local
+# tags, and a deleted remote ready marker must stop authorizing deployment.
 timeout 120s git -c http.lowSpeedLimit=1 -c http.lowSpeedTime=30 \
   fetch --quiet --no-tags --prune "$REMOTE" \
   "refs/heads/$BRANCH:refs/remotes/$REMOTE/$BRANCH" \
-  'refs/tags/server-ready-*:refs/tags/server-ready-*' 9>&- </dev/null
+  '+refs/tags/*:refs/wanpan-auto-deploy/tags/*' 9>&- </dev/null
 # Only this shell owns the lock during fetch. Timeout/git maintenance children
 # must not retain it after the poll exits or consume the bootstrap script stdin.
 branch_head="$(git rev-parse "refs/remotes/$REMOTE/$BRANCH")"

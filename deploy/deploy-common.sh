@@ -47,12 +47,13 @@ wanpan_select_revision() {
 }
 
 # A ready tag is written only after CI tests and all release uploads succeed.
+# Use the freshly fetched remote mirror, never a stale or local-only tag.
 # Walk main's first-parent history, so merge commits and client-only follow-up
 # pushes work without relying on tag timestamps or a moving latest release.
 wanpan_ready_revision() {
   local branch_head="$1" revision tag tagged
   while IFS= read -r revision; do
-    tag="refs/tags/server-ready-${revision:0:12}"
+    tag="refs/wanpan-auto-deploy/tags/server-ready-${revision:0:12}"
     tagged="$(git rev-parse --verify "$tag^{commit}" 2>/dev/null || true)"
     [[ "$tagged" == "$revision" ]] || continue
     if git diff --quiet "$revision" "$branch_head" -- \

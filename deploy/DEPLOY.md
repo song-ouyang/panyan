@@ -153,6 +153,8 @@ bash deploy/install-auto-deploy.sh
 
 服务器需已有正常运行的生产环境、Docker Compose、Git、curl、flock、systemd，以及访问 GitHub 仓库和公开 Release 的网络。镜像下载继续使用仓库现有的公开 GitHub Release 路径；仓库若改成私有，需另行配置下载认证。
 
+标签拉取兼容 CentOS 7 的 Git 1.8：使用完整路径段通配符，将远端标签同步到独立的 `refs/wanpan-auto-deploy/tags/` 命名空间。只识别其中的 ready 标记；远端删除的标记会同步移除，不修改服务器本地标签。
+
 检查是否启用，以及首次执行结果：
 
 ```bash
