@@ -347,6 +347,7 @@ class _RankingScreenState extends State<RankingScreen> {
     if (_regionsLoading) return;
     showModalBottomSheet<void>(
       context: context,
+      useRootNavigator: true,
       useSafeArea: true,
       isScrollControlled: true,
       backgroundColor: WanpanColors.surface,
@@ -408,26 +409,33 @@ class _RankingScreenState extends State<RankingScreen> {
       return const WanpanListSkeleton(key: ValueKey('loading'), itemCount: 4);
     }
     if (_error != null) {
-      return Center(
+      return SafeArea(
         key: const ValueKey('error'),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.emoji_events_outlined,
-              size: 52,
-              color: WanpanColors.gold,
+        top: false,
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.emoji_events_outlined,
+                  size: 52,
+                  color: WanpanColors.gold,
+                ),
+                const SizedBox(height: 12),
+                Text(_error!, style: Theme.of(context).textTheme.titleMedium),
+                TextButton(
+                  onPressed:
+                      _regionsFailed &&
+                          _selectedRegion?.province.isEmpty == true
+                      ? _loadRegions
+                      : _load,
+                  child: const Text('重新加载'),
+                ),
+              ],
             ),
-            const SizedBox(height: 12),
-            Text(_error!, style: Theme.of(context).textTheme.titleMedium),
-            TextButton(
-              onPressed:
-                  _regionsFailed && _selectedRegion?.province.isEmpty == true
-                  ? _loadRegions
-                  : _load,
-              child: const Text('重新加载'),
-            ),
-          ],
+          ),
         ),
       );
     }
@@ -462,7 +470,12 @@ class _RankingScreenState extends State<RankingScreen> {
           const Positioned(right: 0, bottom: 0, child: RankingRockBackdrop()),
           ListView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
+            padding: EdgeInsets.fromLTRB(
+              20,
+              4,
+              20,
+              32 + MediaQuery.paddingOf(context).bottom,
+            ),
             children: [
               RankingHeroCard(
                 myRank: board.myRank,
@@ -530,7 +543,12 @@ class _RankingScreenState extends State<RankingScreen> {
       onRefresh: _load,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
+        padding: EdgeInsets.fromLTRB(
+          20,
+          4,
+          20,
+          32 + MediaQuery.paddingOf(context).bottom,
+        ),
         children: [
           _RouteRankingIntro(regionLabel: _regionLabel),
           const SizedBox(height: 12),
@@ -1234,66 +1252,71 @@ class _RankingEmpty extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) => SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 28),
-        child: ConstrainedBox(
-          constraints: BoxConstraints(minHeight: constraints.maxHeight - 44),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              WanpanLottieStage(
-                asset: AppAssets.rankingEncouragementAnimation,
-                semanticLabel: '黑猫邀请你完成线路并加入排行榜',
-                width: 236,
-                height: 210,
-                play: playAnimation,
-                onPresented: onAnimationPresented,
-                fallback: const WanpanMascot(
-                  asset: AppAssets.mascotCelebrate,
-                  width: 176,
-                  height: 166,
-                  radius: 38,
-                ),
-              ),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.headlineMedium,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                description,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyLarge
-                    ?.copyWith(color: WanpanColors.inkSecondary),
-              ),
-              const SizedBox(height: 22),
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 320),
-                child: WanpanButton(
-                  label: actionLabel,
-                  icon: const Icon(Icons.route_rounded),
-                  onPressed: onAction,
-                ),
-              ),
-              const SizedBox(height: 14),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(
-                    Icons.star_rounded,
-                    size: 17,
-                    color: WanpanColors.sunflower,
+    return SafeArea(
+      top: false,
+      child: LayoutBuilder(
+        builder: (context, constraints) => SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 28),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: (constraints.maxHeight - 44).clamp(0, double.infinity),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                WanpanLottieStage(
+                  asset: AppAssets.rankingEncouragementAnimation,
+                  semanticLabel: '黑猫邀请你完成线路并加入排行榜',
+                  width: 236,
+                  height: 210,
+                  play: playAnimation,
+                  onPresented: onAnimationPresented,
+                  fallback: const WanpanMascot(
+                    asset: AppAssets.mascotCelebrate,
+                    width: 176,
+                    height: 166,
+                    radius: 38,
                   ),
-                  const SizedBox(width: 6),
-                  Text(
-                    '每一次真实完攀，都会点亮这里',
-                    style: Theme.of(context).textTheme.labelMedium,
+                ),
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.headlineMedium,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  description,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyLarge
+                      ?.copyWith(color: WanpanColors.inkSecondary),
+                ),
+                const SizedBox(height: 22),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 320),
+                  child: WanpanButton(
+                    label: actionLabel,
+                    icon: const Icon(Icons.route_rounded),
+                    onPressed: onAction,
                   ),
-                ],
-              ),
-            ],
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.star_rounded,
+                      size: 17,
+                      color: WanpanColors.sunflower,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      '每一次真实完攀，都会点亮这里',
+                      style: Theme.of(context).textTheme.labelMedium,
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),

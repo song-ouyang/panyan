@@ -21,10 +21,13 @@ class WanpanShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
+    extendBody: true,
     body: navigationShell,
-    bottomNavigationBar: WanpanBottomNavigation(
-      currentIndex: navigationShell.currentIndex,
-      onSelected: _select,
-    ),
+    bottomNavigationBar: MediaQuery.viewInsetsOf(context).bottom > 0
+        ? null
+        : WanpanBottomNavigation(
+            currentIndex: navigationShell.currentIndex,
+            onSelected: _select,
+          ),
   );
 }

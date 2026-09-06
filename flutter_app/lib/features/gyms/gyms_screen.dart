@@ -10,6 +10,7 @@ import '../../core/network/api_client.dart';
 import '../../core/repositories/gym_repository.dart';
 import '../../core/repositories/profile_repository.dart';
 import '../../shared/app_assets.dart';
+import '../../shared/motion/wanpan_motion.dart';
 import '../../shared/widgets/wanpan_notice.dart';
 import '../../shared/widgets/wanpan_pressable.dart';
 import '../../shared/widgets/wanpan_skeleton.dart';
@@ -234,6 +235,7 @@ class _GymsScreenState extends State<GymsScreen> {
   Future<void> _showDirectory() async {
     final selected = await showModalBottomSheet<_GymDirectorySelection>(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       useSafeArea: true,
       builder: (_) => _GymDirectorySheet(
@@ -251,6 +253,7 @@ class _GymsScreenState extends State<GymsScreen> {
 
   Future<void> _showCityPicker() => showModalBottomSheet<void>(
     context: context,
+    useRootNavigator: true,
     useSafeArea: true,
     isScrollControlled: true,
     builder: (_) =>
@@ -271,7 +274,12 @@ class _GymsScreenState extends State<GymsScreen> {
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(14, 10, 14, 30),
+                padding: EdgeInsets.fromLTRB(
+                  14,
+                  10,
+                  14,
+                  30 + MediaQuery.paddingOf(context).bottom,
+                ),
                 sliver: SliverList.list(
                   children: [
                     _HomeHeader(
@@ -522,71 +530,92 @@ class _GymDirectorySheetState extends State<_GymDirectorySheet> {
   @override
   Widget build(BuildContext context) {
     final visible = _visible;
-    return FractionallySizedBox(
-      heightFactor: .88,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 14),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    '找岩馆',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
+    return AnimatedPadding(
+      duration: WanpanMotion.duration(context, WanpanMotion.exit),
+      curve: WanpanMotion.curve(context),
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: FractionallySizedBox(
+        heightFactor: .88,
+        child: SafeArea(
+          top: false,
+          child: CustomScrollView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            slivers: [
+              SliverToBoxAdapter(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 4, 20, 14),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              '找岩馆',
+                              style: Theme.of(context).textTheme.titleLarge,
+                            ),
+                          ),
+                          IconButton(
+                            tooltip: '关闭',
+                            onPressed: () => Navigator.pop(context),
+                            icon: const Icon(Icons.close_rounded),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: TextField(
+                        controller: _searchController,
+                        autofocus: true,
+                        onChanged: (value) => setState(() => _query = value),
+                        decoration: const InputDecoration(
+                          prefixIcon: Icon(Icons.search_rounded),
+                          hintText: '搜索岩馆或品牌',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          for (final (index, option)
+                              in _cityOptions.indexed) ...[
+                            if (index > 0) const SizedBox(width: 8),
+                            _CityChip(
+                              label: option ?? '全部',
+                              selected: _city == option,
+                              onTap: () => _chooseCity(option),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                 ),
-                IconButton(
-                  tooltip: '关闭',
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close_rounded),
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: TextField(
-              controller: _searchController,
-              autofocus: true,
-              onChanged: (value) => setState(() => _query = value),
-              decoration: const InputDecoration(
-                prefixIcon: Icon(Icons.search_rounded),
-                hintText: '搜索岩馆或品牌',
               ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                for (final (index, option) in _cityOptions.indexed) ...[
-                  if (index > 0) const SizedBox(width: 8),
-                  _CityChip(
-                    label: option ?? '全部',
-                    selected: _city == option,
-                    onTap: () => _chooseCity(option),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          Expanded(
-            child: _loading
-                ? const WanpanListSkeleton(itemCount: 4)
-                : _error != null
-                ? WanpanErrorState(title: '岩馆列表没有加载出来', onRetry: _retry)
-                : visible.isEmpty
-                ? const WanpanEmptyState(
+              if (_loading)
+                const SliverFillRemaining(
+                  child: WanpanListSkeleton(itemCount: 4),
+                )
+              else if (_error != null)
+                SliverToBoxAdapter(
+                  child: WanpanErrorState(title: '岩馆列表没有加载出来', onRetry: _retry),
+                )
+              else if (visible.isEmpty)
+                const SliverToBoxAdapter(
+                  child: WanpanEmptyState(
                     title: '还没有找到岩馆',
                     description: '换一个城市或关键词试试。',
-                  )
-                : ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
+                  ),
+                )
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
+                  sliver: SliverList.separated(
                     itemCount: visible.length,
                     separatorBuilder: (_, _) => const SizedBox(height: 10),
                     itemBuilder: (_, index) {
@@ -601,8 +630,10 @@ class _GymDirectorySheetState extends State<_GymDirectorySheet> {
                       );
                     },
                   ),
+                ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

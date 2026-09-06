@@ -18,6 +18,8 @@ class WanpanBottomNavigation extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onSelected;
 
+  static const _selectionDuration = Duration(milliseconds: 180);
+  static const _radius = BorderRadius.all(Radius.circular(48));
   static const _items = [
     (kind: WanpanTabIconKind.gym, label: '岩馆'),
     (kind: WanpanTabIconKind.feed, label: '广场'),
@@ -28,33 +30,108 @@ class WanpanBottomNavigation extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     assert(currentIndex >= 0 && currentIndex < _items.length);
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        color: WanpanColors.surface,
-        border: Border(top: BorderSide(color: WanpanColors.border)),
-      ),
-      child: SafeArea(
-        top: false,
-        child: SizedBox(
-          height: math.max(
-            72,
-            53 + MediaQuery.textScalerOf(context).scale(13) * 1.2,
-          ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(8, 5, 8, 3),
-            child: Row(
-              children: [
-                for (var index = 0; index < _items.length; index++)
-                  Expanded(
-                    child: _WanpanBottomTab(
-                      key: ValueKey('wanpan-bottom-tab-$index'),
-                      kind: _items[index].kind,
-                      label: _items[index].label,
-                      selected: currentIndex == index,
-                      onTap: () => onSelected(index),
+    final highContrast = MediaQuery.highContrastOf(context);
+    final direction = Directionality.of(context) == TextDirection.rtl ? -1 : 1;
+    return SafeArea(
+      top: false,
+      minimum: const EdgeInsets.fromLTRB(18, 0, 18, 12),
+      child: Padding(
+        padding: const EdgeInsets.only(top: 8),
+        // Scrolling content must not invalidate the floating surface's paint.
+        child: RepaintBoundary(
+          child: DecoratedBox(
+            decoration: const BoxDecoration(
+              borderRadius: _radius,
+              boxShadow: [
+                BoxShadow(
+                  color: Color(0x1824343C),
+                  offset: Offset(0, 8),
+                  blurRadius: 24,
+                  spreadRadius: -2,
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              key: const ValueKey('wanpan-bottom-navigation-surface'),
+              borderRadius: _radius,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  // A dense translucent tint keeps text legible without a
+                  // backdrop blur pass every time the page scrolls beneath it.
+                  color: WanpanColors.surface.withValues(
+                    alpha: highContrast ? 1 : .96,
+                  ),
+                  borderRadius: _radius,
+                  border: Border.all(
+                    color: highContrast
+                        ? WanpanColors.muted
+                        : Colors.white.withValues(alpha: .9),
+                    width: 1.2,
+                  ),
+                ),
+                child: SizedBox(
+                  height: math.max(
+                    74,
+                    53 + MediaQuery.textScalerOf(context).scale(13) * 1.2,
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(5),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        RepaintBoundary(
+                          child: Align(
+                            alignment: AlignmentDirectional.centerStart,
+                            child: FractionallySizedBox(
+                              widthFactor: 1 / _items.length,
+                              heightFactor: 1,
+                              // Translation changes paint only; the four tab
+                              // cells and labels keep their layout throughout.
+                              child: AnimatedSlide(
+                                offset: Offset(
+                                  direction * currentIndex.toDouble(),
+                                  0,
+                                ),
+                                duration: WanpanMotion.duration(
+                                  context,
+                                  _selectionDuration,
+                                ),
+                                curve: WanpanMotion.curve(context),
+                                child: DecoratedBox(
+                                  key: const ValueKey(
+                                    'wanpan-bottom-navigation-selection',
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: WanpanColors.coral.withValues(
+                                      alpha: highContrast ? .18 : .11,
+                                    ),
+                                    borderRadius: _radius,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            for (var index = 0; index < _items.length; index++)
+                              Expanded(
+                                child: _WanpanBottomTab(
+                                  key: ValueKey('wanpan-bottom-tab-$index'),
+                                  kind: _items[index].kind,
+                                  label: _items[index].label,
+                                  selected: currentIndex == index,
+                                  onTap: () => onSelected(index),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
-              ],
+                ),
+              ),
             ),
           ),
         ),
@@ -79,7 +156,7 @@ class _WanpanBottomTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final duration = WanpanMotion.duration(context, WanpanMotion.selection);
+    final foreground = selected ? WanpanColors.coral : WanpanColors.ink;
     return Semantics(
       container: true,
       button: true,
@@ -87,57 +164,35 @@ class _WanpanBottomTab extends StatelessWidget {
       label: label,
       onTap: onTap,
       child: ExcludeSemantics(
-        child: WanpanPressable(
-          onTap: onTap,
-          pressedScale: .965,
-          pressedOffset: 1,
-          borderRadius: BorderRadius.circular(WanpanRadii.large),
-          child: TweenAnimationBuilder<double>(
-            tween: Tween(end: selected ? 1 : 0),
-            duration: duration,
-            curve: WanpanMotion.curve(context),
-            builder: (context, selection, _) {
-              final foreground = Color.lerp(
-                WanpanColors.ink,
-                WanpanColors.coral,
-                selection,
-              )!;
-              return Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SizedBox(
-                    height: 38,
-                    child: Center(
-                      child: WanpanTabIcon(
-                        kind: kind,
-                        color: foreground,
-                        selection: selection,
-                      ),
-                    ),
+        child: RepaintBoundary(
+          child: WanpanPressable(
+            onTap: onTap,
+            pressedScale: .965,
+            pressedOffset: 1,
+            borderRadius: BorderRadius.circular(WanpanRadii.large),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(
+                  height: 38,
+                  child: Center(
+                    child: WanpanTabIcon(kind: kind, color: foreground),
                   ),
-                  const SizedBox(height: 3),
-                  Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.clip,
-                    style: TextStyle(
-                      color: Color.lerp(
-                        WanpanColors.ink,
-                        WanpanColors.coral,
-                        selection,
-                      ),
-                      fontSize: 13,
-                      height: 1.2,
-                      fontWeight: FontWeight.lerp(
-                        FontWeight.w700,
-                        FontWeight.w800,
-                        selection,
-                      ),
-                    ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.clip,
+                  style: TextStyle(
+                    color: foreground,
+                    fontSize: 13,
+                    height: 1.2,
+                    fontWeight: FontWeight.w700,
                   ),
-                ],
-              );
-            },
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -146,40 +201,25 @@ class _WanpanBottomTab extends StatelessWidget {
 }
 
 class WanpanTabIcon extends StatelessWidget {
-  const WanpanTabIcon({
-    required this.kind,
-    required this.color,
-    this.selection = 0,
-    super.key,
-  });
+  const WanpanTabIcon({required this.kind, required this.color, super.key});
 
   final WanpanTabIconKind kind;
   final Color color;
-  final double selection;
 
   @override
   Widget build(BuildContext context) => RepaintBoundary(
     child: CustomPaint(
       size: const Size.square(34),
-      painter: _WanpanTabIconPainter(
-        kind: kind,
-        color: color,
-        selection: selection,
-      ),
+      painter: _WanpanTabIconPainter(kind: kind, color: color),
     ),
   );
 }
 
 class _WanpanTabIconPainter extends CustomPainter {
-  const _WanpanTabIconPainter({
-    required this.kind,
-    required this.color,
-    required this.selection,
-  });
+  const _WanpanTabIconPainter({required this.kind, required this.color});
 
   final WanpanTabIconKind kind;
   final Color color;
-  final double selection;
 
   Paint get _stroke => Paint()
     ..color = color
@@ -358,7 +398,5 @@ class _WanpanTabIconPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_WanpanTabIconPainter oldDelegate) =>
-      oldDelegate.kind != kind ||
-      oldDelegate.color != color ||
-      oldDelegate.selection != selection;
+      oldDelegate.kind != kind || oldDelegate.color != color;
 }

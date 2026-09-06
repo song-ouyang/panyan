@@ -12,6 +12,7 @@ import 'package:wanpan_diary/features/auth/application/session_controller.dart';
 import 'package:wanpan_diary/features/auth/data/session_token_store.dart';
 import 'package:wanpan_diary/features/gyms/application/home_city_controller.dart';
 import 'package:wanpan_diary/features/gyms/gyms_screen.dart';
+import 'package:wanpan_diary/shared/widgets/wanpan_pressable.dart';
 
 const _config = AppConfig(
   environment: AppEnvironment.development,
@@ -73,6 +74,8 @@ Future<void> _pumpHome(
   required HomeCityController controller,
   required _DirectoryApi api,
   bool compact = false,
+  ValueNotifier<double>? keyboard,
+  bool nestedNavigator = false,
 }) async {
   final session = SessionController(
     preferences: await SharedPreferences.getInstance(),
@@ -87,14 +90,37 @@ Future<void> _pumpHome(
   await tester.pumpWidget(
     MaterialApp(
       theme: WanpanTheme.light(),
-      builder: (context, child) => MediaQuery(
-        data: MediaQuery.of(context).copyWith(
-          disableAnimations: true,
-          textScaler: TextScaler.linear(compact ? 1.35 : 1),
-        ),
-        child: child!,
-      ),
-      home: GymsScreen(api: api, session: session, cityController: controller),
+      builder: (context, child) {
+        Widget withInsets(double inset) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            disableAnimations: true,
+            textScaler: TextScaler.linear(compact ? 1.35 : 1),
+            viewInsets: EdgeInsets.only(bottom: inset),
+          ),
+          child: child!,
+        );
+        return keyboard == null
+            ? withInsets(0)
+            : ValueListenableBuilder<double>(
+                valueListenable: keyboard,
+                builder: (context, inset, _) => withInsets(inset),
+              );
+      },
+      home: nestedNavigator
+          ? Scaffold(
+              extendBody: true,
+              body: Navigator(
+                onGenerateRoute: (_) => MaterialPageRoute<void>(
+                  builder: (_) => GymsScreen(
+                    api: api,
+                    session: session,
+                    cityController: controller,
+                  ),
+                ),
+              ),
+              bottomNavigationBar: const SizedBox(height: 90),
+            )
+          : GymsScreen(api: api, session: session, cityController: controller),
     ),
   );
   await tester.pumpAndSettle();
@@ -124,6 +150,84 @@ Future<void> _disposeHome(
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
+
+  testWidgets(
+    'root gym directory remains scrollable above a compact keyboard',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({
+        'home_city_selection': '',
+        'home_city_manual': true,
+      });
+      final controller = HomeCityController(
+        locationService: _LocationService(() async => '上海'),
+      );
+      final keyboard = ValueNotifier<double>(0);
+      addTearDown(keyboard.dispose);
+      await _pumpHome(
+        tester,
+        controller: controller,
+        api: _DirectoryApi(),
+        compact: true,
+        keyboard: keyboard,
+        nestedNavigator: true,
+      );
+      await tester.tap(find.text('找岩馆'));
+      await tester.pumpAndSettle();
+      final sheet = find.byType(BottomSheet);
+      final search = find.descendant(
+        of: sheet,
+        matching: find.byType(TextField),
+      );
+      final sheetContext = tester.element(search);
+      expect(
+        Navigator.of(sheetContext),
+        same(Navigator.of(sheetContext, rootNavigator: true)),
+      );
+
+      keyboard.value = 300;
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      final verticalScroll = find.descendant(
+        of: sheet,
+        matching: find.byWidgetPredicate(
+          (widget) =>
+              widget is Scrollable &&
+              axisDirectionToAxis(widget.axisDirection) == Axis.vertical,
+        ),
+      );
+      expect(verticalScroll, findsOneWidget);
+      final viewport = tester.getRect(verticalScroll);
+      expect(viewport.bottom, lessThanOrEqualTo(568 - 300));
+      final listScroll = tester.state<ScrollableState>(verticalScroll);
+      listScroll.position.jumpTo(listScroll.position.maxScrollExtent);
+      await tester.pumpAndSettle();
+      final lastCard = find.ancestor(
+        of: find.descendant(of: sheet, matching: find.text('成都岩馆')),
+        matching: find.byType(WanpanPressable),
+      );
+      expect(lastCard, findsOneWidget);
+      expect(tester.getRect(lastCard).top, greaterThanOrEqualTo(viewport.top));
+      expect(tester.getRect(lastCard).bottom, lessThanOrEqualTo(568 - 300));
+
+      listScroll.position.jumpTo(0);
+      await tester.pumpAndSettle();
+      await tester.enterText(search, '不存在的岩馆');
+      await tester.pumpAndSettle();
+      expect(verticalScroll, findsOneWidget);
+      final emptyPosition = tester
+          .state<ScrollableState>(verticalScroll)
+          .position;
+      emptyPosition.jumpTo(emptyPosition.maxScrollExtent);
+      await tester.pumpAndSettle();
+      expect(find.text('还没有找到岩馆'), findsOneWidget);
+      expect(
+        tester.getRect(find.text('换一个城市或关键词试试。')).bottom,
+        lessThanOrEqualTo(568 - 300),
+      );
+      expect(tester.takeException(), isNull);
+      await _disposeHome(tester, controller);
+    },
+  );
 
   testWidgets('automatic location loads the matching city directory', (
     tester,

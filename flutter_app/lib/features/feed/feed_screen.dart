@@ -223,6 +223,7 @@ class _FeedScreenState extends State<FeedScreen> {
     }
     final published = await showModalBottomSheet<_MomentPublishResult>(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       isDismissible: true,
       enableDrag: true,
@@ -451,7 +452,12 @@ class _FeedScreenState extends State<FeedScreen> {
       key: const ValueKey('list'),
       onRefresh: _load,
       child: ListView.separated(
-        padding: const EdgeInsets.fromLTRB(20, 6, 20, 24),
+        padding: EdgeInsets.fromLTRB(
+          20,
+          6,
+          20,
+          24 + MediaQuery.paddingOf(context).bottom,
+        ),
         itemCount: _items.length + (_scope == 'friends' ? 1 : 0),
         separatorBuilder: (_, _) => const SizedBox(height: 12),
         itemBuilder: (context, index) {
@@ -1259,50 +1265,53 @@ class _FeedEmpty extends StatelessWidget {
   final Widget? action;
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Stack(
-              clipBehavior: Clip.none,
-              children: [
-                const WanpanMascot(
-                  asset: AppAssets.mascotWelcome,
-                  width: 172,
-                  height: 164,
-                  radius: 36,
-                ),
-                Positioned(
-                  right: -4,
-                  bottom: 4,
-                  child: Container(
-                    width: 44,
-                    height: 44,
-                    decoration: const BoxDecoration(
-                      color: WanpanColors.sunflower,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(icon, size: 23, color: WanpanColors.ink),
+    return SafeArea(
+      top: false,
+      child: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  const WanpanMascot(
+                    asset: AppAssets.mascotWelcome,
+                    width: 172,
+                    height: 164,
+                    radius: 36,
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 18),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              description,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            if (action != null) ...[const SizedBox(height: 18), action!],
-          ],
+                  Positioned(
+                    right: -4,
+                    bottom: 4,
+                    child: Container(
+                      width: 44,
+                      height: 44,
+                      decoration: const BoxDecoration(
+                        color: WanpanColors.sunflower,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(icon, size: 23, color: WanpanColors.ink),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                description,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              if (action != null) ...[const SizedBox(height: 18), action!],
+            ],
+          ),
         ),
       ),
     );

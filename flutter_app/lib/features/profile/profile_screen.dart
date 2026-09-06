@@ -139,42 +139,54 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
     }
     if (_error != null) {
-      return Center(
+      return SafeArea(
         key: const ValueKey('error'),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.cloud_off_rounded,
-              size: 52,
-              color: WanpanColors.muted,
+        top: false,
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.cloud_off_rounded,
+                  size: 52,
+                  color: WanpanColors.muted,
+                ),
+                const SizedBox(height: 14),
+                Text(_error!, style: Theme.of(context).textTheme.titleMedium),
+                TextButton(onPressed: _load, child: const Text('重新加载')),
+              ],
             ),
-            const SizedBox(height: 14),
-            Text(_error!, style: Theme.of(context).textTheme.titleMedium),
-            TextButton(onPressed: _load, child: const Text('重新加载')),
-          ],
+          ),
         ),
       );
     }
     final profile = _profile;
     if (profile == null) {
-      return Center(
+      return SafeArea(
         key: const ValueKey('profile-empty-fallback'),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.cloud_off_rounded,
-              size: 52,
-              color: WanpanColors.muted,
+        top: false,
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.cloud_off_rounded,
+                  size: 52,
+                  color: WanpanColors.muted,
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  '成长记录暂时没有加载出来',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                TextButton(onPressed: _load, child: const Text('重新加载')),
+              ],
             ),
-            const SizedBox(height: 14),
-            Text(
-              '成长记录暂时没有加载出来',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            TextButton(onPressed: _load, child: const Text('重新加载')),
-          ],
+          ),
         ),
       );
     }
@@ -182,7 +194,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       key: ValueKey(profile.user.id),
       onRefresh: _load,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
+        padding: EdgeInsets.fromLTRB(
+          20,
+          10,
+          20,
+          24 + MediaQuery.paddingOf(context).bottom,
+        ),
         children: [
           _ProfileHeader(profile: profile, onEdit: _openProfileEditor),
           const SizedBox(height: 12),
@@ -715,36 +732,39 @@ class _SignedOut extends StatelessWidget {
   const _SignedOut({super.key});
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const WanpanMascot(
-              asset: AppAssets.mascotWelcome,
-              width: 176,
-              height: 168,
-              radius: 38,
-            ),
-            const SizedBox(height: 20),
-            Text(
-              '登录后保存每一次成长',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '查看完攀统计、最高难度和去过的岩馆。',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 18),
-            FilledButton(
-              onPressed: () => context.go('/login?from=/profile'),
-              child: const Text('去登录'),
-            ),
-          ],
+    return SafeArea(
+      top: false,
+      child: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const WanpanMascot(
+                asset: AppAssets.mascotWelcome,
+                width: 176,
+                height: 168,
+                radius: 38,
+              ),
+              const SizedBox(height: 20),
+              Text(
+                '登录后保存每一次成长',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '查看完攀统计、最高难度和去过的岩馆。',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 18),
+              FilledButton(
+                onPressed: () => context.go('/login?from=/profile'),
+                child: const Text('去登录'),
+              ),
+            ],
+          ),
         ),
       ),
     );
