@@ -1,0 +1,40 @@
+{
+  "status": "passed",
+  "testedAt": "2026-09-06T03:55:14.956Z",
+  "source": "/Users/guoba/.codex/visualizations/2026/09/06/01a074cd-6624-7132-8400-75d63655adca/wanpan-badge-unlock.html",
+  "boundaryCases": 35,
+  "widths": [
+    {
+      "viewport": 736,
+      "width": 704,
+      "scrollWidth": 704,
+      "clientWidth": 704
+    },
+    {
+      "viewport": 360,
+      "width": 328,
+      "scrollWidth": 328,
+      "clientWidth": 328
+    },
+    {
+      "viewport": 320,
+      "width": 288,
+      "scrollWidth": 288,
+      "clientWidth": 288
+    }
+  ],
+  "checks": [
+    "image loaded",
+    "replay starts and stops",
+    "receive opens progress and resets example",
+    "all 11 level boundaries use both conditions",
+    "progress bars clamp at 100%",
+    "all 11 rule rows present",
+    "no horizontal overflow at 736/360/320",
+    "reduced toggle immediate terminal state",
+    "OS reduced-motion honored",
+    "dark host retains fixed cream product",
+    "no runtime errors"
+  ],
+  "errors": []
+}

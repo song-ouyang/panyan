@@ -1,10 +1,12 @@
 const { request } = require('../../utils/api');
 const pageCache = require('../../utils/page-cache');
 const { afterPaint } = require('../../utils/motion');
+const accountGrowth = require('../../utils/growth');
 
 const PROFILE_CACHE_KEY = 'profile:overview';
 const PROFILE_TTL = 60 * 1000;
 const DASHBOARD_TTL = 60 * 1000;
+const LEVEL_RING_COLORS = ['#E9DCC7', '#70B99A', '#66BADD', '#EF9277', '#A68AD0', '#F47757', '#E8BD50', '#D9AB42', '#A985D5', '#E8B45A', '#695B47'];
 
 function dashboardCacheKey(month) {
   return `profile:dashboard:${month}`;
@@ -35,6 +37,9 @@ Page({
     moreMounted: false,
     moreVisible: false,
     progressReveal: true,
+    accountGrowth: null,
+    accountGrowthError: '',
+    accountRingColor: LEVEL_RING_COLORS[0],
   },
 
   onLoad() {
@@ -52,10 +57,15 @@ Page({
 
   onShow() {
     this.destroyed = false;
-    this.load();
+    this._visible = true;
+    const owner = accountGrowth.session();
+    if (this._growthOwner !== owner.token) this.setData({ accountGrowth: null, accountGrowthError: '', accountRingColor: LEVEL_RING_COLORS[0] });
+    Promise.resolve(this.load()).then(() => this.loadAccountGrowth());
   },
 
   onHide() {
+    this._visible = false;
+    this._growthRequestId = (this._growthRequestId || 0) + 1;
     this._pageRequestId += 1;
     this._dashboardRequestId += 1;
     this.loadingPromise = null;
@@ -68,11 +78,13 @@ Page({
 
   onPullDownRefresh() {
     Promise.resolve(this.load({ force: true }))
+      .then(() => this.loadAccountGrowth())
       .then(() => wx.stopPullDownRefresh(), () => wx.stopPullDownRefresh());
   },
 
   onUnload() {
     this.destroyed = true;
+    this._visible = false;
     this._pageRequestId += 1;
     this._dashboardRequestId += 1;
     if (this._dayDetailTimer) clearTimeout(this._dayDetailTimer);
@@ -84,6 +96,28 @@ Page({
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   },
+
+  async loadAccountGrowth() {
+    if (this.destroyed || !this._visible) return;
+    const owner = accountGrowth.session();
+    const sequence = (this._growthRequestId || 0) + 1;
+    this._growthRequestId = sequence;
+    if (this._growthOwner !== owner.token) this.setData({ accountGrowth: null, accountGrowthError: '', accountRingColor: LEVEL_RING_COLORS[0] });
+    this._growthOwner = owner.token;
+    if (!owner.userId) return;
+    try {
+      const result = await accountGrowth.load();
+      if (this.destroyed || !this._visible || sequence !== this._growthRequestId) return;
+      if (!accountGrowth.isCurrent(owner)) return this.setData({ accountGrowth: null, accountGrowthError: '', accountRingColor: LEVEL_RING_COLORS[0] });
+      this.setData({ accountGrowth: accountGrowth.progress(result), accountGrowthError: '', accountRingColor: result ? LEVEL_RING_COLORS[result.currentLevel] || LEVEL_RING_COLORS[0] : LEVEL_RING_COLORS[0] });
+    } catch (_) {
+      if (this.destroyed || !this._visible || sequence !== this._growthRequestId) return;
+      if (!accountGrowth.isCurrent(owner)) return this.setData({ accountGrowth: null, accountGrowthError: '', accountRingColor: LEVEL_RING_COLORS[0] });
+      this.setData({ accountGrowthError: '成长等级暂时没加载出来' });
+    }
+  },
+
+  badges() { wx.navigateTo({ url: '/growth/pages/badges/index' }); },
 
   monthLabel(month) {
     return `${Number(month.slice(0, 4))}年${Number(month.slice(5))}月`;

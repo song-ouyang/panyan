@@ -5,6 +5,11 @@ import '../app_assets.dart';
 
 /// The four short, branded sound cues paired with Wanpan's one-shot scenes.
 enum WanpanMotionSoundCue {
+  badgeEarned(
+    asset: AppAssets.badgeEarnedSound,
+    staticOffset: Duration.zero,
+    volume: .41085,
+  ),
   sendSuccess(
     asset: AppAssets.sendSuccessSound,
     staticOffset: Duration(milliseconds: 450),

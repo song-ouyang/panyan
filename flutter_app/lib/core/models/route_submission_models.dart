@@ -1,4 +1,5 @@
 import '../json/json_helpers.dart';
+import 'growth_models.dart';
 
 enum RoutePointType {
   start,
@@ -32,6 +33,23 @@ class RoutePoint {
 }
 
 class RouteSubmissionDraft {
+  factory RouteSubmissionDraft.fromJson(JsonMap json) => RouteSubmissionDraft(
+    clientRequestId: jsonString(
+      json['clientRequestId'],
+      field: 'clientRequestId',
+    ),
+    gymId: jsonString(json['gymId'], field: 'gymId'),
+    name: jsonString(json['name'], field: 'name'),
+    grade: jsonString(json['grade'], field: 'grade'),
+    color: jsonString(json['color'], field: 'color'),
+    coverUrl: jsonNullableString(json['coverUrl']),
+    routeSetId: jsonNullableString(json['routeSetId']),
+    wallZone: jsonNullableString(json['wallZone']),
+    videoUrl: jsonNullableString(json['videoUrl']),
+    caption: jsonNullableString(json['caption']),
+    visibility: jsonNullableString(json['visibility']) ?? 'public',
+    points: jsonModelList(json['points'], RoutePoint.fromJson),
+  );
   const RouteSubmissionDraft({
     required this.clientRequestId,
     required this.gymId,
@@ -111,12 +129,14 @@ class RouteSubmission {
     this.publishedRouteId,
     this.sendId,
     this.videoModerationStatus,
+    this.growth,
   });
 
   factory RouteSubmission.fromJson(JsonMap json) {
     final send = json['send'];
     final sendJson = send is Map<String, dynamic> ? send : null;
     return RouteSubmission(
+      growth: GrowthSnapshot.optional(json['growth']),
       id: jsonString(json['id'], field: 'id'),
       submitterId: jsonString(json['submitter_id'], field: 'submitter_id'),
       gymId: jsonString(json['gym_id'], field: 'gym_id'),
@@ -161,6 +181,7 @@ class RouteSubmission {
   final String? publishedRouteId;
   final String? sendId;
   final String? videoModerationStatus;
+  final GrowthSnapshot? growth;
 
   bool get isPending => status == 'pending';
   bool get isApproved => status == 'approved';

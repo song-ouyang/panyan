@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/config/app_config.dart';
 import '../core/network/api_client.dart';
+import '../core/repositories/growth_repository.dart';
 import '../features/auth/application/session_controller.dart';
 import '../features/auth/data/auth_repository.dart';
 import '../features/auth/data/native_auth_service.dart';
@@ -187,6 +188,7 @@ class _WanpanDependencies {
     router.dispose();
     notifications.dispose();
     cityController.dispose();
+    GrowthRepository.disposeFor(api);
     api.dispose();
     onboarding.dispose();
     session.dispose();

@@ -24,11 +24,10 @@
 .big {
   width: 104rpx;
   height: 104rpx;
-  margin-right: 22rpx;
+  display: block;
   border-radius: 50%;
-  border: 5rpx solid #fff;
-  border-color: #f0f0ed;
-  box-shadow: 0 4rpx 14rpx rgba(17, 24, 39, .08);
+  border: 0;
+  box-shadow: none;
 }
 
 .profile-name {
@@ -714,3 +713,13 @@
   .progress-chart .bar,
   .progress-chart.is-revealed .bar { transition: none; }
 }
+
+
+.account-avatar-ring{position:relative;padding:6rpx;margin-right:18rpx;border:3rpx solid #e9dcc7;border-radius:50%;flex-shrink:0;background:#fffdf7}
+.account-avatar-ring.is-earned::after{content:"";position:absolute;inset:3rpx;border:2rpx solid;border-color:inherit;border-radius:50%;opacity:.35;pointer-events:none}
+.account-avatar-ring.is-new{padding:0;border-width:2rpx}
+.profile-name-row{display:flex;align-items:center;gap:8rpx;min-width:0}
+.profile-name{min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.account-level-trigger{display:flex;align-items:center;justify-content:center;min-height:44px;min-width:44px;flex-shrink:0}
+.account-level-pill{display:flex;align-items:center;justify-content:center;min-height:44rpx;min-width:80rpx;padding:0 10rpx;box-sizing:border-box;border:2rpx solid #e9dcc7;border-radius:99rpx;background:#fffdf7;font-size:22rpx;font-weight:800;line-height:1.2}
+.profile-edit{min-height:44px;min-width:44px}

@@ -21,7 +21,7 @@ Future<bool> showWanpanDeletePostConfirmation(
             const SizedBox(height: 8),
             Text(
               isCheckin
-                  ? '这条完攀记录及动态中的点赞、评论会一并删除，攀岩日历和成绩统计也会更新。线路仍会保留，删除后无法恢复。'
+                  ? '这条完攀记录及动态中的点赞、评论会一并删除，攀岩日历、成绩统计和账户成长进度也会更新，对应徽章可能撤回。线路仍会保留，删除后无法恢复。'
                   : '这条动态及其点赞、评论会一并删除，删除后无法恢复。',
               style: Theme.of(context).textTheme.bodyMedium,
             ),

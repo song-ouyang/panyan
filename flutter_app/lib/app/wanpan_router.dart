@@ -32,6 +32,7 @@ import '../features/profile/invite_friends_screen.dart';
 import '../features/profile/my_posts_screen.dart';
 import '../features/profile/my_activity_screen.dart';
 import '../features/profile/profile_screen.dart';
+import '../features/growth/growth_screen.dart';
 import '../features/profile/public_profile_screen.dart';
 import '../features/profile/route_submissions_screen.dart';
 import '../features/profile/settings_screen.dart';
@@ -230,6 +231,11 @@ GoRouter createWanpanRouter({
             ],
           ),
         ],
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: '/profile/badges',
+        builder: (context, state) => GrowthScreen(api: api, session: session),
       ),
       GoRoute(
         parentNavigatorKey: rootNavigatorKey,

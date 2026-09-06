@@ -1,0 +1,43 @@
+{
+  "size": [
+    512,
+    512
+  ],
+  "fps": 60,
+  "frames": 66,
+  "durationSeconds": 1.1,
+  "loop": false,
+  "transparent": false,
+  "embeddedText": false,
+  "stableFrame": 54,
+  "reducedMotionFrame": 65,
+  "assetStatus": "concept cream-matte raster; native elliptical mask; needs transparent or layered vector art for production integration",
+  "mainImage": "badge-main.png",
+  "imageSize": [
+    1254,
+    1254
+  ],
+  "officialRoute": "/wanpan-levels/scene-1",
+  "beats": [
+    {
+      "seconds": 0,
+      "description": "徽章以 0.68 倍、-10 度、低位开始出现"
+    },
+    {
+      "seconds": 0.1167,
+      "description": "主图完全显现；结果可立即读到"
+    },
+    {
+      "seconds": 0.45,
+      "description": "1.06 倍轻量峰值，稀疏圆点和星屑陪衬"
+    },
+    {
+      "seconds": 0.9,
+      "description": "主图稳定，圆环与粒子已经全部消失"
+    },
+    {
+      "seconds": 1.1,
+      "description": "播放结束；产品保持结果直到明确关闭"
+    }
+  ]
+}

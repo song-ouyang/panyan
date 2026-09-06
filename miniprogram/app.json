@@ -37,13 +37,45 @@
     "backgroundColor": "#FFFFFF",
     "borderStyle": "white",
     "list": [
-      { "pagePath": "pages/gyms/index", "text": "岩馆", "iconPath": "assets/icons/gym.png", "selectedIconPath": "assets/icons/gym-active.png" },
-      { "pagePath": "pages/feed/index", "text": "广场", "iconPath": "assets/icons/feed.png", "selectedIconPath": "assets/icons/feed-active.png" },
-      { "pagePath": "pages/ranking/index", "text": "排行", "iconPath": "assets/icons/ranking.png", "selectedIconPath": "assets/icons/ranking-active.png" },
-      { "pagePath": "pages/profile/index", "text": "我的", "iconPath": "assets/icons/profile.png", "selectedIconPath": "assets/icons/profile-active.png" }
+      {
+        "pagePath": "pages/gyms/index",
+        "text": "岩馆",
+        "iconPath": "assets/icons/gym.png",
+        "selectedIconPath": "assets/icons/gym-active.png"
+      },
+      {
+        "pagePath": "pages/feed/index",
+        "text": "广场",
+        "iconPath": "assets/icons/feed.png",
+        "selectedIconPath": "assets/icons/feed-active.png"
+      },
+      {
+        "pagePath": "pages/ranking/index",
+        "text": "排行",
+        "iconPath": "assets/icons/ranking.png",
+        "selectedIconPath": "assets/icons/ranking-active.png"
+      },
+      {
+        "pagePath": "pages/profile/index",
+        "text": "我的",
+        "iconPath": "assets/icons/profile.png",
+        "selectedIconPath": "assets/icons/profile-active.png"
+      }
     ]
   },
-  "networkTimeout": { "request": 15000, "uploadFile": 120000 },
+  "networkTimeout": {
+    "request": 15000,
+    "uploadFile": 120000
+  },
   "lazyCodeLoading": "requiredComponents",
-  "sitemapLocation": "sitemap.json"
+  "sitemapLocation": "sitemap.json",
+  "subPackages": [
+    {
+      "root": "growth",
+      "pages": [
+        "pages/badges/index",
+        "pages/earned/index"
+      ]
+    }
+  ]
 }

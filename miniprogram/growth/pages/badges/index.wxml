@@ -1,0 +1,22 @@
+<view class="page badges-page">
+  <view wx:if="{{guest}}" class="state"><view class="title">登录后收藏你的热爱</view><view class="copy">等级与徽章会跟随你的完攀记录积累。</view><button class="primary" bindtap="signIn">登录查看</button></view>
+  <view wx:elif="{{loading && !growth}}" class="state" role="status">正在打开徽章册…</view>
+  <view wx:if="{{error}}" class="error" role="alert"><text>{{error}}</text><button size="mini" bindtap="load">重试</button></view>
+  <block wx:if="{{growth}}">
+    <view class="level-summary"><account-badge level="{{growth.currentLevel}}" size="220"/><view class="level-copy"><view class="eyebrow">账户等级</view><view class="title">Lv.{{growth.currentLevel}} {{growth.levelName}}</view><view class="copy">{{growth.currentLevel ? '每次上墙，都算数。' : '从第一次完攀，点亮第一枚徽章。'}}</view></view></view>
+    <view class="progress-card">
+      <view class="subtitle">{{growth.nextLevel ? '下一站 · Lv.' + growth.nextLevel.level + ' ' + growth.nextLevel.name : '当前最高等级 · 热爱成章'}}</view>
+      <view class="metric"><text>累计有效攀爬日</text><text>{{growth.climbingDays}} 天{{growth.nextLevel ? ' / ' + growth.nextLevel.days + ' 天' : ''}}</text></view>
+      <view class="track"><view class="fill days" style="width:{{growth.daysPercent}}%"></view></view>
+      <view class="metric"><text>累计不同线路</text><text>{{growth.uniqueRoutes}} 条{{growth.nextLevel ? ' / ' + growth.nextLevel.routes + ' 条' : ''}}</text></view>
+      <view class="track"><view class="fill" style="width:{{growth.routesPercent}}%"></view></view>
+      <view class="copy" wx:if="{{growth.nextLevel}}">还需 {{growth.remainingDays}} 天、{{growth.remainingRoutes}} 条，双项达标即可升级。</view>
+      <view class="copy" wx:else>你已点亮全部账户等级徽章，继续收集上墙的好时光。</view>
+    </view>
+    <view class="collection-heading">我的徽章 <text>Lv.1 — Lv.10</text></view>
+    <view class="badge-grid"><view wx:for="{{badges}}" wx:key="badgeKey" class="badge-cell {{item.status}}" bindtap="openBadge" data-level="{{item.level}}" role="button" aria-label="Lv.{{item.level}} {{item.name}}，{{item.statusLabel}}，需要{{item.days}}天和{{item.routes}}条不同线路">
+      <account-badge level="{{item.level}}" size="180" muted="{{item.status !== 'earned'}}"/><view class="badge-name">Lv.{{item.level}} {{item.name}}</view><view class="badge-status">{{item.statusLabel}}</view><view class="badge-requirement">{{item.days}} 天 · {{item.routes}} 条</view>
+    </view></view>
+    <view class="rules"><view class="subtitle">热爱慢慢积累，休息不会降级</view><view>同一天多条线路计 1 个攀爬日；同一线路跨日可增加攀爬日，不重复增加线路数。两项同时达标才会升级，账户 Lv 与线路 V 难度分别计算。</view><view>历史等级根据仍保留的有效完攀记录计算。删除完攀会更新成长进度；相应徽章可能撤回，重新达标可恢复。私密完攀也计入。</view></view>
+  </block>
+</view>

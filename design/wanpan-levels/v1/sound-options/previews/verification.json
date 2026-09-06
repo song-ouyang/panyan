@@ -1,0 +1,68 @@
+{
+  "initial": "idle",
+  "image": {
+    "complete": true,
+    "width": 650
+  },
+  "sounds": [
+    {
+      "id": "A",
+      "playing": "playing",
+      "end": "ended"
+    },
+    {
+      "id": "B",
+      "playing": "playing",
+      "end": "ended"
+    },
+    {
+      "id": "C",
+      "playing": "playing",
+      "end": "ended"
+    },
+    {
+      "id": "D",
+      "playing": "playing",
+      "end": "ended"
+    }
+  ],
+  "rapidSwitch": {
+    "state": "playing",
+    "selected": "D"
+  },
+  "reduced": {
+    "state": "playing",
+    "animation": "none"
+  },
+  "muted": {
+    "label": "静音",
+    "gain": 0.0001265470200451091
+  },
+  "systemReduced": {
+    "state": "playing",
+    "animation": "none"
+  },
+  "width360": {
+    "innerWidth": 328,
+    "scrollWidth": 328
+  },
+  "width320": {
+    "innerWidth": 288,
+    "scrollWidth": 288
+  },
+  "audio": {
+    "started": 10,
+    "stopped": 5,
+    "maxActive": 1,
+    "active": 0
+  },
+  "pagehideReplay": "playing",
+  "errors": [],
+  "failure": {
+    "state": "error",
+    "status": "音频播放失败，请点此重试",
+    "button": "点此重试 · A",
+    "animation": "none"
+  },
+  "fragmentSha256": "9ea844e0cd374c41121393d77f9b40892acc2fcc7eaeee66f213283ce3639bde"
+}

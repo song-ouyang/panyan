@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:math';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -11,6 +10,10 @@ import 'package:video_player/video_player.dart';
 import '../../app/wanpan_theme.dart';
 import '../../core/models/gym_models.dart';
 import '../../core/models/route_submission_models.dart';
+import '../../core/models/growth_models.dart';
+import '../../core/repositories/growth_repository.dart';
+import '../../core/services/publication_request_draft.dart';
+import '../growth/badge_celebration.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
 import '../../core/preferences/gym_selection_store.dart';
@@ -78,7 +81,13 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
   late final GymRepository _gymRepository;
   late final RouteSubmissionRepository _submissionRepository;
   late final ImagePicker _picker;
-  late final String _clientRequestId;
+  late final _growth = GrowthRepository.forSession(widget.api, widget.session);
+  PublicationRequestDraft? _requestDraft;
+  late final Future<void> _draftReady;
+  late String? _sessionToken;
+  GrowthPresentation? _growthPresentation;
+  bool _resolvingGrowth = false;
+  bool _growthFailed = false;
   final _nameController = TextEditingController();
   final _colorController = TextEditingController();
   final _captionController = TextEditingController();
@@ -104,6 +113,7 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
   String _visibility = 'public';
 
   bool _submitting = false;
+  bool get _formLocked => _submitting || _requestDraft?.payload != null;
   double _progress = 0;
   String _stage = '';
   bool _published = false;
@@ -123,13 +133,71 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
     _ownsMotionSoundPlayer = widget.motionSoundPlayer == null;
     _motionSoundPlayer =
         widget.motionSoundPlayer ?? WanpanAssetMotionSoundPlayer();
-    _clientRequestId = _newUuidV4();
+    _sessionToken = widget.session.token;
+    widget.session.addListener(_sessionChanged);
+    _draftReady = _restoreDraft();
     final initialGymId = widget.initialGymId?.trim();
     if (initialGymId != null && initialGymId.isNotEmpty) {
       _gymId = initialGymId;
       _loadGymDetail(initialGymId, rememberSelection: true);
     }
     _loadGyms();
+  }
+
+  Future<void> _restoreDraft() async {
+    final owner = widget.session.user?.id;
+    if (owner == null) return;
+    final token = widget.session.token;
+    try {
+      final draft = await PublicationRequestDraft.load(
+        ownerId: owner,
+        kind: 'submission',
+        target: 'new',
+      );
+      if (!mounted || widget.session.token != token) {
+        await draft.clear();
+        return;
+      }
+      _requestDraft = draft;
+      final payload = draft.payload;
+      if (payload != null) {
+        final saved = RouteSubmissionDraft.fromJson(payload);
+        setState(() {
+          _gymId = saved.gymId;
+          _routeSetId = saved.routeSetId;
+          _nameController.text = saved.name;
+          _colorController.text = saved.color;
+          _captionController.text = saved.caption ?? '';
+          _grade = saved.grade;
+          _visibility = saved.visibility;
+        });
+        await _loadGymDetail(saved.gymId);
+      }
+    } catch (_) {
+      /* Submit retries durable draft loading. */
+    }
+  }
+
+  void _sessionChanged() {
+    if (_sessionToken == widget.session.token) return;
+    _sessionToken = widget.session.token;
+    final draft = _requestDraft;
+    _requestDraft = null;
+    if (draft != null) unawaited(draft.clear().catchError((Object _) {}));
+    _successHapticTimer?.cancel();
+    unawaited(_motionSoundPlayer.stop());
+    if (mounted) {
+      setState(() {
+        _published = false;
+        _growthPresentation = null;
+        _submitting = false;
+        _video = null;
+        _cover = null;
+        _nameController.clear();
+        _captionController.clear();
+      });
+      _notice('登录账号已切换，请重新提交');
+    }
   }
 
   @override
@@ -145,6 +213,7 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
 
   @override
   void dispose() {
+    widget.session.removeListener(_sessionChanged);
     _successHapticTimer?.cancel();
     _nameController.dispose();
     _colorController.dispose();
@@ -423,6 +492,11 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
   }
 
   void _addPoint(Offset normalized) {
+    if (_formLocked) return;
+    if (_points.length >= 80) {
+      _notice('最多标记 80 个线路点');
+      return;
+    }
     HapticFeedback.selectionClick();
     setState(() {
       _points = [
@@ -449,6 +523,7 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
   }
 
   String? _validationMessage() {
+    if (_points.length > 80) return '最多标记 80 个线路点，请移除多余标点';
     if (!widget.session.isAuthenticated) return '请先完成登录，再发布线路';
     if (_gymId == null) return '先选择这条线路所在的岩馆';
     if (_loadingGymDetail) return '正在读取岩馆信息，请稍候';
@@ -469,7 +544,9 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
   Future<void> _submit() async {
     if (_submitting) return;
     FocusManager.instance.primaryFocus?.unfocus();
-    final validationMessage = _validationMessage();
+    final validationMessage = _requestDraft?.payload == null
+        ? _validationMessage()
+        : null;
     if (validationMessage != null) {
       _notice(validationMessage);
       return;
@@ -477,12 +554,15 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
 
     final selectedCover = _cover;
     final authorId = widget.session.user?.id;
+    final token = widget.session.token;
+    final generation = _growth.sessionGeneration;
     final selectedVideo = _video;
     final name = _nameController.text;
     final color = _colorController.text;
     final caption = _captionController.text.trim();
     final visibility = _visibility;
-    final gymId = _gymId!;
+    final gymId = _gymId ?? _requestDraft?.payload?['gymId'] as String?;
+    if (gymId == null) return;
     final routeSetId = _routeSetId;
     final grade = _grade;
     final points = selectedCover == null
@@ -501,12 +581,21 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
           : '正在发布线路…';
     });
     try {
-      String? coverUrl;
-      if (selectedCover != null) {
+      await _draftReady;
+      if (!mounted ||
+          authorId != widget.session.user?.id ||
+          widget.session.token != token) {
+        return;
+      }
+      if (_requestDraft == null) await _restoreDraft();
+      final requestDraft = _requestDraft;
+      if (requestDraft == null) throw StateError('提交草稿未保存，请重试');
+      String? coverUrl = requestDraft.payload?['coverUrl'] as String?;
+      if (requestDraft.payload == null && selectedCover != null) {
         coverUrl = await _submissionRepository.uploadCover(
           selectedCover.path,
           onProgress: (progress) {
-            if (mounted) {
+            if (mounted && widget.session.token == token) {
               setState(
                 () =>
                     _progress = progress * (selectedVideo == null ? .82 : .42),
@@ -515,16 +604,16 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
           },
         );
       }
-      if (!mounted) return;
+      if (!mounted || widget.session.token != token) return;
 
-      String? videoUrl;
+      String? videoUrl = requestDraft.payload?['videoUrl'] as String?;
       if (widget.session.user?.id != authorId) {
         throw const ApiException(
           code: 'UPLOAD_SESSION_CHANGED',
           message: '登录账号已切换，请重新提交',
         );
       }
-      if (selectedVideo != null) {
+      if (requestDraft.payload == null && selectedVideo != null) {
         setState(() {
           _stage = '正在上传首条完攀视频…';
           _progress = videoStart;
@@ -532,7 +621,7 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
         videoUrl = await _submissionRepository.uploadVideo(
           selectedVideo.path,
           onPhaseChanged: (phase) {
-            if (!mounted) return;
+            if (!mounted || widget.session.token != token) return;
             setState(() {
               _stage = phase == VideoUploadPhase.preparing
                   ? '正在压缩完攀视频…'
@@ -543,7 +632,7 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
             });
           },
           onProgress: (progress) {
-            if (!mounted) return;
+            if (!mounted || widget.session.token != token) return;
             final preparing = _stage == '正在压缩完攀视频…';
             setState(
               () => _progress = preparing
@@ -552,7 +641,7 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
             );
           },
         );
-        if (!mounted) return;
+        if (!mounted || widget.session.token != token) return;
       }
 
       setState(() {
@@ -565,9 +654,9 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
           message: '登录账号已切换，请重新提交',
         );
       }
-      await _submissionRepository.create(
+      await requestDraft.freeze(
         RouteSubmissionDraft(
-          clientRequestId: _clientRequestId,
+          clientRequestId: requestDraft.id,
           gymId: gymId,
           routeSetId: routeSetId,
           name: name,
@@ -578,18 +667,41 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
           videoUrl: videoUrl,
           caption: selectedVideo == null ? null : caption,
           visibility: visibility,
+        ).toJson(),
+      );
+      if (!mounted || widget.session.token != token) return;
+      final saved = await widget.api.inSession(
+        token!,
+        () => _submissionRepository.create(
+          RouteSubmissionDraft.fromJson(requestDraft.payload!),
         ),
       );
-      if (!mounted) return;
+      if (!mounted ||
+          widget.session.token != token ||
+          !_growth.isCurrentSession(generation)) {
+        return;
+      }
+      _growth.acceptSnapshot(saved.growth, generation: generation);
+      unawaited(requestDraft.clear().catchError((Object _) {}));
       WanpanNotice.dismiss(context);
       setState(() {
         _progress = 1;
         _submitting = false;
         _stage = '';
         _published = true;
+        _resolvingGrowth =
+            saved.growth != null && requestDraft.payload?['videoUrl'] != null;
       });
+      if (_resolvingGrowth) unawaited(_consumeGrowth());
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted || widget.session.token != token) return;
+      if (error is ApiException &&
+          [400, 404, 413, 422].contains(error.statusCode)) {
+        try {
+          await _requestDraft?.unlockAfterRejection();
+        } catch (_) {}
+        if (!mounted || widget.session.token != token) return;
+      }
       final message = error is ApiException
           ? error.message
           : error is VideoPreparationException
@@ -597,12 +709,34 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
           : '发布没有完成，请稍后重试';
       _notice(message);
     } finally {
-      if (mounted && !_published) {
+      if (mounted && widget.session.token == token && !_published) {
         setState(() {
           _submitting = false;
           _progress = 0;
           _stage = '';
         });
+      }
+    }
+  }
+
+  Future<void> _consumeGrowth() async {
+    final generation = _growth.sessionGeneration;
+    setState(() {
+      _resolvingGrowth = true;
+      _growthFailed = false;
+    });
+    try {
+      final presentation = await _growth.consumePresentation();
+      if (mounted && _growth.isCurrentSession(generation)) {
+        setState(() => _growthPresentation = presentation);
+      }
+    } catch (_) {
+      if (mounted && _growth.isCurrentSession(generation)) {
+        setState(() => _growthFailed = true);
+      }
+    } finally {
+      if (mounted && _growth.isCurrentSession(generation)) {
+        setState(() => _resolvingGrowth = false);
       }
     }
   }
@@ -647,8 +781,52 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_published && (_resolvingGrowth || _growthPresentation != null)) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('线路已发布')),
+        body: SafeArea(
+          child: ListView(
+            padding: const EdgeInsets.all(24),
+            children: [
+              if (_growthPresentation != null)
+                BadgeCelebrationContent(
+                  presentation: _growthPresentation!,
+                  soundPlayer: _motionSoundPlayer,
+                )
+              else
+                const Padding(
+                  padding: EdgeInsets.all(40),
+                  child: Icon(
+                    Icons.check_circle_rounded,
+                    size: 86,
+                    color: WanpanColors.success,
+                  ),
+                ),
+              const SizedBox(height: 16),
+              const Text('线路与完攀记录已保存', textAlign: TextAlign.center),
+              if (_resolvingGrowth)
+                const Padding(
+                  padding: EdgeInsets.all(12),
+                  child: Text('正在同步徽章…', textAlign: TextAlign.center),
+                ),
+              if (_growthFailed)
+                TextButton(
+                  onPressed: _consumeGrowth,
+                  child: const Text('徽章同步失败，重试'),
+                ),
+              const SizedBox(height: 24),
+              WanpanButton(
+                label: '完成并返回',
+                onPressed: () => Navigator.of(context).pop(true),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     if (_published) {
       return _RoutePublishedSuccessView(
+        onGrowthRetry: _growthFailed ? _consumeGrowth : null,
         onAnimationPresented: _handleSuccessAnimationPresented,
         onDone: () => Navigator.of(context).pop(true),
       );
@@ -682,7 +860,7 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
                       _selectedGym!.address,
                     ].join(' · '),
               loading: _loadingGyms && _selectedGym == null,
-              onTap: _submitting ? null : _openGymPicker,
+              onTap: _formLocked ? null : _openGymPicker,
             ),
             if (_gymLoadError != null && _gyms.isEmpty) ...[
               const SizedBox(height: 8),
@@ -712,7 +890,7 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
                         flex: 3,
                         child: WanpanGradePicker(
                           value: _grade,
-                          onChanged: _submitting
+                          onChanged: _formLocked
                               ? null
                               : (value) => setState(() => _grade = value),
                         ),
@@ -722,7 +900,7 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
                         flex: 5,
                         child: TextField(
                           controller: _colorController,
-                          enabled: !_submitting,
+                          enabled: !_formLocked,
                           maxLength: 24,
                           textInputAction: TextInputAction.next,
                           decoration: const InputDecoration(
@@ -742,7 +920,7 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
                         for (final color in _suggestedColors) ...[
                           ActionChip(
                             label: Text(color),
-                            onPressed: _submitting
+                            onPressed: _formLocked
                                 ? null
                                 : () {
                                     _colorController.text = color;
@@ -757,7 +935,7 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
                   const SizedBox(height: 12),
                   TextField(
                     controller: _nameController,
-                    enabled: !_submitting,
+                    enabled: !_formLocked,
                     maxLength: 80,
                     textInputAction: TextInputAction.done,
                     decoration: const InputDecoration(
@@ -779,7 +957,7 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
             const SizedBox(height: 12),
             if (_cover == null || _coverSize == null)
               _PhotoPlaceholder(
-                onTap: _submitting ? null : _showImageSourcePicker,
+                onTap: _formLocked ? null : _showImageSourcePicker,
               )
             else ...[
               _RoutePointEditor(
@@ -787,7 +965,7 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
                 imageSize: _coverSize!,
                 points: _points,
                 selectedType: _pointType,
-                enabled: !_submitting,
+                enabled: !_formLocked,
                 onPointAdded: _addPoint,
               ),
               const SizedBox(height: 12),
@@ -796,12 +974,12 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   TextButton.icon(
-                    onPressed: _submitting ? null : _showImageSourcePicker,
+                    onPressed: _formLocked ? null : _showImageSourcePicker,
                     icon: const Icon(Icons.photo_outlined),
                     label: const Text('更换照片'),
                   ),
                   TextButton.icon(
-                    onPressed: _submitting ? null : _removeImage,
+                    onPressed: _formLocked ? null : _removeImage,
                     icon: const Icon(Icons.close_rounded),
                     label: const Text('移除照片'),
                   ),
@@ -821,7 +999,7 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
                         avatar: Icon(type.icon, size: 17),
                         label: Text(type.label),
                         selected: _pointType == type,
-                        onSelected: _submitting
+                        onSelected: _formLocked
                             ? null
                             : (_) {
                                 HapticFeedback.selectionClick();
@@ -835,14 +1013,14 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
               Row(
                 children: [
                   TextButton(
-                    onPressed: _submitting || _points.isEmpty
+                    onPressed: _formLocked || _points.isEmpty
                         ? null
                         : _undoPoint,
                     child: const Text('撤销上一步'),
                   ),
                   const Spacer(),
                   TextButton(
-                    onPressed: _submitting || _points.isEmpty
+                    onPressed: _formLocked || _points.isEmpty
                         ? null
                         : _clearPoints,
                     child: const Text('清空标点'),
@@ -867,13 +1045,13 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
               child: _video == null
                   ? _VideoPlaceholder(
                       key: const ValueKey('video-placeholder'),
-                      onTap: _submitting ? null : _showVideoSourcePicker,
+                      onTap: _formLocked ? null : _showVideoSourcePicker,
                     )
                   : widget.localVideoPreviewBuilder?.call(File(_video!.path)) ??
                         _LocalVideoPreview(
                           key: ValueKey(_video!.path),
                           file: File(_video!.path),
-                          enabled: !_submitting,
+                          enabled: !_formLocked,
                           onReplace: _showVideoSourcePicker,
                           onRemove: _removeVideo,
                         ),
@@ -882,7 +1060,7 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
               const SizedBox(height: 14),
               TextField(
                 controller: _captionController,
-                enabled: !_submitting,
+                enabled: !_formLocked,
                 minLines: 2,
                 maxLines: 4,
                 maxLength: 300,
@@ -895,7 +1073,7 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
               const SizedBox(height: 10),
               _VisibilityPicker(
                 value: _visibility,
-                enabled: !_submitting,
+                enabled: !_formLocked,
                 onChanged: (value) {
                   HapticFeedback.selectionClick();
                   setState(() => _visibility = value);
@@ -903,6 +1081,11 @@ class _RouteSubmissionScreenState extends State<RouteSubmissionScreen> {
               ),
             ],
             const SizedBox(height: 26),
+            if (_requestDraft?.payload != null && !_submitting)
+              const Padding(
+                padding: EdgeInsets.only(bottom: 12),
+                child: Text('上次发布还未确认，重试将继续保存同一份线路与完攀记录。'),
+              ),
             if (_submitting) ...[
               Row(
                 children: [
@@ -938,8 +1121,10 @@ class _RoutePublishedSuccessView extends StatefulWidget {
   const _RoutePublishedSuccessView({
     required this.onAnimationPresented,
     required this.onDone,
+    this.onGrowthRetry,
   });
 
+  final VoidCallback? onGrowthRetry;
   final WanpanLottiePresented onAnimationPresented;
   final VoidCallback onDone;
 
@@ -987,6 +1172,14 @@ class _RoutePublishedSuccessViewState
                 ),
               ),
             ),
+            if (widget.onGrowthRetry != null)
+              Align(
+                alignment: Alignment.topCenter,
+                child: TextButton(
+                  onPressed: widget.onGrowthRetry,
+                  child: const Text('记录已保存，徽章同步失败 · 重试'),
+                ),
+              ),
             Align(
               alignment: Alignment.bottomCenter,
               child: AnimatedSwitcher(
@@ -1035,19 +1228,6 @@ class _RoutePublishedSuccessViewState
       ),
     ),
   );
-}
-
-String _newUuidV4() {
-  final random = Random.secure();
-  final bytes = List<int>.generate(16, (_) => random.nextInt(256));
-  bytes[6] = (bytes[6] & 0x0f) | 0x40;
-  bytes[8] = (bytes[8] & 0x3f) | 0x80;
-  final hex = bytes
-      .map((value) => value.toRadixString(16).padLeft(2, '0'))
-      .join();
-  return '${hex.substring(0, 8)}-${hex.substring(8, 12)}-'
-      '${hex.substring(12, 16)}-${hex.substring(16, 20)}-'
-      '${hex.substring(20)}';
 }
 
 class _SectionTitle extends StatelessWidget {

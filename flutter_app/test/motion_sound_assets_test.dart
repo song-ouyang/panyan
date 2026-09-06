@@ -18,7 +18,9 @@ void main() {
           AppAssets.rankingEncouragementSound,
     };
 
-    for (final cue in WanpanMotionSoundCue.values) {
+    for (final cue in WanpanMotionSoundCue.values.where(
+      (cue) => cue != WanpanMotionSoundCue.badgeEarned,
+    )) {
       final asset = cue.asset;
       expect(asset, appAssets[cue]);
       final bytes = await rootBundle.load(asset);
@@ -58,7 +60,9 @@ void main() {
     };
     List<int>? selectedDPattern;
 
-    for (final cue in WanpanMotionSoundCue.values) {
+    for (final cue in WanpanMotionSoundCue.values.where(
+      (cue) => cue != WanpanMotionSoundCue.badgeEarned,
+    )) {
       final bytes = await rootBundle.load(cue.asset);
       final sampleRate = bytes.getUint32(24, Endian.little);
       final dataSize = bytes.getUint32(40, Endian.little);

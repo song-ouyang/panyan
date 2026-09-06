@@ -3,6 +3,8 @@ const { playFeedback } = require('../../utils/sound');
 const { afterPaint, haptic, motionDuration } = require('../../utils/motion');
 const { invalidate, invalidatePrefix } = require('../../utils/page-cache');
 const social = require('../../utils/social-state');
+const growth = require('../../utils/growth');
+const drafts = require('../../utils/completion-draft');
 
 const PHASE_COPY_DELAY = 80;
 const UPLOAD_COPY = {
@@ -33,6 +35,9 @@ Page({
     moderationStatus: '',
     sendId: '',
     milestone: null,
+    accountGrowth: null,
+    badgePresented: false,
+    draftLocked: false,
     pointsEarned: 0,
     pendingPoints: 0
   },
@@ -42,18 +47,23 @@ Page({
     this.cachedVideoUrl = '';
     this.cachedVideoOwnerId = '';
     this._disposed = false;
+    this._visible = true;
+    const userId = social.currentUserId();
+    if (userId) this.restoreDraft(userId);
   },
 
   onShow() {
+    this._visible = true;
     if ((this.data.phase === 'pendingReview' || this.data.phase === 'approvedSuccess') && !this.data.resultVisible) {
       this.beginResultMotion(this.data.phase === 'approvedSuccess');
     }
   },
 
-  onHide() { this.clearResultMotion(); },
+  onHide() { this._visible = false; this.clearResultMotion(); },
 
   onUnload() {
     this._disposed = true;
+    this._visible = false;
     this.clearResultMotion();
     this.clearPhaseTimer();
   },
@@ -63,6 +73,28 @@ Page({
       clearTimeout(this.resultEnterTimer);
       this.resultEnterTimer = null;
     }
+  },
+
+  restoreDraft(userId) {
+    this.draft = drafts.open(userId, 'checkin', this.routeId);
+    if (!this.draft.body) return;
+    this.cachedVideoUrl = this.draft.body.videoUrl || '';
+    this.cachedVideoOwnerId = userId;
+    this.setData({ videoPath: this.draft.videoPath || this.cachedVideoUrl, videoSize: this.draft.videoSize || 0, attempts: this.draft.body.attempts, caption: this.draft.body.caption || '', saveFailed: true, draftLocked: true, phase: 'saving', journeyStep: 2, stageTitle: '继续保存上次完攀', stageDescription: '保留原来的记录编号，重试不会重复计入成长。' });
+  },
+
+  newRecord() {
+    if (this.data.submitting) return;
+    wx.showModal({ title: '重新记录完攀', content: '上次保存可能已经成功。继续将新建一次完攀记录，原记录不会被删除。', confirmText: '新建记录', success: result => {
+      if (!result.confirm || this._disposed) return;
+      drafts.clear(this.draft);
+      this.draft = null;
+      this.cachedVideoUrl = '';
+      this.cachedVideoOwnerId = '';
+      const userId = social.currentUserId();
+      if (userId) this.restoreDraft(userId);
+      this.transitionPhase('idle', { videoPath: '', videoSize: 0, attempts: 1, caption: '', draftLocked: false, saveFailed: false, submitError: '' });
+    } });
   },
 
   clearPhaseTimer() {
@@ -142,6 +174,7 @@ Page({
       if (this._disposed) return;
       this.setData({ resultVisible: true }, () => {
         if (!approved) return haptic('selection');
+        if (this.data.badgePresented) return;
         const feedbackType = this.data.milestone ? 'milestone' : 'success';
         haptic(feedbackType);
         playFeedback(feedbackType);
@@ -150,7 +183,13 @@ Page({
   },
 
   chooseVideo() {
-    if (this.data.submitting) return;
+    if (this.draft && this.draft.userId !== social.currentUserId()) {
+      this.draft = null;
+      this.cachedVideoUrl = '';
+      this.cachedVideoOwnerId = '';
+      this.setData({ draftLocked: false });
+    }
+    if (this.data.submitting || this.data.draftLocked) return;
     wx.chooseMedia({
       count: 1,
       mediaType: ['video'],
@@ -177,9 +216,9 @@ Page({
 
   noop() {},
 
-  attempts(e) { this.setData({ attempts: Number(e.detail.value) || 1 }); },
+  attempts(e) { if (!this.data.draftLocked && !this.data.submitting) this.setData({ attempts: Number(e.detail.value) || 1 }); },
 
-  caption(e) { this.setData({ caption: e.detail.value }); },
+  caption(e) { if (!this.data.draftLocked && !this.data.submitting) this.setData({ caption: e.detail.value }); },
 
   primaryAction() {
     if (!this.data.videoPath) return this.chooseVideo();
@@ -199,6 +238,11 @@ Page({
 
     this.setData({ submitting: true, saveFailed: false, submitError: '' });
     try {
+      const userId = await social.identity();
+      if (this._disposed) return;
+      if (this.draft && this.draft.userId !== userId) throw new Error('登录账号已变化，请返回后重新记录');
+      if (!this.draft) this.restoreDraft(userId);
+      const owner = growth.session();
       if (!this.cachedVideoUrl) {
         await this.transitionPhase('uploading', { uploadProgress: 0, uploadStage: 'preparing' });
         if (this._disposed) return;
@@ -215,6 +259,7 @@ Page({
           }
         );
         if (this._disposed) return;
+        if (!growth.isCurrent(owner)) throw new Error('登录账号已变化，请返回后重新记录');
         this.cachedVideoUrl = uploaded.url;
         this.cachedVideoOwnerId = uploaded.ownerId;
       }
@@ -222,17 +267,23 @@ Page({
       await this.transitionPhase('saving', { uploadProgress: 100, saveFailed: false });
       if (this._disposed) return;
       if (!this.cachedVideoOwnerId) throw new Error('无法确认上传账号，请重新选择视频');
+      if (!growth.isCurrent(owner)) throw new Error('登录账号已变化，请返回后重新记录');
+      if (!this.draft.body) this.draft = drafts.save(this.draft, {
+        videoPath: this.data.videoPath, videoSize: this.data.videoSize,
+        body: { clientRequestId: this.draft.clientRequestId, operation: 'record', routeId: this.routeId, attempts: this.data.attempts, caption: this.data.caption, videoUrl: this.cachedVideoUrl, visibility: 'public' }
+      });
+      this.setData({ draftLocked: true });
       const result = await request('/sends', {
         method: 'POST',
         expectedUserId: this.cachedVideoOwnerId,
-        data: {
-          routeId: this.routeId,
-          attempts: this.data.attempts,
-          caption: this.data.caption,
-          videoUrl: this.cachedVideoUrl,
-          visibility: 'public'
-        }
+        data: this.draft.body
       });
+      if (!growth.isCurrent(owner)) {
+        if (!this._disposed) this.setData({ submitting: false, accountGrowth: null, submitError: '登录状态已变化，请重新打开页面查看保存结果' });
+        return;
+      }
+      drafts.clear(this.draft);
+      growth.accept(owner, result.growth);
       if (this._disposed) return;
 
       const moderationStatus = result.moderationStatus || (result.send && result.send.moderation_status) || 'approved';
@@ -267,6 +318,12 @@ Page({
         pointsEarned,
         pendingPoints
       });
+      const badgePresented = finalPhase === 'approvedSuccess'
+        ? await growth.presentPending(() => !this._disposed && this._visible && growth.isCurrent(owner)) : false;
+      if (this._disposed) return;
+      if (!growth.isCurrent(owner)) { this.setData({ submitting: false, accountGrowth: null }); return; }
+      this.setData({ badgePresented, accountGrowth: result.growth || null });
+      if (badgePresented) this.setData({ resultVisible: true });
       this.beginResultMotion(finalPhase === 'approvedSuccess');
     } catch (error) {
       if (this._disposed) return;
@@ -285,6 +342,8 @@ Page({
     this.clearResultMotion();
     wx.navigateBack({ delta: 1 });
   },
+
+  viewBadges() { wx.navigateTo({ url: '/growth/pages/badges/index' }); },
 
   backToGym() {
     this.clearResultMotion();

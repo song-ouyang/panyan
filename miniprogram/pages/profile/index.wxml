@@ -1,9 +1,11 @@
 <view class="page profile-page">
   <block wx:if="{{me}}">
     <view class="profile pressable" bindtap="edit" role="button" aria-label="编辑个人资料">
-      <image class="avatar big" src="{{me.avatar_url || '/assets/logo.png'}}" mode="aspectFill" lazy-load fade-in="{{false}}"/>
+      <view class="account-avatar-ring {{accountGrowth && accountGrowth.currentLevel > 0 ? 'is-earned' : 'is-new'}} pressable" style="border-color:{{accountRingColor}}" catchtap="badges" role="button" aria-label="{{accountGrowth ? '账户等级 Lv.' + accountGrowth.currentLevel + '，查看徽章' : '查看等级与徽章'}}">
+        <image class="avatar big" src="{{me.avatar_url || '/assets/logo.png'}}" mode="aspectFill" lazy-load fade-in="{{false}}"/>
+      </view>
       <view class="profile-text">
-        <view class="profile-name">{{me.nickname}}</view>
+        <view class="profile-name-row"><view class="profile-name">{{me.nickname}}</view><view class="account-level-trigger pressable" catchtap="badges" role="button" aria-label="{{accountGrowth ? '账户等级 Lv.' + accountGrowth.currentLevel + '，查看徽章' : '等级暂未加载，查看徽章'}}"><view class="account-level-pill" style="color:{{accountGrowth && accountGrowth.currentLevel > 0 ? accountRingColor : '#69777E'}};border-color:{{accountRingColor}}">{{accountGrowth ? 'Lv.' + accountGrowth.currentLevel : 'Lv.–'}}</view></view></view>
         <view class="profile-bio">{{me.bio || '保持上墙，持续成长'}}</view>
       </view>
       <text class="profile-edit">编辑 ›</text>

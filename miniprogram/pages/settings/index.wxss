@@ -1,2 +1,4 @@
 .menu{display:flex;justify-content:space-between}.danger{color:#c33}.tip{color:#8b837b;font-size:23rpx;line-height:1.7;margin:30rpx 12rpx}
 
+
+.sound-note{font-size:22rpx;color:#69777e;margin-top:8rpx}.menu{align-items:center}

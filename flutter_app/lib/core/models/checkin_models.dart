@@ -1,4 +1,5 @@
 import '../json/json_helpers.dart';
+import 'growth_models.dart';
 
 class CheckinMilestone {
   const CheckinMilestone({required this.type, required this.grade});
@@ -19,9 +20,11 @@ class CheckinResult {
     required this.pointsEarned,
     required this.pendingPoints,
     this.milestone,
+    this.growth,
   });
 
   factory CheckinResult.fromJson(JsonMap json) => CheckinResult(
+    growth: GrowthSnapshot.optional(json['growth']),
     sendId: jsonString(json['sendId'], field: 'sendId'),
     moderationStatus: jsonString(
       json['moderationStatus'],
@@ -39,6 +42,7 @@ class CheckinResult {
   final int pointsEarned;
   final int pendingPoints;
   final CheckinMilestone? milestone;
+  final GrowthSnapshot? growth;
 }
 
 class MultipartUploadTask {

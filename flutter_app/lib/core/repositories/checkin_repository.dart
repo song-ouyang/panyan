@@ -111,12 +111,16 @@ class CheckinRepository {
     String? videoUrl,
     String? caption,
     String visibility = 'public',
+    String? clientRequestId,
+    String operation = 'record',
   }) async {
     final result = CheckinResult.fromJson(
       await _apiClient.postJson(
         '/sends',
         data: {
           'routeId': routeId,
+          'clientRequestId': ?clientRequestId,
+          'operation': operation,
           'attempts': attempts,
           'videoUrl': videoUrl,
           'caption': caption,

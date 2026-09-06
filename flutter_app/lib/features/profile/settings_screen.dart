@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/wanpan_theme.dart';
 import '../../shared/widgets/wanpan_pressable.dart';
+import '../../shared/motion/badge_feedback_preferences.dart';
+import '../../shared/widgets/wanpan_notice.dart';
 import '../auth/application/session_controller.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -16,6 +18,31 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _signingOut = false;
+  final _badgeSound = BadgeFeedbackPreferences.instance;
+  @override
+  void initState() {
+    super.initState();
+    _badgeSound.addListener(_soundChanged);
+    _badgeSound.load();
+  }
+
+  void _soundChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _badgeSound.removeListener(_soundChanged);
+    super.dispose();
+  }
+
+  Future<void> _setBadgeSound(bool value) async {
+    try {
+      await _badgeSound.setEnabled(value);
+    } catch (_) {
+      if (mounted) WanpanNotice.show(context, '音效设置没有保存，请重试');
+    }
+  }
 
   Future<void> _signOut() async {
     if (_signingOut) return;
@@ -40,6 +67,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _CurrentAccount(nickname: user.nickname, avatarUrl: user.avatarUrl),
             const SizedBox(height: 26),
           ],
+          SwitchListTile.adaptive(
+            key: const Key('settings-badge-sound'),
+            contentPadding: EdgeInsets.zero,
+            title: const Text('徽章音效'),
+            subtitle: const Text('木质小阶梯 · 获得徽章和重播时播放'),
+            value: _badgeSound.enabled,
+            onChanged: _setBadgeSound,
+          ),
+          const SizedBox(height: 18),
           Text('账号', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 10),
           _SettingsTile(

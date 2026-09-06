@@ -1,4 +1,6 @@
 abstract final class AppAssets {
+  static const accountBadges = 'assets/badges/account-levels.png';
+  static const badgeEarnedSound = 'assets/sounds/badge-earned.mp3';
   static const launchBackground = 'assets/launch-background-v3.png';
   static const logo = 'assets/logo.png';
   static const mascotWelcome = 'assets/mascot-welcome.jpg';

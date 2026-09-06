@@ -20,6 +20,9 @@ import 'package:wanpan_diary/shared/widgets/wanpan_milestone_stage.dart';
 import 'package:wanpan_diary/shared/widgets/wanpan_pressable.dart';
 
 import 'support/fake_motion_sound_player.dart';
+import 'growth_repository_test.dart' as growth_fixture;
+
+import 'package:wanpan_diary/shared/widgets/wanpan_badge_stage.dart';
 
 const _config = AppConfig(
   environment: AppEnvironment.development,
@@ -30,11 +33,16 @@ const _config = AppConfig(
 class _CheckinApi extends ApiClient {
   _CheckinApi({
     this.milestoneGrade,
+    this.growth,
+    this.presentation,
     this.monthDashboard,
     this.monthDashboardFuture,
   }) : super(config: _config, accessTokenProvider: () => 'secure-token');
 
   final String? milestoneGrade;
+  final JsonMap? growth;
+  final JsonMap? presentation;
+  int consumeCount = 0;
   final JsonMap? monthDashboard;
   final Future<JsonMap>? monthDashboardFuture;
   JsonMap? submittedData;
@@ -62,9 +70,18 @@ class _CheckinApi extends ApiClient {
     Object? data,
     Map<String, dynamic>? queryParameters,
   }) async {
+    if (path == '/users/me/growth-presentations/consume') {
+      consumeCount++;
+      return {
+        'growth': growth,
+        'shouldPresent': presentation != null,
+        'presentation': presentation,
+      };
+    }
     if (path != '/sends') throw StateError('Unexpected request: $path');
     submittedData = jsonMap(data);
     return {
+      if (growth != null) 'growth': growth,
       'sendId': 'send-1',
       'moderationStatus': 'approved',
       'pointsEarned': 12,
@@ -125,6 +142,57 @@ Future<void> _settleBackgroundLoad(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets(
+    'account badge is the single main celebration with highest V as supplemental result',
+    (tester) async {
+      tester.view.physicalSize = const Size(430, 1200);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+      final session = await _signedInSession();
+      addTearDown(session.dispose);
+      final response = growth_fixture.presentationResponse();
+      final api = _CheckinApi(
+        milestoneGrade: 'V5',
+        growth: response['growth'] as JsonMap,
+        presentation: response['presentation'] as JsonMap,
+      );
+      final sounds = FakeMotionSoundPlayer();
+      await tester.pumpWidget(
+        _host(
+          api: api,
+          session: session,
+          reduceMotion: true,
+          motionSoundPlayer: sounds,
+        ),
+      );
+      await _settleBackgroundLoad(tester);
+      await tester.tap(
+        find.byWidgetPredicate(
+          (widget) => widget is WanpanButton && widget.label == '保存完攀',
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(api.consumeCount, 1);
+      expect(find.byType(WanpanBadgeStage), findsOneWidget);
+      expect(find.byType(WanpanMilestoneStage), findsNothing);
+      expect(find.byType(WanpanLottieStage), findsNothing);
+      expect(find.text('同时刷新最高难度 V5'), findsOneWidget);
+      expect(find.text('返回线路'), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 1100));
+      await tester.pumpAndSettle();
+      expect(
+        sounds.plays,
+        isEmpty,
+        reason: 'Badge audio is muted until enabled',
+      );
+      expect(api.submittedData?['clientRequestId'], isNotEmpty);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('ordinary check-in shows stable success and medium feedback', (
     tester,
   ) async {

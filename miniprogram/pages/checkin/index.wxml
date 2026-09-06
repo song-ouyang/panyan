@@ -53,8 +53,9 @@
       <text>{{saveFailed ? '视频已安全上传，只需重试保存。' : submitError}}</text>
     </view>
 
-    <view class="card field"><text>尝试次数</text><input type="number" value="{{attempts}}" bindinput="attempts" aria-label="尝试次数"/></view>
-    <view class="card"><textarea placeholder="写下这条线的感受或 Beta…" maxlength="300" bindinput="caption" aria-label="完攀感受或 Beta"/></view>
+    <view class="card field"><text>尝试次数</text><input type="number" value="{{attempts}}" bindinput="attempts" disabled="{{draftLocked || submitting}}" aria-label="尝试次数"/></view>
+    <view class="card"><textarea placeholder="写下这条线的感受或 Beta…" value="{{caption}}" maxlength="300" bindinput="caption" disabled="{{draftLocked || submitting}}" aria-label="完攀感受或 Beta"/></view>
+    <button wx:if="{{draftLocked && !submitting}}" bindtap="newRecord">新建一次完攀记录</button>
     <button
       class="primary pressable primary-action submit-button"
       disabled="{{submitting}}"
@@ -69,7 +70,7 @@
     role="status"
     aria-label="{{stageTitle}}，{{stageDescription}}"
   >
-    <view class="milestone-particles" wx:if="{{phase == 'approvedSuccess' && milestone}}" aria-hidden="true">
+    <view class="milestone-particles" wx:if="{{phase == 'approvedSuccess' && milestone && !badgePresented}}" aria-hidden="true">
       <text class="particle p1">★</text><text class="particle p2">◆</text><text class="particle p3">●</text><text class="particle p4">★</text>
       <text class="particle p5">◆</text><text class="particle p6">●</text><text class="particle p7">★</text><text class="particle p8">◆</text>
     </view>
@@ -78,7 +79,9 @@
     <view class="milestone result-item milestone-pop" wx:if="{{phase == 'approvedSuccess' && milestone}}">首次完攀 {{milestone.grade}}</view>
     <view class="points-earned result-item" wx:if="{{phase == 'approvedSuccess'}}">本次获得 +{{pointsEarned}} 分</view>
     <view class="points-pending result-item" wx:else>审核通过后 +{{pendingPoints}} 分</view>
+    <view class="result-item" wx:if="{{accountGrowth}}">账户 Lv.{{accountGrowth.currentLevel}} · {{accountGrowth.levelName}}</view>
     <button class="primary pressable primary-action result-button result-item" aria-label="查看这条线路" bindtap="viewRoute">查看这条线路</button>
     <button class="gym-link pressable result-item" aria-label="回到岩馆" bindtap="backToGym">回到岩馆</button>
+    <button wx:if="{{phase == 'approvedSuccess'}}" class="gym-link pressable result-item" bindtap="viewBadges">查看我的徽章</button>
   </view>
 </view>

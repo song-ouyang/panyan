@@ -1,14 +1,17 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/wanpan_theme.dart';
+import '../../core/repositories/growth_repository.dart';
 import '../../core/models/user_models.dart';
 import '../../core/network/api_client.dart';
 import '../auth/application/session_controller.dart';
 import '../../shared/app_assets.dart';
 import '../../shared/motion/wanpan_motion.dart';
 import '../../shared/widgets/wanpan_cartoon_icon.dart';
-import '../../shared/widgets/wanpan_cat_avatar.dart';
+import '../../shared/widgets/wanpan_level_avatar.dart';
 import '../../shared/widgets/wanpan_mascot.dart';
 import '../../shared/widgets/wanpan_pressable.dart';
 
@@ -22,7 +25,10 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  late final _growth = GrowthRepository.forSession(widget.api, widget.session);
   UserProfile? _profile;
+  bool _growthFailed = false;
+  String? _sessionToken;
   bool _loading = true;
   String? _error;
   String? _sessionUserId;
@@ -32,6 +38,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void initState() {
     super.initState();
     _sessionUserId = widget.session.user?.id;
+    _sessionToken = widget.session.token;
+    _growth.addListener(_handleGrowthChanged);
     widget.session.addListener(_handleSessionChanged);
     widget.api.climbingActivity.addListener(_handleActivityChanged);
     _load();
@@ -39,6 +47,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   void dispose() {
+    _growth.removeListener(_handleGrowthChanged);
     widget.session.removeListener(_handleSessionChanged);
     widget.api.climbingActivity.removeListener(_handleActivityChanged);
     super.dispose();
@@ -46,7 +55,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   void _handleSessionChanged() {
     final userId = widget.session.user?.id;
-    if (userId == _sessionUserId) return;
+    if (userId == _sessionUserId && _sessionToken == widget.session.token) {
+      return;
+    }
+    _sessionToken = widget.session.token;
+    _growthFailed = false;
     _sessionUserId = userId;
     ++_requestId;
     _profile = null;
@@ -61,6 +74,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  void _handleGrowthChanged() {
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _loadGrowth() async {
+    final generation = _growth.sessionGeneration;
+    if (!widget.session.isAuthenticated) return;
+    try {
+      await _growth.refresh();
+      if (mounted && _growth.isCurrentSession(generation)) {
+        setState(() => _growthFailed = false);
+      }
+    } catch (_) {
+      if (mounted && _growth.isCurrentSession(generation)) {
+        setState(() => _growthFailed = true);
+      }
+    }
+  }
+
+  Future<void> _openBadges() async {
+    await context.push<void>('/profile/badges');
+    if (mounted && widget.session.isAuthenticated) await _loadGrowth();
+  }
+
   void _handleActivityChanged() {
     if (mounted) _load();
   }
@@ -71,6 +108,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (mounted) setState(() => _loading = false);
       return;
     }
+    unawaited(_loadGrowth());
     setState(() {
       _loading = _profile == null;
       _error = null;
@@ -201,7 +239,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
           24 + MediaQuery.paddingOf(context).bottom,
         ),
         children: [
-          _ProfileHeader(profile: profile, onEdit: _openProfileEditor),
+          _ProfileHeader(
+            profile: profile,
+            onEdit: _openProfileEditor,
+            level: _growth.snapshot?.currentLevel,
+            growthFailed: _growthFailed,
+            onOpenBadges: _openBadges,
+          ),
           const SizedBox(height: 12),
           const _ActivityShortcuts(),
           const SizedBox(height: 14),
@@ -366,10 +410,19 @@ class _ActivityShortcut extends StatelessWidget {
 }
 
 class _ProfileHeader extends StatelessWidget {
-  const _ProfileHeader({required this.profile, required this.onEdit});
+  const _ProfileHeader({
+    required this.profile,
+    required this.onEdit,
+    required this.level,
+    required this.growthFailed,
+    required this.onOpenBadges,
+  });
 
   final UserProfile profile;
   final VoidCallback onEdit;
+  final int? level;
+  final bool growthFailed;
+  final VoidCallback onOpenBadges;
 
   @override
   Widget build(BuildContext context) {
@@ -388,17 +441,26 @@ class _ProfileHeader extends StatelessWidget {
           ),
           child: Row(
             children: [
-              WanpanCatAvatar(
-                diameter: compact ? 56 : 60,
-                image: user.avatarUrl == null
-                    ? null
-                    : NetworkImage(user.avatarUrl!),
-                placeholder: Text(
-                  user.nickname.isEmpty ? '岩' : user.nickname.characters.first,
-                  style: const TextStyle(
-                    fontSize: 23,
-                    fontWeight: FontWeight.w900,
-                    color: WanpanColors.coralStrong,
+              WanpanPressable(
+                key: const Key('profile-level-avatar'),
+                semanticLabel: '查看等级与徽章${level == null ? '' : '，当前 Lv.$level'}',
+                onTap: onOpenBadges,
+                borderRadius: BorderRadius.circular(40),
+                child: WanpanLevelAvatar(
+                  diameter: compact ? 60 : 64,
+                  level: level,
+                  image: user.avatarUrl == null
+                      ? null
+                      : NetworkImage(user.avatarUrl!),
+                  placeholder: Text(
+                    user.nickname.isEmpty
+                        ? '岩'
+                        : user.nickname.characters.first,
+                    style: const TextStyle(
+                      fontSize: 23,
+                      fontWeight: FontWeight.w900,
+                      color: WanpanColors.coralStrong,
+                    ),
                   ),
                 ),
               ),
@@ -415,6 +477,53 @@ class _ProfileHeader extends StatelessWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                        ),
+                        WanpanPressable(
+                          key: const Key('profile-level-pill'),
+                          semanticLabel: level == null
+                              ? '等级暂未加载，点击查看并重试'
+                              : 'Lv.$level，查看等级与徽章',
+                          onTap: onOpenBadges,
+                          borderRadius: BorderRadius.circular(22),
+                          child: Tooltip(
+                            message: growthFailed ? '进度同步失败，点击查看并重试' : '等级与徽章',
+                            excludeFromSemantics: true,
+                            child: Container(
+                              constraints: const BoxConstraints(
+                                minWidth: 44,
+                                minHeight: 44,
+                              ),
+                              alignment: Alignment.center,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                              ),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: WanpanColors.surfaceSoft,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: WanpanLevelColors.forLevel(level)
+                                        .withValues(alpha: .65),
+                                  ),
+                                ),
+                                child: Text(
+                                  level == null ? 'Lv.—' : 'Lv.$level',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    height: 1.3,
+                                    color: level == null || level == 0
+                                        ? WanpanColors.inkSecondary
+                                        : WanpanColors.ink,
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
                         ),
                         Tooltip(

@@ -6,6 +6,10 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../app/wanpan_theme.dart';
 import '../../core/models/checkin_models.dart';
+import '../../core/models/growth_models.dart';
+import '../../core/repositories/growth_repository.dart';
+import '../../core/services/publication_request_draft.dart';
+import '../../shared/widgets/wanpan_badge_stage.dart';
 import '../../core/models/profile_models.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
@@ -52,6 +56,10 @@ class _CheckinScreenState extends State<CheckinScreen> {
   late final ProfileRepository _profileRepository = ProfileRepository(
     widget.api,
   );
+  late final _growth = GrowthRepository.forSession(widget.api, widget.session);
+  PublicationRequestDraft? _draft;
+  late final Future<void> _draftReady;
+  late String? _sessionToken;
   final _picker = ImagePicker();
   final _captionController = TextEditingController();
   XFile? _video;
@@ -71,11 +79,61 @@ class _CheckinScreenState extends State<CheckinScreen> {
   @override
   void initState() {
     super.initState();
+    _sessionToken = widget.session.token;
+    widget.session.addListener(_sessionChanged);
+    _draftReady = _restoreDraft();
     _ownsMotionSoundPlayer = widget.motionSoundPlayer == null;
     _motionSoundPlayer =
         widget.motionSoundPlayer ?? WanpanAssetMotionSoundPlayer();
     if (widget.session.isAuthenticated) {
       unawaited(_prefetchCurrentMonthDashboard());
+    }
+  }
+
+  Future<void> _restoreDraft() async {
+    final owner = widget.session.user?.id;
+    if (owner == null) return;
+    final token = widget.session.token;
+    try {
+      final draft = await PublicationRequestDraft.load(
+        ownerId: owner,
+        kind: 'checkin',
+        target: widget.routeId,
+      );
+      if (!mounted || widget.session.token != token) {
+        await draft.clear();
+        return;
+      }
+      _draft = draft;
+      final payload = draft.payload;
+      if (payload != null) {
+        setState(() {
+          _attempts = payload['attempts'] as int? ?? 1;
+          _captionController.text = payload['caption'] as String? ?? '';
+          _syncToSquare = payload['visibility'] == 'public';
+        });
+      }
+    } catch (_) {
+      /* Submit retries durable draft loading. */
+    }
+  }
+
+  void _sessionChanged() {
+    if (_sessionToken == widget.session.token) return;
+    _sessionToken = widget.session.token;
+    final draft = _draft;
+    _draft = null;
+    if (draft != null) unawaited(draft.clear().catchError((Object _) {}));
+    unawaited(_motionSoundPlayer.stop());
+    if (mounted) {
+      setState(() {
+        _result = null;
+        _video = null;
+        _captionController.clear();
+        _submitting = false;
+        _currentMonthDashboard = null;
+      });
+      _toast('登录账号已切换，请重新提交');
     }
   }
 
@@ -109,6 +167,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
 
   @override
   void dispose() {
+    widget.session.removeListener(_sessionChanged);
     _captionController.dispose();
     if (_ownsMotionSoundPlayer) {
       unawaited(_motionSoundPlayer.dispose());
@@ -170,6 +229,8 @@ class _CheckinScreenState extends State<CheckinScreen> {
     // controllers if the widget lifecycle changes unexpectedly.
     final selectedVideo = _video;
     final authorId = widget.session.user?.id;
+    final token = widget.session.token;
+    final generation = _growth.sessionGeneration;
     final attempts = _attempts;
     final caption = _captionController.text.trim();
     final visibility = _syncToSquare ? 'public' : 'friends';
@@ -180,13 +241,24 @@ class _CheckinScreenState extends State<CheckinScreen> {
       _stage = selectedVideo == null ? '正在保存打卡…' : '视频上传中…';
     });
     try {
-      String? videoUrl;
-      if (selectedVideo != null) {
+      await _draftReady;
+      if (!mounted ||
+          authorId != widget.session.user?.id ||
+          widget.session.token != token) {
+        return;
+      }
+      if (_draft == null) await _restoreDraft();
+      final draft = _draft;
+      if (draft == null) throw StateError('提交草稿未保存，请重试');
+      String? videoUrl = draft.payload?['videoUrl'] as String?;
+      if (draft.payload == null && selectedVideo != null) {
         videoUrl = await _repository.uploadVideo(
           selectedVideo.path,
-          onProgress: _onProgress,
+          onProgress: (progress) {
+            if (widget.session.token == token) _onProgress(progress);
+          },
           onPhaseChanged: (phase) {
-            if (!mounted) return;
+            if (!mounted || widget.session.token != token) return;
             setState(() {
               _preparingVideo = phase == VideoUploadPhase.preparing;
               _uploading = phase == VideoUploadPhase.uploading;
@@ -196,7 +268,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
           },
         );
       }
-      if (mounted) {
+      if (mounted && widget.session.token == token) {
         setState(() {
           _uploading = false;
           _preparingVideo = false;
@@ -204,28 +276,56 @@ class _CheckinScreenState extends State<CheckinScreen> {
           _progress = 1;
         });
       }
-      if (!mounted) return;
+      if (!mounted || widget.session.token != token) return;
       if (widget.session.user?.id != authorId) {
         throw const ApiException(
           code: 'UPLOAD_SESSION_CHANGED',
           message: '登录账号已切换，请重新提交',
         );
       }
-      final result = await _repository.createCheckin(
-        routeId: widget.routeId,
-        attempts: attempts,
-        videoUrl: videoUrl,
-        caption: caption.isEmpty ? null : caption,
-        visibility: visibility,
+      await draft.freeze({
+        'routeId': widget.routeId,
+        'attempts': attempts,
+        'videoUrl': videoUrl,
+        'caption': caption.isEmpty ? null : caption,
+        'visibility': visibility,
+        'operation': 'record',
+      });
+      if (!mounted || widget.session.token != token) return;
+      final payload = draft.payload!;
+      final result = await widget.api.inSession(
+        token!,
+        () => _repository.createCheckin(
+          routeId: payload['routeId'] as String,
+          attempts: payload['attempts'] as int,
+          videoUrl: payload['videoUrl'] as String?,
+          caption: payload['caption'] as String?,
+          visibility: payload['visibility'] as String,
+          clientRequestId: draft.id,
+        ),
       );
-      if (mounted) setState(() => _result = result);
+      if (!mounted ||
+          widget.session.token != token ||
+          !_growth.isCurrentSession(generation)) {
+        return;
+      }
+      _growth.acceptSnapshot(result.growth, generation: generation);
+      setState(() => _result = result);
+      unawaited(draft.clear().catchError((Object _) {}));
     } catch (error) {
-      if (mounted) {
+      if (mounted && widget.session.token == token) {
+        if (error is ApiException &&
+            [400, 404, 413, 422].contains(error.statusCode)) {
+          try {
+            await _draft?.unlockAfterRejection();
+          } catch (_) {}
+          if (!mounted || widget.session.token != token) return;
+        }
         final message = error is ApiException ? error.message : '$error';
         _toast('提交失败：$message');
       }
     } finally {
-      if (mounted) {
+      if (mounted && widget.session.token == token) {
         setState(() {
           _submitting = false;
           _uploading = false;
@@ -253,10 +353,11 @@ class _CheckinScreenState extends State<CheckinScreen> {
       child: _result != null
           ? _SuccessView(
               result: _result!,
+              growthRepository: _growth,
               routeName: widget.routeName,
               grade: widget.grade,
               attempts: _attempts,
-              hasVideo: _video != null,
+              hasVideo: _video != null || _draft?.payload?['videoUrl'] != null,
               motionSoundPlayer: _motionSoundPlayer,
               milestoneSequence: MilestoneGradeSequenceResolver.resolve(
                 currentMonth: _currentMonthDashboard,
@@ -312,7 +413,9 @@ class _CheckinScreenState extends State<CheckinScreen> {
                   const SizedBox(height: 10),
                   _VideoPicker(
                     video: _video,
-                    onTap: _submitting ? null : _showSourcePicker,
+                    onTap: _submitting || _draft?.payload != null
+                        ? null
+                        : _showSourcePicker,
                   ),
                   const SizedBox(height: 24),
                   Row(
@@ -325,7 +428,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                       ),
                       _AttemptStepper(
                         value: _attempts,
-                        enabled: !_submitting,
+                        enabled: !_submitting && _draft?.payload == null,
                         onChanged: (value) => setState(() => _attempts = value),
                       ),
                     ],
@@ -338,7 +441,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                     minLines: 3,
                     maxLines: 5,
                     maxLength: 300,
-                    enabled: !_submitting,
+                    enabled: !_submitting && _draft?.payload == null,
                     decoration: const InputDecoration(
                       hintText: '比如：最后一步终于稳住了！',
                     ),
@@ -352,7 +455,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                       clipBehavior: Clip.antiAlias,
                       child: SwitchListTile.adaptive(
                         value: _syncToSquare,
-                        onChanged: _submitting
+                        onChanged: _submitting || _draft?.payload != null
                             ? null
                             : (value) => setState(() => _syncToSquare = value),
                         secondary: Icon(
@@ -372,6 +475,11 @@ class _CheckinScreenState extends State<CheckinScreen> {
                       ),
                     ),
                   ),
+                  if (_draft?.payload != null && !_submitting)
+                    const Padding(
+                      padding: EdgeInsets.only(bottom: 12),
+                      child: Text('上次提交还未确认，重试将继续保存同一份记录。'),
+                    ),
                   if (_submitting) ...[
                     const SizedBox(height: 12),
                     Row(
@@ -512,9 +620,11 @@ class _SuccessView extends StatefulWidget {
     required this.hasVideo,
     required this.motionSoundPlayer,
     required this.milestoneSequence,
+    required this.growthRepository,
   });
 
   final CheckinResult result;
+  final GrowthRepository growthRepository;
   final String? routeName;
   final String? grade;
   final int attempts;
@@ -527,6 +637,39 @@ class _SuccessView extends StatefulWidget {
 }
 
 class _SuccessViewState extends State<_SuccessView> {
+  GrowthPresentation? _presentation;
+  bool _resolvingGrowth = true;
+  bool _growthFailed = false;
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_resolveGrowth());
+  }
+
+  Future<void> _resolveGrowth() async {
+    if (widget.result.growth == null) {
+      setState(() => _resolvingGrowth = false);
+      return;
+    }
+    final generation = widget.growthRepository.sessionGeneration;
+    setState(() {
+      _resolvingGrowth = true;
+      _growthFailed = false;
+    });
+    try {
+      final presentation = await widget.growthRepository.consumePresentation();
+      if (mounted && widget.growthRepository.isCurrentSession(generation)) {
+        setState(() => _presentation = presentation);
+      }
+    } catch (_) {
+      if (mounted && widget.growthRepository.isCurrentSession(generation)) {
+        setState(() => _growthFailed = true);
+      }
+    } finally {
+      if (mounted) setState(() => _resolvingGrowth = false);
+    }
+  }
+
   bool _feedbackScheduled = false;
   Timer? _hapticTimer;
 
@@ -579,7 +722,9 @@ class _SuccessViewState extends State<_SuccessView> {
     final videoPublished =
         widget.hasVideo && widget.result.moderationStatus == 'approved';
     final milestone = widget.result.milestone;
-    final headline = milestone == null
+    final headline = _presentation != null
+        ? 'Lv.${_presentation!.toLevel} · ${_presentation!.levelName}'
+        : milestone == null
         ? '完攀记录已保存！'
         : '新的最高难度 ${milestone.grade}！';
     final grade = milestone?.grade ?? widget.grade ?? 'V?';
@@ -598,7 +743,21 @@ class _SuccessViewState extends State<_SuccessView> {
                     SizedBox(
                       width: 232,
                       height: 214,
-                      child: milestone == null
+                      child: _resolvingGrowth
+                          ? const Center(
+                              child: Icon(
+                                Icons.check_circle_rounded,
+                                size: 76,
+                                color: WanpanColors.success,
+                              ),
+                            )
+                          : _presentation != null
+                          ? WanpanBadgeStage(
+                              level: _presentation!.toLevel,
+                              size: 214,
+                              soundPlayer: widget.motionSoundPlayer,
+                            )
+                          : milestone == null
                           ? WanpanLottieStage(
                               asset: AppAssets.sendSuccessAnimation,
                               semanticLabel: '黑猫庆祝完攀成功',
@@ -635,6 +794,25 @@ class _SuccessViewState extends State<_SuccessView> {
                             : WanpanColors.coralStrong,
                       ),
                     ),
+                    if (_presentation != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        _presentation!.newBadgeCount > 1
+                            ? '这次点亮了 ${_presentation!.newBadgeCount} 枚徽章'
+                            : '点亮了一枚新的账户徽章',
+                        textAlign: TextAlign.center,
+                      ),
+                      if (milestone != null)
+                        Text(
+                          '同时刷新最高难度 ${milestone.grade}',
+                          textAlign: TextAlign.center,
+                        ),
+                    ],
+                    if (_growthFailed)
+                      TextButton(
+                        onPressed: _resolveGrowth,
+                        child: const Text('记录已保存，徽章同步失败 · 重试'),
+                      ),
                     const SizedBox(height: 9),
                     Text(
                       videoPublished ? '视频已上传，可在线路中查看。' : '这次上墙，已经好好记下来了。',

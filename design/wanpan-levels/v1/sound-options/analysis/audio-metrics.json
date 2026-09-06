@@ -1,0 +1,46 @@
+[
+  {
+    "file": "design/wanpan-levels/v1/sound-options/analysis/a-soft-badge.wav",
+    "decodedDurationSeconds": 0.9926530612244898,
+    "sampleRate": 44100,
+    "channels": 1,
+    "peak": 0.397247314453125,
+    "rms": 0.10871857445630038,
+    "peakDbFS": -8.02,
+    "rmsDbFS": -19.27,
+    "clippedSamples": 0
+  },
+  {
+    "file": "design/wanpan-levels/v1/sound-options/analysis/b-glass-badge.wav",
+    "decodedDurationSeconds": 1.0971428571428572,
+    "sampleRate": 44100,
+    "channels": 1,
+    "peak": 0.40716552734375,
+    "rms": 0.12895575497842598,
+    "peakDbFS": -7.8,
+    "rmsDbFS": -17.79,
+    "clippedSamples": 0
+  },
+  {
+    "file": "design/wanpan-levels/v1/sound-options/analysis/c-organic-level-up.wav",
+    "decodedDurationSeconds": 1.1755102040816328,
+    "sampleRate": 44100,
+    "channels": 1,
+    "peak": 0.40240478515625,
+    "rms": 0.13137265092761025,
+    "peakDbFS": -7.91,
+    "rmsDbFS": -17.63,
+    "clippedSamples": 0
+  },
+  {
+    "file": "design/wanpan-levels/v1/sound-options/kenney/confirmation_004.wav",
+    "decodedDurationSeconds": 0.5006802721088436,
+    "sampleRate": 44100,
+    "channels": 1,
+    "peak": 0.90032958984375,
+    "rms": 0.25510002609405624,
+    "peakDbFS": -0.91,
+    "rmsDbFS": -11.87,
+    "clippedSamples": 0
+  }
+]

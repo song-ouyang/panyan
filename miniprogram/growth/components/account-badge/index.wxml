@@ -1,0 +1,4 @@
+<view class="badge-window {{level === 10 ? 'legendary-badge' : (level > 0 ? 'round-badge' : '')}} {{muted ? 'muted' : ''}}" style="width:{{size}}rpx;height:{{size}}rpx" aria-hidden="true">
+  <image wx:if="{{found}}" class="badge-atlas" style="{{imageStyle}}" src="/growth/assets/account-levels.png" mode="scaleToFill" fade-in="{{false}}" bindload="imageReady" />
+  <text wx:else class="badge-empty">Lv.0</text>
+</view>

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -14,7 +15,11 @@ import 'package:wanpan_diary/features/auth/data/session_token_store.dart';
 import 'package:wanpan_diary/features/auth/domain/auth_session.dart';
 import 'package:wanpan_diary/features/profile/profile_screen.dart';
 import 'package:wanpan_diary/shared/widgets/wanpan_cartoon_icon.dart';
-import 'package:wanpan_diary/shared/widgets/wanpan_cat_avatar.dart';
+import 'package:wanpan_diary/shared/widgets/wanpan_level_avatar.dart';
+import 'package:wanpan_diary/shared/widgets/wanpan_account_badge.dart';
+import 'package:wanpan_diary/features/growth/growth_screen.dart';
+
+import 'growth_repository_test.dart' as growth_fixture;
 
 const _config = AppConfig(
   environment: AppEnvironment.development,
@@ -34,13 +39,48 @@ class _ProfileApi extends ApiClient {
   _ProfileApi({this.user = _user})
     : super(config: _config, accessTokenProvider: () => 'token');
 
-  final UserSummary user;
+  UserSummary user;
+  int level = 4;
+  int revision = 1;
+  int growthRequests = 0;
+  int consumeRequests = 0;
+  Completer<JsonMap>? pendingGrowth;
+  JsonMap get growth => {
+    ...growth_fixture.snapshot(
+      revision: revision,
+      level: level,
+      days: 30,
+      routes: 119,
+    ),
+    'levelName': level == 0 ? '新岩友' : '稳步向上',
+  };
+  @override
+  Future<JsonMap> postJson(
+    String path, {
+    Object? data,
+    Map<String, dynamic>? queryParameters,
+  }) async {
+    if (path == '/users/me/growth-presentations/consume') {
+      consumeRequests++;
+      return {'growth': growth, 'shouldPresent': false, 'presentation': null};
+    }
+    throw StateError('Unexpected profile mutation');
+  }
 
   @override
   Future<JsonMap> getJson(
     String path, {
     Map<String, dynamic>? queryParameters,
   }) async {
+    if (path == '/users/me/growth-level') {
+      growthRequests++;
+      final pending = pendingGrowth;
+      pendingGrowth = null;
+      return pending == null ? growth : pending.future;
+    }
+    if (path == '/users/me/badges') {
+      return {'growth': growth, 'badges': <Object?>[]};
+    }
     if (path != '/users/me') {
       throw StateError('Unexpected profile request: $path');
     }
@@ -79,6 +119,10 @@ GoRouter _createRouter({
     GoRoute(
       path: '/profile',
       builder: (_, _) => ProfileScreen(api: api, session: session),
+    ),
+    GoRoute(
+      path: '/profile/badges',
+      builder: (_, _) => GrowthScreen(api: api, session: session),
     ),
     GoRoute(
       path: '/profile/setup',
@@ -152,6 +196,102 @@ Future<void> _withSemantics(
 }
 
 void main() {
+  testWidgets('个人页昵称旁显示Lv胶囊和头像等级圈，不显示独立徽章行也不消费历史奖励', (tester) async {
+    final api = _ProfileApi();
+    final session = await _createSession();
+    final router = _createRouter(api: api, session: session);
+    addTearDown(router.dispose);
+    addTearDown(session.dispose);
+    await _pumpProfile(tester, router: router);
+    expect(find.text('Lv.4'), findsOneWidget);
+    expect(find.byKey(const Key('profile-growth-badges')), findsNothing);
+    expect(find.byType(WanpanAccountBadge), findsNothing);
+    expect(find.textContaining('已点亮'), findsNothing);
+    expect(api.consumeRequests, 0);
+    final pill = find.byKey(const Key('profile-level-pill'));
+    expect(
+      find.ancestor(
+        of: pill,
+        matching: find.byKey(const Key('profile-header-card')),
+      ),
+      findsOneWidget,
+    );
+    expect(tester.getSize(pill).shortestSide, greaterThanOrEqualTo(44));
+    expect(
+      tester.widget<WanpanLevelAvatar>(find.byType(WanpanLevelAvatar)).level,
+      4,
+    );
+    await tester.tap(pill);
+    await tester.pumpAndSettle();
+    expect(router.state.uri.path, '/profile/badges');
+    expect(api.consumeRequests, 1);
+  });
+  testWidgets('等级头像保留账号照片，点击头像圈同样打开徽章详情', (tester) async {
+    const photoUser = UserSummary(
+      id: 'profile-user',
+      nickname: '有照片的岩友',
+      avatarUrl: 'https://example.com/avatar.jpg',
+      profileCompleted: true,
+    );
+    final api = _ProfileApi(user: photoUser);
+    final session = await _createSession();
+    final router = _createRouter(api: api, session: session);
+    addTearDown(router.dispose);
+    addTearDown(session.dispose);
+    await _pumpProfile(tester, router: router);
+    final avatar = tester.widget<WanpanLevelAvatar>(
+      find.byType(WanpanLevelAvatar),
+    );
+    expect((avatar.image! as NetworkImage).url, photoUser.avatarUrl);
+    await tester.tap(find.byKey(const Key('profile-level-avatar')));
+    await tester.pumpAndSettle();
+    expect(router.state.uri.path, '/profile/badges');
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets('完攀刷新Lv胶囊，账号切换丢弃旧等级响应并恢复Lv0普通头像', (tester) async {
+    final api = _ProfileApi();
+    final session = await _createSession();
+    final router = _createRouter(api: api, session: session);
+    addTearDown(router.dispose);
+    addTearDown(session.dispose);
+    await _pumpProfile(tester, router: router);
+    api.level = 5;
+    api.revision = 2;
+    api.climbingActivity.recordChanged();
+    await tester.pumpAndSettle();
+    expect(find.text('Lv.5'), findsOneWidget);
+    expect(api.consumeRequests, 0);
+    final old = Completer<JsonMap>();
+    api.pendingGrowth = old;
+    api.climbingActivity.recordChanged();
+    await tester.pump();
+    const other = UserSummary(
+      id: 'other-user',
+      nickname: '刚开始攀爬',
+      profileCompleted: true,
+    );
+    api.user = other;
+    api.level = 0;
+    api.revision = 1;
+    await session.acceptSession(
+      const AuthSession(token: 'other-token', user: other, needsProfile: false),
+    );
+    await tester.pumpAndSettle();
+    old.complete({
+      ...growth_fixture.snapshot(revision: 99, level: 10),
+      'levelName': '热爱成章',
+    });
+    await tester.pumpAndSettle();
+    expect(find.text('Lv.0'), findsOneWidget);
+    expect(find.text('Lv.10'), findsNothing);
+    expect(
+      tester.widget<WanpanLevelAvatar>(find.byType(WanpanLevelAvatar)).level,
+      0,
+    );
+    expect(api.consumeRequests, 0);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('个人页四个互动入口分别进入自己的动态、评论、收藏和点赞', (tester) async {
     final api = _ProfileApi();
     final session = await _createSession();
@@ -362,7 +502,7 @@ void main() {
     expect(find.text('邀请好友').hitTestable(), findsOneWidget);
     expect(find.text('看日历').hitTestable(), findsOneWidget);
     expect(
-      find.descendant(of: header, matching: find.byType(WanpanCatAvatar)),
+      find.descendant(of: header, matching: find.byType(WanpanLevelAvatar)),
       findsOneWidget,
     );
     for (final name in ['posts', 'comments', 'favorites', 'likes']) {

@@ -39,7 +39,23 @@ class ApiClient {
       InterceptorsWrapper(
         onRequest: (options, handler) async {
           if (_isFirstPartyRequest(options.uri)) {
-            final token = await _accessTokenProvider();
+            final expected = options.extra[_boundTokenExtra] as String?;
+            final currentToken = await _accessTokenProvider();
+            if (expected != null && expected != currentToken) {
+              handler.reject(
+                DioException(
+                  requestOptions: options,
+                  error: const ApiException(
+                    code: 'REQUEST_SESSION_CHANGED',
+                    message: '登录账号已切换，请重新提交',
+                  ),
+                ),
+              );
+              return;
+            }
+            // Bind the header to the initiator, even if another login happens
+            // between this check and the adapter writing the HTTP request.
+            final token = expected ?? currentToken;
             if (token != null && token.isNotEmpty) {
               options.headers['Authorization'] = 'Bearer $token';
             }
@@ -62,6 +78,13 @@ class ApiClient {
       ),
     );
   }
+
+  static const _boundTokenZone = #wanpanBoundAccessToken;
+  static const _boundTokenExtra = 'wanpan.expectedAccessToken';
+  Future<T> inSession<T>(
+    String expectedAccessToken,
+    Future<T> Function() request,
+  ) => runZoned(request, zoneValues: {_boundTokenZone: expectedAccessToken});
 
   final Dio _dio;
   final AppConfig config;
@@ -199,7 +222,13 @@ class ApiClient {
         path,
         data: data,
         queryParameters: queryParameters,
-        options: Options(method: method),
+        options: Options(
+          method: method,
+          extra: {
+            if (Zone.current[_boundTokenZone] case final String expected)
+              _boundTokenExtra: expected,
+          },
+        ),
       );
       return jsonMap(response.data);
     } on DioException catch (error) {
@@ -221,6 +250,7 @@ class ApiClient {
   }
 
   ApiException _toApiException(DioException error) {
+    if (error.error is ApiException) return error.error! as ApiException;
     final response = error.response;
     JsonMap? body;
     try {

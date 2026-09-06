@@ -1,0 +1,51 @@
+{
+  "repository": "https://github.com/Calinou/kenney-interface-sounds",
+  "commit": "4596a49eaf5a533948d49a47467f606bcdea70ff",
+  "retrieved_on": "2026-09-06",
+  "retrieval": "GitHub archive + raw GitHub README/LICENSE (archive excludes root docs via export-ignore); shallow git clone was stalled and terminated",
+  "archive_url": "https://codeload.github.com/Calinou/kenney-interface-sounds/zip/4596a49eaf5a533948d49a47467f606bcdea70ff",
+  "archive_sha256": "455fef659eac83c1acc90ec186a04f36fa3235066c8d15745f797801b34b94cc",
+  "upstream_author": "Kenney",
+  "upstream_pack_url": "https://kenney.nl/assets/interface-sounds",
+  "license": "CC0-1.0",
+  "license_file": "LICENSE.txt",
+  "license_sha256": "f7966c773bbed0eca6a9c75081c44a178b38eae112724dbb5fdfbd4192d118a9",
+  "inspection_method": "WAV metadata + short-time energy + FFT spectral peak analysis; no auditory listening claim. Descriptive timbre labels are inferred, pending user listening.",
+  "local_source_directory": "/Users/guoba/.codex/asset-sources/wanpan-badge-sounds/kenney-interface-sounds",
+  "candidates": [
+    {
+      "file": "confirmation_004.wav",
+      "label_zh": "轻快确认",
+      "source_path": "addons/kenney_interface_sounds/confirmation_004.wav",
+      "source_url": "https://github.com/Calinou/kenney-interface-sounds/blob/4596a49eaf5a533948d49a47467f606bcdea70ff/addons/kenney_interface_sounds/confirmation_004.wav",
+      "duration_seconds": 0.5006802721088436,
+      "sample_rate_hz": 44100,
+      "channels": 1,
+      "bits_per_sample": 16,
+      "peak_linear": 0.90032958984375,
+      "rms_linear": 0.25510002609405624,
+      "sha256": "b96886d049331b30203658b72278572cd9078d25ab9a88aedf872d0383a40d8c",
+      "modified": false,
+      "suggested_player_volume": 0.36,
+      "suggested_onset_after_badge_start_seconds": 0.9,
+      "assessment_zh": "推荐作为徽章落定的备选。约 0.50 秒，频谱显示多个上行音高区段；能量在 0.16 秒附近达到最高，尾部渐弱。主峰从约 660 Hz 起步，比其他 confirmation 候选的高频起音更克制。"
+    },
+    {
+      "file": "maximize_006.wav",
+      "label_zh": "弹性上扬",
+      "source_path": "addons/kenney_interface_sounds/maximize_006.wav",
+      "source_url": "https://github.com/Calinou/kenney-interface-sounds/blob/4596a49eaf5a533948d49a47467f606bcdea70ff/addons/kenney_interface_sounds/maximize_006.wav",
+      "duration_seconds": 0.3874829931972789,
+      "sample_rate_hz": 44100,
+      "channels": 1,
+      "bits_per_sample": 16,
+      "peak_linear": 0.898712158203125,
+      "rms_linear": 0.19318269435292573,
+      "sha256": "98bfee28b13cab4260b582c38a55cbd41bce0dec827558a37639b09169b10216",
+      "modified": false,
+      "suggested_player_volume": 0.4,
+      "suggested_onset_after_badge_start_seconds": 0.9,
+      "assessment_zh": "推荐作为更短、更可爱的备选。约 0.39 秒，主峰约 275→538 Hz 的连续上行，偏低频的弹跳感；短于完整庆祝旋律，适合贴合徽章小幅回弹。"
+    }
+  ]
+}

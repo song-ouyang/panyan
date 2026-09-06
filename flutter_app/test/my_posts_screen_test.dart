@@ -225,7 +225,7 @@ void main() {
     await tester.pumpAndSettle();
     await _openDelete(tester, 'checkin');
     expect(find.textContaining('线路仍会保留'), findsOneWidget);
-    expect(find.textContaining('攀岩日历和成绩统计'), findsOneWidget);
+    expect(find.textContaining('攀岩日历、成绩统计和账户成长进度'), findsOneWidget);
     await tester.tap(find.text('取消'));
     await tester.pumpAndSettle();
     expect(harness.api.deletes, isEmpty);

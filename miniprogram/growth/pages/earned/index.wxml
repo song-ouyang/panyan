@@ -1,0 +1,15 @@
+<view class="earned-page">
+  <view wx:if="{{loading}}" class="state" role="status">正在打开你的徽章…</view>
+  <view wx:if="{{error}}" class="state"><view>{{error}}</view><button bindtap="load">重试</button><button bindtap="collection">查看我的徽章</button></view>
+  <block wx:if="{{badge && !error}}">
+    <view class="kicker">{{replay ? '热爱的纪念' : '点亮一枚新徽章'}}</view>
+    <view class="badge-stage {{animate ? 'is-playing' : ''}} {{reduced ? 'reduced' : ''}}"><account-badge level="{{badge.level}}" size="460" bind:ready="badgeReady" /></view>
+    <view class="title" role="status">Lv.{{badge.level}} {{badge.name}}</view>
+    <view class="copy">每一次上墙，都在让热爱生长。</view>
+    <view class="copy" wx:if="{{!replay && count > 1}}">这次共点亮 {{count}} 枚徽章，全部已收入徽章册。</view>
+    <view class="sound-setting"><view><view>徽章音效</view><text>C · 木质小阶梯</text></view><switch checked="{{soundEnabled}}" bindchange="toggleSound" color="#ff6b52" aria-label="徽章音效，木质小阶梯" /></view>
+    <button class="replay" bindtap="replay">再看一次{{soundEnabled ? ' · 有声' : ''}}</button>
+    <button class="primary" bindtap="close">收下徽章</button>
+    <button class="collection" bindtap="collection">查看全部徽章</button>
+  </block>
+</view>

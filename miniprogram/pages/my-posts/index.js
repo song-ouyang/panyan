@@ -127,7 +127,7 @@ Page({
     this._deletePromptOpen = true;
     wx.showModal({
       title: '删除动态',
-      content: '动态及其点赞和评论将被删除，无法恢复。完攀打卡删除后，相关统计也会更新。',
+      content: '动态及其点赞和评论将被删除，无法恢复。完攀打卡删除后，成长进度也会更新，不再达标的等级徽章会撤回。',
       confirmText: '删除',
       confirmColor: '#c94c3f',
       success: async result => {

@@ -31,7 +31,11 @@
   "projectname": "wanpan-diary",
   "simulatorPluginLibVersion": {},
   "packOptions": {
-    "ignore": [],
+    "ignore": [
+      { "type": "folder", "value": "test" },
+      { "type": "file", "value": "assets/sounds/milestone.wav" },
+      { "type": "file", "value": "assets/sounds/success.wav" }
+    ],
     "include": []
   },
   "editorSetting": {},
