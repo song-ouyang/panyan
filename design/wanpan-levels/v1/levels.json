@@ -1,0 +1,19 @@
+{
+  "version": "wanpan-growth-v1",
+  "timezone": "Asia/Shanghai",
+  "rule": "all",
+  "metrics": {"days": "累计有效完攀日（不要求连续）", "routes": "累计不同线路的完攀数（按线路 ID 去重）"},
+  "levels": [
+    {"level":0,"name":"新岩友","days":0,"routes":0,"motif":"待启程的灰白岩点"},
+    {"level":1,"name":"初次上墙","days":1,"routes":1,"motif":"薄荷岩点与第一枚爪印"},
+    {"level":2,"name":"渐入佳境","days":3,"routes":8,"motif":"浅蓝镁粉袋与双岩点"},
+    {"level":3,"name":"岩馆常客","days":7,"routes":25,"motif":"珊瑚小岩壁与上攀黑猫"},
+    {"level":4,"name":"稳步向上","days":15,"routes":60,"motif":"葡萄紫路线与向上箭头"},
+    {"level":5,"name":"攀爬成习","days":30,"routes":120,"motif":"珊瑚圆章、抱住岩点的黑猫与一颗星"},
+    {"level":6,"name":"心有岩点","days":60,"routes":250,"motif":"暖金岩点与爱心"},
+    {"level":7,"name":"百日攀友","days":100,"routes":500,"motif":"暖金岩壁与双星黑猫"},
+    {"level":8,"name":"千线旅人","days":180,"routes":1000,"motif":"葡萄紫山形与路线轨迹"},
+    {"level":9,"name":"攀行不止","days":300,"routes":1800,"motif":"珊瑚与暖金交叠岩峰及三颗星"},
+    {"level":10,"name":"热爱成章","days":500,"routes":3000,"motif":"黑金猫耳徽章与环抱岩峰"}
+  ]
+}

@@ -48,6 +48,17 @@ suite('private favorites and personal activity with isolated local PostgreSQL', 
     await client.query(`SET search_path TO "${schema}",public`);
     await client.query(await readFile(new URL('../src/db/schema.sql', import.meta.url), 'utf8'));
     database.query.mockImplementation((sql: string, values: unknown[] = []) => client!.query(sql, values));
+    database.transaction.mockImplementation(async (callback) => {
+      await client!.query('BEGIN');
+      try {
+        const result = await callback(client!);
+        await client!.query('COMMIT');
+        return result;
+      } catch (error) {
+        await client!.query('ROLLBACK');
+        throw error;
+      }
+    });
     app = Fastify();
     await app.register(sensible);
     app.setErrorHandler((error, _request, reply) => {

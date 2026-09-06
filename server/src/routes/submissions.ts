@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { query, transaction } from '../db.js';
+import { idempotencyConflict, lockGrowth, readGrowth, recomputeGrowth, recordClimbingFact, requestHash, retryResponse, saveResponse } from '../services/growth.js';
 import { idParams } from '../schemas.js';
 
 const body = z.object({
@@ -42,7 +43,13 @@ export const submissionRoutes: FastifyPluginAsync = async (app) => {
     config: { rateLimit: { max: 12, timeWindow: '1 minute' } }
   }, async (request) => {
     const b = body.parse(request.body);
+    const userId = request.user.sub;
+    const hash = requestHash({ kind: 'submission', ...b, routeSetId: b.routeSetId ?? null,
+      wallZone: b.wallZone ?? null, coverUrl: b.coverUrl ?? null, videoUrl: b.videoUrl ?? null, caption: b.caption || null });
     return transaction(async (client) => {
+      await lockGrowth(client, userId);
+      const retry = await retryResponse(client, userId, b.clientRequestId, 'submission', hash);
+      if (retry) return retry;
       if (b.clientRequestId) {
         const existing = await client.query(
           `SELECT rs.*,s.id send_id,s.moderation_status send_moderation_status
@@ -51,7 +58,18 @@ export const submissionRoutes: FastifyPluginAsync = async (app) => {
            WHERE rs.submitter_id=$1 AND rs.client_request_id=$2`,
           [request.user.sub, b.clientRequestId]
         );
-        if (existing.rowCount) return existing.rows[0];
+        if (existing.rowCount) {
+          const row = existing.rows[0]!;
+          const originalHash = row.request_hash ?? requestHash({ kind: 'submission',
+            clientRequestId: row.client_request_id, gymId: row.gym_id, routeSetId: row.route_set_id,
+            name: row.name, grade: row.grade, color: row.color, wallZone: row.wall_zone,
+            coverUrl: row.cover_url, videoUrl: row.video_url, caption: row.caption || null,
+            visibility: row.visibility, points: row.points });
+          if (originalHash !== hash) throw idempotencyConflict();
+          const response = { ...row, growth: await readGrowth(client, userId) };
+          await saveResponse(client, userId, b.clientRequestId, 'submission', hash, response);
+          return response;
+        }
       }
 
       const gym = await client.query('SELECT id FROM gyms WHERE id=$1 FOR SHARE', [b.gymId]);
@@ -67,14 +85,14 @@ export const submissionRoutes: FastifyPluginAsync = async (app) => {
       const inserted = await client.query(
         `INSERT INTO route_submissions(
            submitter_id,client_request_id,gym_id,route_set_id,name,grade,color,wall_zone,
-           cover_url,video_url,caption,visibility,points,status,reviewed_at
+           cover_url,video_url,caption,visibility,points,request_hash,status,reviewed_at
          )
-         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'approved',now())
+         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,'approved',now())
          ON CONFLICT (submitter_id,client_request_id) DO NOTHING
          RETURNING *`,
         [
           request.user.sub,b.clientRequestId??null,b.gymId,b.routeSetId??null,b.name,b.grade,b.color,
-          b.wallZone??null,b.coverUrl??null,b.videoUrl??null,b.caption||null,b.visibility,JSON.stringify(b.points)
+          b.wallZone??null,b.coverUrl??null,b.videoUrl??null,b.caption||null,b.visibility,JSON.stringify(b.points),hash
         ]
       );
       if (!inserted.rowCount) {
@@ -85,7 +103,18 @@ export const submissionRoutes: FastifyPluginAsync = async (app) => {
            WHERE rs.submitter_id=$1 AND rs.client_request_id=$2`,
           [request.user.sub, b.clientRequestId]
         );
-        if (existing.rowCount) return existing.rows[0];
+        if (existing.rowCount) {
+          const row = existing.rows[0]!;
+          const originalHash = row.request_hash ?? requestHash({ kind: 'submission',
+            clientRequestId: row.client_request_id, gymId: row.gym_id, routeSetId: row.route_set_id,
+            name: row.name, grade: row.grade, color: row.color, wallZone: row.wall_zone,
+            coverUrl: row.cover_url, videoUrl: row.video_url, caption: row.caption || null,
+            visibility: row.visibility, points: row.points });
+          if (originalHash !== hash) throw idempotencyConflict();
+          const response = { ...row, growth: await readGrowth(client, userId) };
+          await saveResponse(client, userId, b.clientRequestId, 'submission', hash, response);
+          return response;
+        }
         throw app.httpErrors.conflict('请求已处理，请刷新查看');
       }
 
@@ -96,11 +125,13 @@ export const submissionRoutes: FastifyPluginAsync = async (app) => {
       );
       const routeId = route.rows[0]!.id;
       if (b.videoUrl) {
-        await client.query<{ id: string }>(
+        const send = await client.query<{ id: string }>(
           `INSERT INTO sends(user_id,route_id,attempts,video_url,caption,visibility,moderation_status)
            VALUES($1,$2,1,$3,$4,$5,$6) RETURNING id`,
           [request.user.sub,routeId,b.videoUrl,b.caption||null,b.visibility,'approved']
         );
+        await recordClimbingFact(client, { userId, sendId: send.rows[0]!.id, routeId,
+          sourceKind: 'submission_video', clientRequestId: b.clientRequestId, hash });
       }
       await client.query(
         `UPDATE route_submissions
@@ -115,7 +146,10 @@ export const submissionRoutes: FastifyPluginAsync = async (app) => {
          WHERE rs.id=$1`,
         [inserted.rows[0]!.id]
       );
-      return published.rows[0];
+      const growth = b.videoUrl ? await recomputeGrowth(client, userId) : await readGrowth(client, userId);
+      const response = { ...published.rows[0], growth };
+      await saveResponse(client, userId, b.clientRequestId, 'submission', hash, response);
+      return response;
     });
   });
   app.get('/mine', { preHandler: app.authenticate }, async (request) => {
@@ -155,6 +189,9 @@ export const submissionRoutes: FastifyPluginAsync = async (app) => {
   app.post('/:id/review', { preHandler: admin }, async (request) => {
     const { id } = idParams.parse(request.params); const b = reviewBody.parse(request.body);
     return transaction(async (client) => {
+      const owner = await client.query<{ submitter_id: string }>('SELECT submitter_id FROM route_submissions WHERE id=$1', [id]);
+      if (!owner.rowCount) throw app.httpErrors.notFound('投稿不存在或已审核');
+      await lockGrowth(client, owner.rows[0]!.submitter_id);
       const found = await client.query(
         `SELECT rs.* FROM route_submissions rs
          WHERE rs.id=$1 AND rs.status='pending' AND (
@@ -171,6 +208,16 @@ export const submissionRoutes: FastifyPluginAsync = async (app) => {
       if (b.action === 'approve') {
         const route = await client.query(`INSERT INTO routes(gym_id,route_set_id,name,grade,color,wall_zone,cover_url,points) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`, [item.gym_id,item.route_set_id,item.name,item.grade,item.color,item.wall_zone,item.cover_url,JSON.stringify(item.points)]);
         routeId = route.rows[0].id;
+        if (item.video_url && routeId) {
+          const send = await client.query<{ id: string }>(
+            `INSERT INTO sends(user_id,route_id,attempts,video_url,caption,visibility,moderation_status,sent_at,created_at)
+             VALUES($1,$2,1,$3,$4,$5,'approved',$6,$6) RETURNING id`,
+            [item.submitter_id,routeId,item.video_url,item.caption,item.visibility,item.created_at]
+          );
+          await recordClimbingFact(client, { userId: item.submitter_id, sendId: send.rows[0]!.id, routeId,
+            sourceKind: 'submission_video', occurredAt: item.created_at });
+          await recomputeGrowth(client, item.submitter_id);
+        }
       }
       await client.query(
         `UPDATE route_submissions

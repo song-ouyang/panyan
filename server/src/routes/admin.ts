@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { query } from '../db.js';
+import { query, transaction } from '../db.js';
+import { invalidateSendFacts, lockGrowth, recomputeGrowth, recordClimbingFact } from '../services/growth.js';
 import { idParams } from '../schemas.js';
 
 const gym = z.object({ name: z.string().min(2).max(80), city: z.string().min(2).max(40), district: z.string().max(40).optional(), brandId: z.string().uuid().optional(), address: z.string().min(2).max(160), latitude: z.number().optional(), longitude: z.number().optional(), coverUrl: z.string().url().optional(), description: z.string().optional() });
@@ -47,6 +48,20 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     const result = await query(`INSERT INTO routes(gym_id,route_set_id,name,grade,color,wall_zone,cover_url,setter_name,points) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`, [b.gymId,b.routeSetId??null,b.name,b.grade,b.color,b.wallZone??null,b.coverUrl??null,b.setterName??null,JSON.stringify(b.points)]);
     return result.rows[0];
   });
+  app.post('/growth/sends/:id/invalidate', { preHandler: platformAdmin }, async (request) => {
+    const { id } = idParams.parse(request.params);
+    const { reason } = z.object({ reason: z.string().trim().min(2).max(300) }).parse(request.body);
+    return transaction(async (client) => {
+      const owner = await client.query<{ user_id: string }>('SELECT user_id FROM sends WHERE id=$1 AND route_id IS NOT NULL', [id]);
+      if (!owner.rowCount) throw app.httpErrors.notFound('完攀记录不存在');
+      const userId = owner.rows[0]!.user_id;
+      await lockGrowth(client, userId);
+      const found = await client.query("UPDATE sends SET moderation_status='rejected' WHERE id=$1 AND user_id=$2 RETURNING id", [id, userId]);
+      if (!found.rowCount) throw app.httpErrors.notFound('完攀记录不存在');
+      const growth = await invalidateSendFacts(client, userId, id, reason, request.user.sub);
+      return { invalidated: true, growth };
+    });
+  });
   app.get('/moderation', { preHandler: platformAdmin }, async () => {
     const sends = await query(`SELECT s.id,s.caption,s.video_url,s.created_at,u.nickname FROM sends s JOIN users u ON u.id=s.user_id WHERE s.moderation_status='pending' ORDER BY s.created_at`);
     const comments = await query(`SELECT c.id,c.content,c.created_at,u.nickname FROM comments c JOIN users u ON u.id=c.user_id WHERE c.moderation_status='pending' ORDER BY c.created_at`);
@@ -58,10 +73,22 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     const b = z.object({ targetType: z.enum(['send','comment','report']), action: z.enum(['approve','reject']) }).parse(request.body);
     const status = b.action === 'approve' ? 'approved' : 'rejected';
     if (b.targetType === 'send') {
-      const reviewed = await query<{ user_id: string; route_id: string | null; visibility: string }>(
-        `UPDATE sends SET moderation_status=$2 WHERE id=$1 AND moderation_status='pending' RETURNING user_id,route_id,visibility`,
-        [id,status]
-      );
+      const reviewed = await transaction(async (client) => {
+        const owner = await client.query<{ user_id: string }>('SELECT user_id FROM sends WHERE id=$1', [id]);
+        if (!owner.rowCount) return { rows: [] };
+        await lockGrowth(client, owner.rows[0]!.user_id);
+        const result = await client.query<{ user_id: string; route_id: string | null; visibility: string; sent_at: Date }>(
+          `UPDATE sends SET moderation_status=$2 WHERE id=$1 AND moderation_status='pending' RETURNING user_id,route_id,visibility,sent_at`,
+          [id,status]
+        );
+        const item = result.rows[0];
+        if (item?.route_id && status === 'approved') {
+          await recordClimbingFact(client, { userId: item.user_id, sendId: id, routeId: item.route_id,
+            sourceKind: 'checkin', occurredAt: item.sent_at });
+          await recomputeGrowth(client, item.user_id);
+        } else if (item) await invalidateSendFacts(client, item.user_id, id, 'moderation_rejected', request.user.sub);
+        return result;
+      });
       const item = reviewed.rows[0];
       if (item) {
         const isCheckin = Boolean(item.route_id);

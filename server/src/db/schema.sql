@@ -382,3 +382,85 @@ BEGIN
   WHERE moderation_status='pending';
 END
 $publish_pending_content$;
+
+-- Account growth uses immutable confirmation dates, independently of feed upserts.
+CREATE TABLE IF NOT EXISTS user_growth (
+  user_id uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  climbing_days integer NOT NULL DEFAULT 0 CHECK(climbing_days>=0),
+  unique_routes integer NOT NULL DEFAULT 0 CHECK(unique_routes>=0),
+  current_level integer NOT NULL DEFAULT 0 CHECK(current_level BETWEEN 0 AND 10),
+  rules_version text NOT NULL,
+  revision integer NOT NULL DEFAULT 0,
+  backfill_status text NOT NULL DEFAULT 'pending' CHECK(backfill_status IN ('pending','complete')),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS climbing_facts (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  source_send_id uuid REFERENCES sends(id) ON DELETE SET NULL,
+  source_route_id uuid REFERENCES routes(id) ON DELETE SET NULL,
+  route_identity uuid NOT NULL,
+  occurred_at timestamptz NOT NULL,
+  local_date date NOT NULL,
+  source_kind text NOT NULL CHECK(source_kind IN ('checkin','submission_video','legacy_backfill')),
+  source_key text NOT NULL,
+  client_request_id uuid,
+  request_hash text,
+  status text NOT NULL DEFAULT 'valid' CHECK(status IN ('valid','invalidated')),
+  invalidated_at timestamptz,
+  invalidation_reason text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE(user_id,source_key),
+  UNIQUE(user_id,client_request_id)
+);
+CREATE INDEX IF NOT EXISTS idx_climbing_facts_days ON climbing_facts(user_id,local_date) WHERE status='valid';
+CREATE INDEX IF NOT EXISTS idx_climbing_facts_routes ON climbing_facts(user_id,route_identity) WHERE status='valid';
+CREATE INDEX IF NOT EXISTS idx_climbing_facts_source ON climbing_facts(user_id,source_send_id);
+CREATE TABLE IF NOT EXISTS user_badges (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  badge_key text NOT NULL,
+  level integer NOT NULL CHECK(level BETWEEN 1 AND 10),
+  rules_version text NOT NULL,
+  earned_at timestamptz NOT NULL DEFAULT now(),
+  status text NOT NULL DEFAULT 'earned' CHECK(status IN ('earned','revoked')),
+  revoked_at timestamptz,
+  revocation_reason text,
+  UNIQUE(user_id,badge_key,rules_version)
+);
+CREATE TABLE IF NOT EXISTS growth_presentations (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  from_level integer NOT NULL,
+  to_level integer NOT NULL,
+  badge_keys jsonb NOT NULL,
+  growth_revision integer NOT NULL,
+  kind text NOT NULL DEFAULT 'account_level',
+  status text NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','consumed','superseded','invalidated')),
+  consumed_at timestamptz,
+  invalidated_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE(user_id,growth_revision,kind)
+);
+CREATE INDEX IF NOT EXISTS idx_growth_presentations_pending ON growth_presentations(user_id,growth_revision) WHERE status='pending';
+-- Receipts survive content deletion: a lost-response retry cannot recreate a post.
+CREATE TABLE IF NOT EXISTS growth_requests (
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  client_request_id uuid NOT NULL,
+  request_kind text NOT NULL CHECK(request_kind IN ('send','submission')),
+  request_hash text NOT NULL,
+  response jsonb NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY(user_id,client_request_id)
+);
+CREATE TABLE IF NOT EXISTS growth_audit (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  fact_id uuid REFERENCES climbing_facts(id) ON DELETE CASCADE,
+  badge_id uuid REFERENCES user_badges(id) ON DELETE CASCADE,
+  actor_id uuid REFERENCES users(id) ON DELETE SET NULL,
+  action text NOT NULL,
+  reason text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE route_submissions ADD COLUMN IF NOT EXISTS request_hash text;

@@ -14,6 +14,15 @@ vi.mock('../src/db.js', () => ({
   transaction: mocks.transaction
 }));
 
+// These tests isolate publication/visibility SQL; real growth transactions and
+// idempotency run in growth-db-e2e.test.ts against PostgreSQL.
+vi.mock('../src/services/growth.js', () => ({
+  lockGrowth: vi.fn(), readGrowth: vi.fn(), recomputeGrowth: vi.fn(), recordClimbingFact: vi.fn(),
+  invalidateSendFacts: vi.fn(), requestHash: () => 'growth-contract-test',
+  retryResponse: vi.fn(async () => null), saveResponse: vi.fn(),
+  idempotencyConflict: () => Object.assign(new Error('idempotency conflict'), { statusCode: 409 })
+}));
+
 import { sendRoutes } from '../src/routes/sends.js';
 import { gymRoutes } from '../src/routes/gyms.js';
 import { meetupRoutes } from '../src/routes/meetups.js';
@@ -66,7 +75,7 @@ beforeEach(() => {
 
 describe('send visibility', () => {
   it.each(['public', 'friends', 'private'])('publishes a %s route check-in immediately', async (visibility) => {
-    mocks.query
+    mocks.clientQuery
       .mockResolvedValueOnce(result([{ grade: 'V2', grade_number: 2 }]))
       .mockResolvedValueOnce(result([{ max_grade: 1 }]));
     mocks.clientQuery.mockResolvedValueOnce(result([{
@@ -93,8 +102,8 @@ describe('send visibility', () => {
       pendingPoints: 0,
       milestone: { type: 'first_grade', grade: 'V2' }
     });
-    expect(mocks.clientQuery.mock.calls[0]![1]).toEqual([
-      viewerId, routeId, 1, 'https://example.com/uploaded.mp4', null, visibility, 'approved'
+    expect(mocks.clientQuery.mock.calls[2]![1]).toEqual([
+      viewerId, routeId, 1, 'https://example.com/uploaded.mp4', null, visibility
     ]);
     await app.close();
   });
@@ -134,7 +143,7 @@ describe('send visibility', () => {
   });
 
   it('updates an existing check-in without deleting its likes or comments', async () => {
-    mocks.query
+    mocks.clientQuery
       .mockResolvedValueOnce(result([{ grade: 'V3', grade_number: 3 }]))
       .mockResolvedValueOnce(result([{ max_grade: 3 }]));
     mocks.clientQuery.mockResolvedValueOnce(result([{
@@ -162,8 +171,8 @@ describe('send visibility', () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({ sendId, moderationStatus: 'approved', pointsEarned: 25, pendingPoints: 0, milestone: null });
-    expect(mocks.clientQuery).toHaveBeenCalledTimes(1);
-    const [sql, values] = mocks.clientQuery.mock.calls[0]!;
+    expect(mocks.clientQuery).toHaveBeenCalledTimes(3);
+    const [sql, values] = mocks.clientQuery.mock.calls[2]!;
     expect(sql).toContain('ON CONFLICT(user_id,route_id) DO UPDATE');
     expect(sql).not.toContain('DELETE FROM post_likes');
     expect(sql).not.toContain('DELETE FROM comments');
@@ -173,8 +182,7 @@ describe('send visibility', () => {
       2,
       'https://example.com/new.mp4',
       '更新了完攀视频',
-      'friends',
-      'approved'
+      'friends'
     ]);
     await app.close();
   });

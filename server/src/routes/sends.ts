@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { query, transaction } from '../db.js';
+import { invalidateSendFacts, lockGrowth, readGrowth, recomputeGrowth, recordClimbingFact, requestHash, retryResponse, saveResponse } from '../services/growth.js';
 import { commentBody, idParams, pagination, sendBody } from '../schemas.js';
 
 const feedCursorPayload = z.object({
@@ -92,40 +93,47 @@ export const sendRoutes: FastifyPluginAsync = async (app) => {
 
   app.post('/', { preHandler: app.authenticate }, async (request) => {
     const body = sendBody.parse(request.body);
-    const route = await query(`SELECT grade,substring(grade from 2)::int grade_number FROM routes WHERE id=$1`, [body.routeId]);
-    if (!route.rowCount) throw app.httpErrors.notFound('线路不存在');
-    // Route check-ins publish as soon as the client finishes uploading, just
-    // like the video attached to a route submission.
-    const moderationStatus = 'approved';
-    const previous = await query(
-      `SELECT coalesce(max(substring(r.grade from 2)::int),-1)::int max_grade
-       FROM sends s JOIN routes r ON r.id=s.route_id
-       WHERE s.user_id=$1 AND s.moderation_status='approved'`, [request.user.sub]
-    );
-    const result = await transaction(async (client) => {
-      return client.query(
-        `INSERT INTO sends(user_id,route_id,attempts,video_url,caption,visibility,moderation_status)
-         VALUES($1,$2,$3,$4,$5,$6,$7)
-         ON CONFLICT(user_id,route_id) DO UPDATE SET attempts=EXCLUDED.attempts,video_url=EXCLUDED.video_url,
-         caption=EXCLUDED.caption,visibility=EXCLUDED.visibility,moderation_status=EXCLUDED.moderation_status,sent_at=now()
-         RETURNING *`,
-        [request.user.sub, body.routeId, body.attempts, body.videoUrl ?? null, body.caption ?? null, body.visibility, moderationStatus]
+    const userId = request.user.sub;
+    const hash = requestHash({ kind: 'send', ...body, videoUrl: body.videoUrl ?? null, caption: body.caption ?? null });
+    return transaction(async (client) => {
+      await lockGrowth(client, userId);
+      const retry = await retryResponse(client, userId, body.clientRequestId, 'send', hash);
+      if (retry) return retry;
+      const route = await client.query(`SELECT grade,substring(grade from 2)::int grade_number FROM routes WHERE id=$1`, [body.routeId]);
+      if (!route.rowCount) throw app.httpErrors.notFound('线路不存在');
+      const previous = await client.query(
+        `SELECT coalesce(max(substring(r.grade from 2)::int),-1)::int max_grade
+         FROM sends s JOIN routes r ON r.id=s.route_id
+         WHERE s.user_id=$1 AND s.moderation_status='approved'`, [userId]
       );
+      const values = [userId, body.routeId, body.attempts, body.videoUrl ?? null, body.caption ?? null, body.visibility];
+      const result = body.operation === 'edit'
+        ? await client.query(
+          `UPDATE sends SET attempts=$3,video_url=$4,caption=$5,visibility=$6
+           WHERE user_id=$1 AND route_id=$2 RETURNING *`, values)
+        : await client.query(
+          `INSERT INTO sends(user_id,route_id,attempts,video_url,caption,visibility,moderation_status)
+           VALUES($1,$2,$3,$4,$5,$6,'approved')
+           ON CONFLICT(user_id,route_id) DO UPDATE SET attempts=EXCLUDED.attempts,video_url=EXCLUDED.video_url,
+           caption=EXCLUDED.caption,visibility=EXCLUDED.visibility,moderation_status=EXCLUDED.moderation_status,sent_at=now()
+           RETURNING *`, values);
+      if (!result.rowCount) throw app.httpErrors.notFound('完攀记录不存在');
+      const send = result.rows[0]!;
+      if (body.operation === 'record') await recordClimbingFact(client, {
+        userId, sendId: send.id, routeId: body.routeId, sourceKind: 'checkin',
+        clientRequestId: body.clientRequestId, hash
+      });
+      const growth = body.operation === 'record' ? await recomputeGrowth(client, userId) : await readGrowth(client, userId);
+      const gradeNumber = route.rows[0]!.grade_number as number;
+      const response = {
+        send, sendId: send.id, moderationStatus: send.moderation_status,
+        milestone: body.operation === 'record' && gradeNumber > (previous.rows[0]?.max_grade ?? -1)
+          ? { type: 'first_grade', grade: route.rows[0]!.grade } : null,
+        pointsEarned: 10 + gradeNumber * 5 + (body.attempts === 1 ? 5 : 0), pendingPoints: 0, growth
+      };
+      await saveResponse(client, userId, body.clientRequestId, 'send', hash, response);
+      return response;
     });
-    const routeInfo = route.rows[0]!;
-    const previousMax = previous.rows[0]?.max_grade ?? -1;
-    const gradeNumber = routeInfo.grade_number as number;
-    const milestone = gradeNumber > previousMax ? { type: 'first_grade', grade: routeInfo.grade } : null;
-    const points = 10 + gradeNumber * 5 + (body.attempts === 1 ? 5 : 0);
-    const send = result.rows[0]!;
-    return {
-      send,
-      sendId: send.id,
-      moderationStatus,
-      milestone,
-      pointsEarned: points,
-      pendingPoints: 0
-    };
   });
 
   app.get('/feed', { preHandler: app.authenticateOptional }, async (request) => {
@@ -314,8 +322,13 @@ export const sendRoutes: FastifyPluginAsync = async (app) => {
 
   app.delete('/:id', { preHandler: app.authenticate }, async (request) => {
     const { id } = idParams.parse(request.params);
-    const result = await query('DELETE FROM sends WHERE id=$1 AND user_id=$2 RETURNING id', [id, request.user.sub]);
-    if (!result.rowCount) throw app.httpErrors.notFound('动态不存在或无权删除');
-    return { deleted: true };
+    return transaction(async (client) => {
+      await lockGrowth(client, request.user.sub);
+      const owned = await client.query('SELECT id FROM sends WHERE id=$1 AND user_id=$2 FOR UPDATE', [id, request.user.sub]);
+      if (!owned.rowCount) throw app.httpErrors.notFound('动态不存在或无权删除');
+      await invalidateSendFacts(client, request.user.sub, id, 'owner_deleted');
+      await client.query('DELETE FROM sends WHERE id=$1 AND user_id=$2', [id, request.user.sub]);
+      return { deleted: true };
+    });
   });
 };

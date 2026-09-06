@@ -1,5 +1,6 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { query, transaction } from '../db.js';
+import { lockGrowth } from '../services/growth.js';
 import { idParams, profileBody } from '../schemas.js';
 import { activityPostFields, activityPostVisibility, encodeActivityCursor, parseActivityQuery, type PersonalActivity } from '../social_activity.js';
 
@@ -394,7 +395,10 @@ export const userRoutes: FastifyPluginAsync = async (app) => {
     return { removed: Boolean(result.rowCount) };
   });
   app.delete('/me', { preHandler: app.authenticate }, async (request) => {
-    await query('DELETE FROM users WHERE id=$1', [request.user.sub]);
+    await transaction(async (client) => {
+      await lockGrowth(client, request.user.sub);
+      await client.query('DELETE FROM users WHERE id=$1', [request.user.sub]);
+    });
     return { deleted: true };
   });
 };

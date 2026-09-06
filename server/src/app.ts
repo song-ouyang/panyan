@@ -24,6 +24,7 @@ import { reportRoutes } from './routes/reports.js';
 import { notificationRoutes } from './routes/notifications.js';
 import { visitCardRoutes } from './routes/visit-cards.js';
 import { publicPageRoutes } from './routes/public-pages.js';
+import { growthRoutes } from './routes/growth.js';
 import { shareRoutes } from './routes/shares.js';
 
 export async function buildApp() {
@@ -62,6 +63,7 @@ export async function buildApp() {
   await app.register(routeRoutes, { prefix: '/api/routes' });
   await app.register(sendRoutes, { prefix: '/api/sends' });
   await app.register(userRoutes, { prefix: '/api/users' });
+  await app.register(growthRoutes, { prefix: '/api' });
   await app.register(rankingRoutes, { prefix: '/api/rankings' });
   await app.register(meetupRoutes, { prefix: '/api/meetups' });
   await app.register(uploadRoutes, { prefix: '/api/uploads' });
