@@ -127,6 +127,28 @@ suite('account badges with isolated local PostgreSQL', () => {
     expect((await post('users/me/growth-presentations/consume', { userId: stranger.id })).statusCode).toBe(400);
   });
 
+  it('never stores config responses and checks credentials independently for the same URL', async () => {
+    const url = '/api/growth/config';
+    for (const [headers, statusCode] of [
+      [undefined, 200],
+      [owner.headers, 200],
+      [{ authorization: 'Bearer invalid' }, 401],
+      [undefined, 200],
+      [stranger.headers, 200],
+      [{ authorization: 'Bearer invalid' }, 401]
+    ] as const) {
+      const response = await app.inject({ url, headers });
+      expect(response.statusCode).toBe(statusCode);
+      expect(response.headers['cache-control']).toBe('no-store');
+      if (statusCode === 200) {
+        expect(response.json()).toMatchObject({ rulesVersion: 'wanpan-growth-v1', timezone: 'Asia/Shanghai' });
+        expect(response.json().levels).toHaveLength(11);
+      } else {
+        expect(response.json()).not.toHaveProperty('levels');
+      }
+    }
+  });
+
   it('starts at Lv.0 without a badge and excludes moments and non-video submissions', async () => {
     const growth = await get('users/me/growth-level');
     expect(growth.json()).toMatchObject({ currentLevel: 0, levelName: '新岩友', climbingDays: 0, uniqueRoutes: 0, backfillStatus: 'complete', remainingDays: 1, remainingRoutes: 1 });

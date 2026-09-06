@@ -4,8 +4,14 @@ import { transaction } from '../db.js';
 import { consumeGrowthPresentation, growthLevels, growthRulesVersion, growthTimezone, lockGrowth, readGrowth } from '../services/growth.js';
 
 export const growthRoutes: FastifyPluginAsync = async (app) => {
-  app.get('/growth/config', { preHandler: app.authenticateOptional }, async (_request, reply) => {
-    reply.header('cache-control', 'public, max-age=3600');
+  app.get('/growth/config', {
+    onRequest: async (_request, reply) => {
+      // Optional authentication still rejects supplied invalid credentials;
+      // shared caches must never replay a guest response across that boundary.
+      reply.header('cache-control', 'no-store');
+    },
+    preHandler: app.authenticateOptional
+  }, async () => {
     return { rulesVersion: growthRulesVersion, timezone: growthTimezone, levels: growthLevels };
   });
   app.get('/users/me/growth-level', { preHandler: app.authenticate }, async (request) => transaction(async (client) => {
